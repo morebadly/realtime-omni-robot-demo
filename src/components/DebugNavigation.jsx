@@ -1,31 +1,34 @@
 const NAV_ITEMS = [
-  { id: 'robot-console', label: '机器人控制', desc: '表情、状态、身份' },
-  { id: 'audio-io', label: '实时音频/摄像头', desc: '输入与输出通道' },
-  { id: 'omni-session', label: 'Omni 会话', desc: '包、帧、状态机' },
-  { id: 'visible-context', label: '可见信息', desc: '能看/不能看' },
-  { id: 'plugins', label: '插件权限', desc: '权限和动作库' },
+  { id: 'live', label: '实时控制', desc: '脸、音频、摄像头' },
+  { id: 'omni', label: 'Omni 会话', desc: '包、帧、状态机' },
+  { id: 'plugins', label: '插件中心', desc: '动作库与插件' },
+  { id: 'permissions', label: '权限中心', desc: '权限开关' },
+  { id: 'context', label: '可见信息', desc: '透明面板' },
   { id: 'logs', label: '行为日志', desc: '调试记录' }
 ];
 
-export default function DebugNavigation() {
+export default function DebugNavigation({ activeView = 'live', onSelect }) {
   return (
     <nav className="debug-nav" aria-label="调试导航">
       <div className="debug-nav-copy">
         <p className="eyebrow">Debug Navigator</p>
-        <h2>快速跳转调试区</h2>
-        <p>页面内容较多时，用这里直接跳到常用模块；顶部不再堆满架构标签。</p>
+        <h2>点击切换调试视图</h2>
+        <p>不再把所有模块铺成长页面；只显示当前选中的工作区，插件中心也会独立打开。</p>
       </div>
-      <div className="debug-nav-actions">
+      <div className="debug-nav-actions" role="tablist" aria-label="调试视图">
         {NAV_ITEMS.map((item) => (
-          <a href={`#${item.id}`} key={item.id}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeView === item.id}
+            className={activeView === item.id ? 'active' : ''}
+            key={item.id}
+            onClick={() => onSelect?.(item.id)}
+          >
             <strong>{item.label}</strong>
             <small>{item.desc}</small>
-          </a>
+          </button>
         ))}
-        <a href="#top" className="debug-nav-top">
-          <strong>回到顶部</strong>
-          <small>Top</small>
-        </a>
       </div>
     </nav>
   );

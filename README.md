@@ -1,10 +1,10 @@
-# Realtime Omni Robot Demo v1.1.4
+# Realtime Omni Robot Demo v1.1.5
 
 这是一个用于投资人演示和后续工程开发的 **实时 Omni 机器人平台 Demo**。项目定位不是单纯本地部署机器人，而是：
 
 > 云端优先、可本地调试、可移动、多网络、自带插件和权限系统的实时 Omni 机器人平台。
 
-v1.1.4 是 UI 调试可用性优化版本：在 v1.1.3 Realtime Session State Machine 基础上，顶部改为简洁摘要，新增 Debug Navigator 快速跳转，可见信息面板改为 compact/可折叠结构，并修复窄栏文本挤压看起来像乱码的问题。实时协议和 Mock 安全边界保持不变。
+v1.1.5 是点击式调试工作台版本：在 v1.1.4 基础上，不再把插件中心、权限、可见信息、日志和 Omni 会话全部铺成长页面，而是通过顶部 Debug Navigator 切换独立工作区。插件中心内部也改为标签页，避免一次性展开动作库、无代码表单、代码插件表单和 manifest。实时协议和 Mock 安全边界保持不变。
 
 ## 快速运行
 
@@ -35,6 +35,14 @@ npm run dev
 ```
 
 如果提示找不到 `node_modules` 或 `dist`，可以忽略；如果提示找不到 `package.json`，说明还没有 `cd` 进入项目文件夹。
+
+## v1.1.5 新增内容
+
+- 顶部 `DebugNavigation` 从锚点跳转升级为点击式视图切换：实时控制、Omni 会话、插件中心、权限中心、可见信息、行为日志。
+- 插件中心从主页面长模块改成独立 `Plugin Workbench`。
+- `PluginCenter` 内部新增标签页：已安装插件 / 新增无代码插件 / 新增代码插件 / 动作库。
+- 已安装插件默认只显示核心信息；manifest 和代码源码改为可折叠详情，减少页面高度。
+- 主页面默认只保留实时控制常用内容，降低调试时滚动成本。
 
 ## v1.1.4 新增内容
 
@@ -100,7 +108,9 @@ realtime-omni-robot-demo/
 │   ├── RELEASE_NOTES_v1.1.3.md
 │   ├── UPDATE_GUIDE_v1.1.3.md
 │   ├── RELEASE_NOTES_v1.1.4.md
-│   └── UPDATE_GUIDE_v1.1.4.md
+│   ├── UPDATE_GUIDE_v1.1.4.md
+│   ├── RELEASE_NOTES_v1.1.5.md
+│   └── UPDATE_GUIDE_v1.1.5.md
 ├── src/
 │   ├── components/
 │   │   ├── RobotRegistryPanel.jsx

@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.1.3.
+Current version: v1.1.5.
 
 Tech stack:
 - Vite
@@ -189,3 +189,7 @@ Near-term development should focus on:
 - Use DebugNavigation anchors for long-page debugging.
 - Keep VisibleContext compact and readable; use collapsible details for long safety notes.
 - Do not change realtime protocol semantics when making UI-only improvements.
+
+## v1.1.5 UI rule
+
+The app is now a click-first debug workbench. Do not keep adding large always-visible panels to the main page. Put lower-frequency tools such as Plugin Center, Permissions, Visible Context, Logs, and Omni Session details behind DebugNavigation views or internal component tabs.
