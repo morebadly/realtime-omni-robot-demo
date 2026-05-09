@@ -1,4 +1,4 @@
-# 架构说明 v1.1.3
+# 架构说明 v1.1.5
 
 ## 1. 产品定位
 
@@ -126,6 +126,7 @@ Model Adapter Registry
 
 ```text
 src/runtime/modelAdapters.js
+src/runtime/localDevProtocol.js
 src/components/ModelProviderPanel.jsx
 ```
 

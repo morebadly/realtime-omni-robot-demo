@@ -7,7 +7,12 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "mock:localdev": "node scripts/localdev-omni-mock-server.mjs"
+    "mock:localdev": "node scripts/localdev-omni-mock-server.mjs",
+    "adapter:localdev:skeleton": "node scripts/localdev-omni-adapter-skeleton.mjs",
+    "adapter:localdev:qwen-stub": "powershell -NoProfile -Command \"$env:LOCALDEV_OMNI_PROVIDER='qwen_stub'; node scripts/localdev-omni-adapter-skeleton.mjs\"",
+    "adapter:localdev:qwen-loopback": "powershell -NoProfile -Command \"$env:LOCALDEV_OMNI_PROVIDER='qwen_stub'; $env:LOCALDEV_QWEN_DRY_RUN='0'; $env:LOCALDEV_QWEN_TRANSPORT='loopback'; $env:LOCALDEV_QWEN_ENDPOINT='loopback://local'; node scripts/localdev-omni-adapter-skeleton.mjs\"",
+    "test:localdev-adapter-contract": "node scripts/localdev-adapter-contract-smoke.mjs",
+    "test:localdev-adapter-contract:qwen-loopback": "powershell -NoProfile -Command \"$env:LOCALDEV_CONTRACT_PROVIDER='qwen_stub'; $env:LOCALDEV_CONTRACT_SCENARIO='qwen_loopback'; $env:LOCALDEV_QWEN_DRY_RUN='0'; $env:LOCALDEV_QWEN_TRANSPORT='loopback'; $env:LOCALDEV_QWEN_ENDPOINT='loopback://local'; node scripts/localdev-adapter-contract-smoke.mjs\""
   },
   "dependencies": {
     "vite": "latest",

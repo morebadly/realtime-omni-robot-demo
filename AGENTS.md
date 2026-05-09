@@ -68,6 +68,7 @@ Runtime:
 - `src/runtime/robotProfile.js`
 - `src/runtime/robotRuntimeConfig.js`
 - `src/runtime/modelAdapters.js`
+- `src/runtime/localDevProtocol.js`
 - `src/runtime/localDevOmniClient.js`
 - `src/runtime/pluginEngine.js`
 - `src/runtime/pluginManifest.js`
@@ -98,6 +99,15 @@ UI:
 
 Mock / local dev tools:
 - `scripts/localdev-omni-mock-server.mjs`
+- `scripts/localdev-omni-adapter-skeleton.mjs`
+- `scripts/localdev-omni-provider-registry.mjs`
+- `scripts/localdev-qwen-realtime-client.mjs`
+- `scripts/localdev-qwen-realtime-transport.mjs`
+- `scripts/localdev-qwen-http-client.mjs`
+- `scripts/localdev-omni-placeholder-provider.mjs`
+- `scripts/localdev-omni-qwen-provider-stub.mjs`
+- `scripts/localdev-adapter-contract-smoke.mjs`
+- `docs/LOCALDEV_ADAPTER_CONTRACT.md`
 
 ## Commands
 
@@ -117,6 +127,36 @@ Run LocalDev mock Omni server in another terminal:
 
 ```bash
 npm run mock:localdev
+```
+
+Run LocalDev adapter skeleton in another terminal:
+
+```bash
+npm run adapter:localdev:skeleton
+```
+
+Run LocalDev Qwen provider stub:
+
+```bash
+npm run adapter:localdev:qwen-stub
+```
+
+Run LocalDev Qwen loopback transport boundary:
+
+```bash
+npm run adapter:localdev:qwen-loopback
+```
+
+Run the one-shot LocalDev adapter contract smoke test:
+
+```bash
+npm run test:localdev-adapter-contract
+```
+
+Run the Qwen loopback contract smoke test:
+
+```bash
+npm run test:localdev-adapter-contract:qwen-loopback
 ```
 
 Build:
@@ -193,3 +233,7 @@ Near-term development should focus on:
 ## v1.1.5 UI rule
 
 The app is now a click-first debug workbench. Do not keep adding large always-visible panels to the main page. Put lower-frequency tools such as Plugin Center, Permissions, Visible Context, Logs, and Omni Session details behind DebugNavigation views or internal component tabs.
+
+## LocalDev Qwen provider rule
+
+The future real Qwen provider must remain a realtime session adapter. Do not implement it as `reply_text -> streaming playback` or as a traditional text-chat request. Audio frames, camera frames, input packets, and interrupt controls must belong to the same provider session, and model-native audio output should map to `omni.reply_audio_frame.v1`.

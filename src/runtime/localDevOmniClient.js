@@ -1,4 +1,5 @@
 import { createOmniInterrupt, normalizeOutputStateMessage, normalizeReplyAudioFrameMessage } from './omniOutputFrames';
+import { createLocalDevControlEnvelope, createLocalDevInputEnvelope, createLocalDevMediaEnvelope, isLocalDevMediaAck, isLocalDevWebSocketEndpoint } from './localDevProtocol';
 function createRequestId() {
   const rand = Math.random().toString(36).slice(2, 8);
   return `localdev_req_${Date.now().toString(36)}_${rand}`;
@@ -44,7 +45,7 @@ function normalizeOutputEnvelope(message) {
 }
 
 function normalizeMediaAck(message) {
-  if (message?.schema === 'cloudgenie.local_dev.media_ack.v1' || message?.type === 'omni.media_ack') {
+  if (isLocalDevMediaAck(message)) {
     return { requestId: message.requestId || null, ack: message, receivedFrame: message.receivedFrame || null };
   }
   return null;
@@ -137,7 +138,7 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
     if (!WebSocketImpl) {
       return Promise.resolve({ ok: false, error: '当前环境不支持 WebSocket，无法连接 LocalDevOmniAdapter。', endpoint });
     }
-    if (!endpoint || !endpoint.startsWith('ws')) {
+    if (!isLocalDevWebSocketEndpoint(endpoint)) {
       return Promise.resolve({ ok: false, error: `LocalDevOmniAdapter endpoint 必须是 ws/wss 地址：${endpoint || '未配置'}`, endpoint });
     }
 
@@ -309,16 +310,11 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
     }
 
     const requestId = createRequestId();
-    const envelope = {
-      schema: 'cloudgenie.local_dev.envelope.v1',
-      type: 'omni.input_packet',
+    const envelope = createLocalDevInputEnvelope({
       requestId,
       sentAt: nowIso(),
-      packetSchema: packet?.schema || 'unknown',
-      packetId: packet?.packetId || 'unknown',
-      robotId: packet?.identity?.robotId || null,
       packet
-    };
+    });
 
     emit({
       status: 'sending',
@@ -349,11 +345,7 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
       return { ok: false, endpoint, error: `LocalDev WebSocket 当前不是 open 状态，无法发送媒体帧：${endpoint}` };
     }
     const requestId = createRequestId();
-    const type = frame?.schema === 'omni.camera_frame.v1' ? 'omni.camera_frame' : 'omni.audio_frame';
-    const envelope = {
-      schema: 'cloudgenie.local_dev.media_envelope.v1', type, requestId, sentAt: nowIso(),
-      frameSchema: frame?.schema || 'unknown', frameId: frame?.frameId || 'unknown', robotId: frame?.robotId || null, frame
-    };
+    const envelope = createLocalDevMediaEnvelope({ requestId, sentAt: nowIso(), frame });
     emit({ status: 'media_sending', endpoint, requestId, lastMediaFrameId: frame?.frameId, lastMediaFrameSchema: frame?.schema, detail: `正在发送媒体帧 ${frame?.schema || 'unknown'} / ${frame?.frameId || 'unknown'}。`, error: null });
     socket.send(JSON.stringify(envelope));
     return { ok: true, endpoint, requestId, frameId: frame?.frameId, frameSchema: frame?.schema, reused: connected.reused };
@@ -373,17 +365,11 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
       source: seed.source || 'client_runtime',
       reason: seed.reason || 'user_barge_in'
     });
-    const envelope = {
-      schema: 'cloudgenie.local_dev.control_envelope.v1',
-      type: 'omni.interrupt',
+    const envelope = createLocalDevControlEnvelope({
       requestId,
       sentAt: nowIso(),
-      interruptSchema: interrupt.schema,
-      interruptId: interrupt.interruptId,
-      robotId: interrupt.robotId || null,
-      turnId: interrupt.turnId || null,
       interrupt
-    };
+    });
     emit({
       status: 'interrupt_sending',
       endpoint,

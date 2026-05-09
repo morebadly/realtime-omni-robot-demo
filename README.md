@@ -19,6 +19,38 @@ npm run dev
 npm run mock:localdev
 ```
 
+LocalDev Adapter skeleton:
+
+```bash
+npm run adapter:localdev:skeleton
+```
+
+This uses the same WebSocket contract as the mock server, but it is still placeholder inference, not real Qwen2.5-Omni.
+
+To test the future Qwen provider boundary without real inference:
+
+```bash
+npm run adapter:localdev:qwen-stub
+```
+
+To test the realtime transport slot without a model:
+
+```bash
+npm run adapter:localdev:qwen-loopback
+```
+
+To run the one-shot LocalDev adapter contract smoke test:
+
+```bash
+npm run test:localdev-adapter-contract
+```
+
+To verify the Qwen realtime session slot without a model:
+
+```bash
+npm run test:localdev-adapter-contract:qwen-loopback
+```
+
 浏览器打开终端输出的地址，通常是：
 
 ```text
@@ -98,6 +130,7 @@ realtime-omni-robot-demo/
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── IMPLEMENTATION_PLAN.md
+│   ├── LOCALDEV_ADAPTER_CONTRACT.md
 │   ├── INVESTOR_NOTES.md
 │   ├── RELEASE_NOTES_v1.1.0.md
 │   ├── UPDATE_GUIDE_v1.1.0.md
@@ -137,6 +170,7 @@ realtime-omni-robot-demo/
 │   │   ├── omniTurnSimulator.js
 │   │   ├── toolIntentRouter.js
 │   │   ├── toolEngine.js
+│   │   ├── localDevProtocol.js
 │   │   ├── localDevOmniClient.js
 │   │   ├── omniMediaFrames.js
 │   │   ├── omniOutputFrames.js
@@ -164,7 +198,14 @@ realtime-omni-robot-demo/
 │   ├── App.jsx
 │   └── main.jsx
 ├── scripts/
-│   └── localdev-omni-mock-server.mjs
+│   ├── localdev-omni-mock-server.mjs
+│   ├── localdev-omni-adapter-skeleton.mjs
+│   ├── localdev-omni-provider-registry.mjs
+│   ├── localdev-qwen-realtime-client.mjs
+│   ├── localdev-qwen-realtime-transport.mjs
+│   ├── localdev-qwen-http-client.mjs
+│   ├── localdev-omni-placeholder-provider.mjs
+│   └── localdev-omni-qwen-provider-stub.mjs
 ├── index.html
 ├── package.json
 └── README.md

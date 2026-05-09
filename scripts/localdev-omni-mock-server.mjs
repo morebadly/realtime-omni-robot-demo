@@ -2,6 +2,7 @@
 import { WebSocketServer } from 'ws';
 import { simulateOmniTurn } from '../src/runtime/omniTurnSimulator.js';
 import { createOmniOutputState, createReplyAudioFrame, normalizeInterruptMessage } from '../src/runtime/omniOutputFrames.js';
+import { createLocalDevMediaAck, createLocalDevOutputEnvelope, normalizeLocalDevInputPacket, normalizeLocalDevMediaFrame } from '../src/runtime/localDevProtocol.js';
 
 const PORT = Number(process.env.LOCALDEV_OMNI_PORT || 8000);
 const PATH = process.env.LOCALDEV_OMNI_PATH || '/omni/realtime';
@@ -11,6 +12,8 @@ function now() { return new Date().toISOString(); }
 function safeParse(raw) { try { return { ok: true, value: JSON.parse(raw) }; } catch (error) { return { ok: false, error }; } }
 
 function normalizePacket(message) {
+  const normalized = normalizeLocalDevInputPacket(message);
+  if (normalized) return normalized;
   if (message?.packet?.schema === 'omni.input_packet.v1') return { packet: message.packet, requestId: message.requestId || null, envelopeSchema: message.schema || null };
   if (message?.type === 'omni.input_packet' && message?.packet) return { packet: message.packet, requestId: message.requestId || null, envelopeSchema: message.schema || null };
   if (message?.schema === 'omni.input_packet.v1') return { packet: message, requestId: message.requestId || null, envelopeSchema: null };
@@ -18,6 +21,8 @@ function normalizePacket(message) {
 }
 
 function normalizeMediaFrame(message) {
+  const normalized = normalizeLocalDevMediaFrame(message);
+  if (normalized) return normalized;
   if (message?.frame?.schema === 'omni.audio_frame.v1' || message?.frame?.schema === 'omni.camera_frame.v1') return { frame: message.frame, requestId: message.requestId || null, envelopeSchema: message.schema || null, type: message.type || null };
   if (message?.schema === 'omni.audio_frame.v1' || message?.schema === 'omni.camera_frame.v1') return { frame: message, requestId: message.requestId || null, envelopeSchema: null, type: message.schema === 'omni.audio_frame.v1' ? 'omni.audio_frame' : 'omni.camera_frame' };
   return null;
@@ -177,10 +182,12 @@ function streamMockRealtimeOutput(socket, response, packetInfo) {
 }
 
 function createOutputEnvelope(turn, packetInfo) {
+  return createLocalDevOutputEnvelope({ requestId: packetInfo?.requestId || null, packet: packetInfo?.packet || null, turn, receivedAt: now() });
   return { schema: 'cloudgenie.local_dev.envelope.v1', type: 'omni.output_turn', requestId: packetInfo?.requestId || null, receivedAt: now(), receivedPacket: { schema: packetInfo?.packet?.schema || 'unknown', packetId: packetInfo?.packet?.packetId || 'unknown', robotId: packetInfo?.packet?.identity?.robotId || null, displayName: packetInfo?.packet?.identity?.displayName || null, route: packetInfo?.packet?.routing?.route || null, adapter: packetInfo?.packet?.routing?.adapter || null }, turn };
 }
 
 function createMediaAck(frameInfo) {
+  return createLocalDevMediaAck({ requestId: frameInfo?.requestId || null, frame: frameInfo?.frame || null, receivedAt: now() });
   const frame = frameInfo?.frame;
   return { schema: 'cloudgenie.local_dev.media_ack.v1', type: 'omni.media_ack', requestId: frameInfo?.requestId || null, receivedAt: now(), receivedFrame: { schema: frame?.schema || 'unknown', frameId: frame?.frameId || 'unknown', robotId: frame?.robotId || null, displayName: frame?.displayName || null, mediaKind: frame?.media?.kind || null, codec: frame?.media?.codec || null, payloadIncluded: Boolean(frame?.media?.payloadIncluded), byteLength: frame?.media?.byteLength || 0 }, note: 'LocalDev Mock 已识别媒体帧。audio_frame / camera_frame 只作为输入媒体，不会自动触发 interrupt；用户插话必须由 omni.interrupt.v1 表达。' };
 }
