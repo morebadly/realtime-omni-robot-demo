@@ -1,0 +1,351 @@
+function createRequestId() {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `localdev_req_${Date.now().toString(36)}_${rand}`;
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function getBrowserWebSocket() {
+  if (typeof WebSocket === 'undefined') return null;
+  return WebSocket;
+}
+
+function isSocketOpen(socket) {
+  return socket && socket.readyState === WebSocket.OPEN;
+}
+
+function isSocketConnecting(socket) {
+  return socket && socket.readyState === WebSocket.CONNECTING;
+}
+
+function normalizeOutputEnvelope(message) {
+  if (message?.schema === 'cloudgenie.local_dev.envelope.v1' && message?.turn) {
+    return {
+      requestId: message.requestId || null,
+      turn: message.turn,
+      envelope: message
+    };
+  }
+  if (message?.type === 'omni.output_turn' && message?.turn) {
+    return {
+      requestId: message.requestId || null,
+      turn: message.turn,
+      envelope: message
+    };
+  }
+  return {
+    requestId: message?.requestId || null,
+    turn: message,
+    envelope: message
+  };
+}
+
+function normalizeMediaAck(message) {
+  if (message?.schema === 'cloudgenie.local_dev.media_ack.v1' || message?.type === 'omni.media_ack') {
+    return { requestId: message.requestId || null, ack: message, receivedFrame: message.receivedFrame || null };
+  }
+  return null;
+}
+
+export function normalizeLocalDevOutputTurn(message, packet) {
+  const now = nowIso();
+  const output = normalizeOutputEnvelope(message);
+  const data = output.turn?.schema === 'omni.output_turn.v1'
+    ? output.turn
+    : output.turn?.type === 'omni.output_turn'
+      ? output.turn.turn
+      : output.turn;
+
+  return {
+    turnId: data?.turnId || data?.turn_id || `local_turn_${Date.now().toString(36)}`,
+    requestId: output.requestId,
+    schema: 'omni.output_turn.v1',
+    createdAt: data?.createdAt || data?.created_at || now,
+    adapter: data?.adapter || packet?.routing?.adapter || 'LocalDevOmniAdapter',
+    route: data?.route || packet?.routing?.route || 'local_dev_omni',
+    reply_text: data?.reply_text || data?.replyText || data?.text || '',
+    reply_audio: data?.reply_audio || data?.replyAudio || null,
+    expression: data?.expression || {
+      type: 'expression.update',
+      expression: 'thinking',
+      source: 'local_dev_omni_adapter'
+    },
+    tool_intents: data?.tool_intents || data?.toolIntents || [],
+    transcript: data?.transcript || {
+      partial_asr: '',
+      usage: '字幕 / 日志 / 调试 / 插件关键词辅助'
+    },
+    notes: data?.notes || ['来自 LocalDevOmniAdapter WebSocket 的输出。'],
+    transport: {
+      requestId: output.requestId,
+      envelopeSchema: output.envelope?.schema || null,
+      receivedAt: now
+    }
+  };
+}
+
+export function createLocalDevOmniBridge(onStatus = () => {}) {
+  let socket = null;
+  let activeEndpoint = null;
+  let connectPromise = null;
+  const pending = new Map();
+
+  function emit(patch) {
+    onStatus({
+      updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+      ...patch
+    });
+  }
+
+  function failPending(error) {
+    for (const [requestId, item] of pending.entries()) {
+      window.clearTimeout(item.timer);
+      item.resolve({
+        ok: false,
+        endpoint: activeEndpoint,
+        requestId,
+        error
+      });
+    }
+    pending.clear();
+  }
+
+  function close(reason = 'manual_close') {
+    if (socket) {
+      try {
+        socket.close(1000, reason);
+      } catch {
+        // ignore close errors in demo bridge
+      }
+    }
+    socket = null;
+    connectPromise = null;
+    failPending(`LocalDev Adapter 连接已关闭：${reason}`);
+    emit({
+      status: 'disconnected',
+      endpoint: activeEndpoint || '未配置',
+      detail: `LocalDev WebSocket 已断开：${reason}`,
+      error: null
+    });
+  }
+
+  function connect(endpoint, timeoutMs = 5000) {
+    const WebSocketImpl = getBrowserWebSocket();
+    if (!WebSocketImpl) {
+      return Promise.resolve({ ok: false, error: '当前环境不支持 WebSocket，无法连接 LocalDevOmniAdapter。', endpoint });
+    }
+    if (!endpoint || !endpoint.startsWith('ws')) {
+      return Promise.resolve({ ok: false, error: `LocalDevOmniAdapter endpoint 必须是 ws/wss 地址：${endpoint || '未配置'}`, endpoint });
+    }
+
+    if (socket && activeEndpoint === endpoint && socket.readyState === WebSocketImpl.OPEN) {
+      emit({
+        status: 'connected',
+        endpoint,
+        detail: '复用已保持的 LocalDev WebSocket 会话。',
+        error: null
+      });
+      return Promise.resolve({ ok: true, endpoint, reused: true });
+    }
+
+    if (socket && activeEndpoint === endpoint && socket.readyState === WebSocketImpl.CONNECTING && connectPromise) {
+      return connectPromise;
+    }
+
+    if (socket && activeEndpoint !== endpoint) {
+      close('endpoint_changed');
+    }
+
+    activeEndpoint = endpoint;
+    socket = new WebSocketImpl(endpoint);
+    emit({
+      status: 'connecting',
+      endpoint,
+      detail: '正在连接 LocalDev WebSocket，会话会保持到手动断开或切换机器人/endpoint。',
+      error: null
+    });
+
+    connectPromise = new Promise((resolve) => {
+      const timer = window.setTimeout(() => {
+        if (isSocketOpen(socket)) return;
+        const error = `LocalDevOmniAdapter 连接超时：${endpoint}`;
+        emit({ status: 'failed', endpoint, detail: '连接超时。', error });
+        try { socket?.close(); } catch {}
+        resolve({ ok: false, endpoint, error });
+      }, timeoutMs);
+
+      socket.onopen = () => {
+        window.clearTimeout(timer);
+        emit({
+          status: 'connected',
+          endpoint,
+          detail: 'LocalDev WebSocket 已连接并保持会话。',
+          error: null
+        });
+        resolve({ ok: true, endpoint, reused: false });
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          const mediaAck = normalizeMediaAck(message);
+          if (mediaAck) {
+            emit({
+              status: 'media_ack', endpoint, requestId: mediaAck.requestId,
+              lastMediaFrameId: mediaAck.receivedFrame?.frameId,
+              lastMediaFrameSchema: mediaAck.receivedFrame?.schema,
+              mediaAck,
+              detail: `已收到 LocalDev 媒体帧确认：${mediaAck.receivedFrame?.schema || 'unknown'} / ${mediaAck.receivedFrame?.frameId || 'unknown'}`,
+              error: null
+            });
+            return;
+          }
+          const output = normalizeOutputEnvelope(message);
+          const requestId = output.requestId;
+          const pendingItem = requestId ? pending.get(requestId) : pending.values().next().value;
+          if (!pendingItem) {
+            emit({
+              status: 'received',
+              endpoint,
+              requestId,
+              detail: `收到未匹配到 pending 请求的 LocalDev 输出：${requestId || 'no_request_id'}`,
+              error: null
+            });
+            return;
+          }
+          window.clearTimeout(pendingItem.timer);
+          pending.delete(pendingItem.requestId);
+          const turn = normalizeLocalDevOutputTurn(message, pendingItem.packet);
+          emit({
+            status: 'received',
+            endpoint,
+            requestId: pendingItem.requestId,
+            lastPacketId: pendingItem.packet?.packetId,
+            lastTurnId: turn.turnId,
+            detail: `已收到 LocalDev 输出回合：${turn.turnId}`,
+            error: null
+          });
+          pendingItem.resolve({
+            ok: true,
+            endpoint,
+            requestId: pendingItem.requestId,
+            reused: pendingItem.reused,
+            turn
+          });
+        } catch (error) {
+          const message = `LocalDevOmniAdapter 返回了无法解析的消息：${error?.message || String(error)}`;
+          emit({ status: 'failed', endpoint, detail: '返回解析失败。', error: message });
+          failPending(message);
+        }
+      };
+
+      socket.onerror = () => {
+        window.clearTimeout(timer);
+        const error = `无法连接 LocalDevOmniAdapter：${endpoint}`;
+        emit({ status: 'failed', endpoint, detail: 'WebSocket error。', error });
+        resolve({ ok: false, endpoint, error });
+      };
+
+      socket.onclose = () => {
+        window.clearTimeout(timer);
+        const wasPending = pending.size > 0;
+        if (wasPending) failPending(`LocalDevOmniAdapter 在返回输出前关闭连接：${endpoint}`);
+        emit({
+          status: 'disconnected',
+          endpoint,
+          detail: wasPending ? '连接在返回输出前断开。' : 'LocalDev WebSocket 已断开。',
+          error: wasPending ? `LocalDevOmniAdapter 在返回输出前关闭连接：${endpoint}` : null
+        });
+        connectPromise = null;
+        socket = null;
+      };
+    });
+
+    return connectPromise;
+  }
+
+  async function send(packet, endpoint, timeoutMs = 5000) {
+    const connected = await connect(endpoint, timeoutMs);
+    if (!connected.ok) return connected;
+    if (!isSocketOpen(socket)) {
+      return {
+        ok: false,
+        endpoint,
+        error: `LocalDev WebSocket 当前不是 open 状态，无法发送：${endpoint}`
+      };
+    }
+
+    const requestId = createRequestId();
+    const envelope = {
+      schema: 'cloudgenie.local_dev.envelope.v1',
+      type: 'omni.input_packet',
+      requestId,
+      sentAt: nowIso(),
+      packetSchema: packet?.schema || 'unknown',
+      packetId: packet?.packetId || 'unknown',
+      robotId: packet?.identity?.robotId || null,
+      packet
+    };
+
+    emit({
+      status: 'sending',
+      endpoint,
+      requestId,
+      lastPacketId: packet?.packetId,
+      detail: `正在发送 ${packet?.schema || 'unknown'} / ${packet?.packetId || 'unknown'}。`,
+      error: null
+    });
+
+    return new Promise((resolve) => {
+      const timer = window.setTimeout(() => {
+        pending.delete(requestId);
+        const error = `LocalDevOmniAdapter 等待输出超时：${endpoint}`;
+        emit({ status: 'failed', endpoint, requestId, detail: '等待输出超时。', error });
+        resolve({ ok: false, endpoint, requestId, error });
+      }, timeoutMs);
+
+      pending.set(requestId, { requestId, packet, timer, resolve, reused: connected.reused });
+      socket.send(JSON.stringify(envelope));
+    });
+  }
+
+  async function sendMediaFrame(frame, endpoint, timeoutMs = 5000) {
+    const connected = await connect(endpoint, timeoutMs);
+    if (!connected.ok) return connected;
+    if (!isSocketOpen(socket)) {
+      return { ok: false, endpoint, error: `LocalDev WebSocket 当前不是 open 状态，无法发送媒体帧：${endpoint}` };
+    }
+    const requestId = createRequestId();
+    const type = frame?.schema === 'omni.camera_frame.v1' ? 'omni.camera_frame' : 'omni.audio_frame';
+    const envelope = {
+      schema: 'cloudgenie.local_dev.media_envelope.v1', type, requestId, sentAt: nowIso(),
+      frameSchema: frame?.schema || 'unknown', frameId: frame?.frameId || 'unknown', robotId: frame?.robotId || null, frame
+    };
+    emit({ status: 'media_sending', endpoint, requestId, lastMediaFrameId: frame?.frameId, lastMediaFrameSchema: frame?.schema, detail: `正在发送媒体帧 ${frame?.schema || 'unknown'} / ${frame?.frameId || 'unknown'}。`, error: null });
+    socket.send(JSON.stringify(envelope));
+    return { ok: true, endpoint, requestId, frameId: frame?.frameId, frameSchema: frame?.schema, reused: connected.reused };
+  }
+
+  return {
+    connect,
+    send,
+    sendMediaFrame,
+    close,
+    getStatus() {
+      return {
+        endpoint: activeEndpoint,
+        socketState: socket?.readyState ?? null,
+        connected: isSocketOpen(socket),
+        connecting: isSocketConnecting(socket),
+        pending: pending.size
+      };
+    }
+  };
+}
+
+export function sendPacketToLocalDevOmni(packet, endpoint, timeoutMs = 5000) {
+  const bridge = createLocalDevOmniBridge();
+  return bridge.send(packet, endpoint, timeoutMs);
+}

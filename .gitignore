@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+*.log
+npm-debug.log*
+.vite/
+
+# Local install lockfile is generated per machine/registry in this demo package.
+package-lock.json

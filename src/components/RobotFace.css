@@ -1,0 +1,560 @@
+.face-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.robot-face {
+  --eye-w: 98px;
+  --eye-h: 58px;
+  --eye-color: #42f1ff;
+  --eye-glow: rgba(66, 241, 255, .72);
+  --purple-glow: rgba(91, 70, 255, .95);
+  position: relative;
+  width: min(520px, 100%);
+  aspect-ratio: 1.9 / 1;
+  border-radius: 36px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(73, 90, 140, 0.28), transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(116, 83, 255, .12), transparent 48%),
+    #05070d;
+  border: 1px solid rgba(114, 233, 255, 0.18);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55), inset 0 0 34px rgba(65, 244, 255, 0.08);
+  overflow: hidden;
+}
+
+.screen-glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, rgba(255,255,255,0.08), transparent 25% 75%, rgba(100, 81, 255, 0.12));
+  pointer-events: none;
+}
+
+.corner-light {
+  position: absolute;
+  top: 28px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #49f6ff;
+  box-shadow: 0 0 18px #49f6ff;
+  opacity: .75;
+}
+.corner-light.left { left: 34px; }
+.corner-light.right { right: 34px; }
+
+.eyes {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 72px;
+}
+
+.eye {
+  position: relative;
+  width: var(--eye-w);
+  height: var(--eye-h);
+  flex: 0 0 auto;
+  background: linear-gradient(135deg, #65fbff, var(--eye-color) 55%, #23cbdc);
+  border-radius: 58% 58% 48% 48%;
+  filter: drop-shadow(0 10px 10px var(--purple-glow)) drop-shadow(0 0 18px var(--eye-glow));
+  transform-origin: center;
+  transition: width 240ms ease, height 240ms ease, border-radius 240ms ease, transform 240ms ease, clip-path 240ms ease, background 240ms ease, filter 240ms ease;
+}
+
+.eye::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  top: 14%;
+  width: 28%;
+  height: 18%;
+  border-radius: 999px;
+  background: rgba(255,255,255,.36);
+  filter: blur(.5px);
+  opacity: .62;
+}
+
+/* v0.7: 待机不再用过大的圆眼，改成更像实体小屏的柔和发光短胶囊眼。 */
+.idle .screen-glow {
+  background:
+    radial-gradient(circle at 50% 72%, rgba(66, 241, 255, .08), transparent 28%),
+    linear-gradient(160deg, rgba(255,255,255,0.055), transparent 28% 78%, rgba(100, 81, 255, 0.08));
+}
+.idle .corner-light {
+  opacity: .45;
+  animation: idleCornerBreath 3.4s ease-in-out infinite alternate;
+}
+.idle .eyes { gap: 86px; }
+.idle .eye {
+  width: 86px;
+  height: 28px;
+  border-radius: 999px;
+  transform: translateY(0);
+  opacity: .78;
+  background: linear-gradient(135deg, #5df8ff, #39dfea 68%, #21b9c8);
+  filter: drop-shadow(0 5px 7px rgba(91, 70, 255, .55)) drop-shadow(0 0 10px rgba(66, 241, 255, .42));
+  animation: idleBreath 3.4s ease-in-out infinite alternate, idleBlink 6.2s infinite;
+}
+.idle .eye::after {
+  width: 18%;
+  height: 18%;
+  top: 20%;
+  opacity: .32;
+}
+.idle .mouth {
+  width: 34px;
+  height: 6px;
+  bottom: 57px;
+  opacity: .28;
+  animation: idleMouthRest 3.4s ease-in-out infinite alternate;
+}
+
+/* v0.7.1: 正在听改成“专注接收”的柔和胶囊眼，不再像待机大眼或空洞圆眼。 */
+.listening .screen-glow {
+  background:
+    radial-gradient(circle at 50% 52%, rgba(66, 241, 255, .18), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(116, 83, 255, .18), transparent 46%),
+    linear-gradient(160deg, rgba(255,255,255,0.085), transparent 25% 75%, rgba(100, 81, 255, 0.14));
+}
+.listening .corner-light {
+  opacity: .95;
+  animation: listeningCornerPulse 1.25s ease-in-out infinite alternate;
+}
+.listening .eyes { gap: 66px; }
+.listening .eye {
+  width: 78px;
+  height: 70px;
+  border-radius: 999px;
+  transform: translateY(-2px);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255,255,255,.32), transparent 18%),
+    linear-gradient(135deg, #9dffff 0%, #42f1ff 54%, #20c8dc 100%);
+  filter: drop-shadow(0 10px 13px rgba(91, 70, 255, .98)) drop-shadow(0 0 28px rgba(66, 241, 255, .88));
+  animation: listeningFocus 1.18s ease-in-out infinite alternate, listeningBlinkSoft 5.6s infinite;
+}
+.listening .left-eye { animation-delay: 0s, 0s; }
+.listening .right-eye { animation-delay: .12s, .08s; }
+.listening .eye::after {
+  width: 22%;
+  height: 14%;
+  left: 24%;
+  top: 18%;
+  opacity: .7;
+}
+.listening .mouth {
+  width: 28px;
+  height: 28px;
+  bottom: 47px;
+  border-radius: 50%;
+  opacity: .75;
+  background: rgba(86, 240, 255, .72);
+  box-shadow: 0 0 20px rgba(72, 235, 255, .74), inset 0 0 10px rgba(4, 9, 16, .38);
+  animation: listenMouthPulse 1.18s ease-in-out infinite alternate;
+}
+
+/* v0.7.1: 思考改成收窄但不“睡眼”的聚焦眼，带轻微左右扫描感。 */
+.thinking .screen-glow {
+  background:
+    linear-gradient(90deg, transparent 0 35%, rgba(88, 243, 255, .08) 46%, transparent 58% 100%),
+    radial-gradient(circle at 50% 38%, rgba(116, 83, 255, .18), transparent 44%),
+    linear-gradient(160deg, rgba(255,255,255,0.06), transparent 25% 75%, rgba(100, 81, 255, 0.16));
+  animation: thinkingScreenSweep 2.2s ease-in-out infinite alternate;
+}
+.thinking .corner-light {
+  opacity: .68;
+  background: #8d82ff;
+  box-shadow: 0 0 18px #8d82ff;
+}
+.thinking .eyes { gap: 94px; }
+.thinking .eye {
+  width: 92px;
+  height: 22px;
+  border-radius: 999px;
+  transform: translateY(-8px) rotate(-4deg);
+  background: linear-gradient(135deg, #87ffff 0%, #48efff 56%, #7268ff 122%);
+  filter: drop-shadow(0 7px 10px rgba(91, 70, 255, .96)) drop-shadow(0 0 18px rgba(66, 241, 255, .6));
+  animation: thinkingNarrow 1.8s ease-in-out infinite alternate;
+}
+.thinking .left-eye { animation-delay: 0s; }
+.thinking .right-eye { animation-delay: .18s; transform: translateY(-8px) rotate(4deg); }
+.thinking .eye::after {
+  width: 26%;
+  height: 28%;
+  left: 18%;
+  top: 10%;
+  opacity: .56;
+}
+.thinking .mouth {
+  width: 18px;
+  height: 18px;
+  bottom: 49px;
+  border-radius: 50%;
+  opacity: .62;
+  background: rgba(139, 127, 255, .88);
+  box-shadow: 0 0 16px rgba(116, 83, 255, .72);
+  animation: thinkingMouthDot 1.8s ease-in-out infinite alternate;
+}
+
+.listen-wave {
+  position: absolute;
+  top: 50%;
+  width: 34px;
+  height: 76px;
+  border: 3px solid rgba(88, 243, 255, .42);
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  opacity: 0;
+  filter: drop-shadow(0 0 12px rgba(88, 243, 255, .65));
+}
+.left-wave {
+  left: 104px;
+  border-right: 0;
+  border-radius: 44px 0 0 44px;
+  transform: translateY(-50%);
+}
+.right-wave {
+  right: 104px;
+  border-left: 0;
+  border-radius: 0 44px 44px 0;
+  transform: translateY(-50%);
+}
+.listening .listen-wave {
+  opacity: .85;
+  animation: listeningWave 1.18s ease-in-out infinite alternate;
+}
+.listening .right-wave { animation-delay: .18s; }
+
+.thought-dots {
+  position: absolute;
+  left: 50%;
+  top: 68px;
+  display: flex;
+  gap: 11px;
+  transform: translateX(-50%);
+  opacity: 0;
+}
+.thought-dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #8d82ff;
+  box-shadow: 0 0 14px rgba(141, 130, 255, .86), 0 0 7px rgba(88, 243, 255, .42);
+}
+.thinking .thought-dots {
+  opacity: 1;
+}
+.thinking .thought-dots span {
+  animation: thoughtDot 1.05s ease-in-out infinite;
+}
+.thinking .thought-dots span:nth-child(2) { animation-delay: .16s; }
+.thinking .thought-dots span:nth-child(3) { animation-delay: .32s; }
+
+.speaking .eye {
+  height: 64px;
+  border-radius: 54% 54% 50% 50%;
+  transform: translateY(1px);
+}
+
+.happy .eye {
+  width: 106px;
+  height: 54px;
+  border-radius: 0 0 80px 80px;
+  transform: translateY(-4px) rotate(180deg);
+}
+
+/* v0.6: 傲娇改为不横向拉扁的斜切半月眼。每只眼单独画方向，不用 scaleX 镜像，避免变形。 */
+.annoyed .eye {
+  width: 104px;
+  height: 62px;
+  border-radius: 64% 36% 62% 38%;
+  background: linear-gradient(135deg, #5ff8ff, #31ddec 70%);
+  filter: drop-shadow(0 10px 10px rgba(88, 72, 255, .98)) drop-shadow(0 0 18px rgba(66, 241, 255, .62));
+}
+.annoyed .left-eye {
+  clip-path: polygon(5% 33%, 94% 6%, 86% 76%, 18% 96%);
+  transform: rotate(8deg) translate(0, 4px);
+}
+.annoyed .right-eye {
+  clip-path: polygon(6% 6%, 95% 33%, 82% 96%, 14% 76%);
+  transform: rotate(-8deg) translate(0, 4px);
+}
+.annoyed .eye::after { opacity: .38; }
+
+/* v0.6: 生气更明显：收窄眼距、红粉外发光、内八斜切眼和更硬的嘴。 */
+.angry .eyes { gap: 48px; }
+.angry .eye {
+  width: 112px;
+  height: 68px;
+  background: linear-gradient(135deg, #8ffbff 0%, #39e6f2 52%, #ff5f91 120%);
+  filter: drop-shadow(0 10px 10px rgba(91, 70, 255, 1)) drop-shadow(0 0 26px rgba(255, 77, 126, .78));
+}
+.angry .left-eye {
+  border-radius: 68% 24% 64% 28%;
+  clip-path: polygon(0 8%, 100% 28%, 84% 90%, 12% 76%);
+  transform: rotate(15deg) translateX(3px);
+}
+.angry .right-eye {
+  border-radius: 24% 68% 28% 64%;
+  clip-path: polygon(0 28%, 100% 8%, 88% 76%, 16% 90%);
+  transform: rotate(-15deg) translateX(-3px);
+}
+.angry .eye::before {
+  content: '';
+  position: absolute;
+  inset: -11px -8px;
+  border-top: 8px solid rgba(255, 104, 144, .75);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 12px rgba(255, 78, 125, .86));
+}
+
+.sad .eye {
+  height: 52px;
+  border-radius: 0 0 80px 80px;
+  opacity: .86;
+}
+.sad .left-eye { transform: rotate(9deg) translateY(10px); }
+.sad .right-eye { transform: rotate(-9deg) translateY(10px); }
+
+.shy .eye {
+  width: 92px;
+  height: 46px;
+  border-radius: 999px;
+  transform: translateY(3px);
+}
+.shy .left-eye { transform: translate(6px, 4px) rotate(3deg); }
+.shy .right-eye { transform: translate(-6px, 4px) rotate(-3deg); }
+
+.sleepy .eye {
+  width: 106px;
+  height: 16px;
+  border-radius: 40px;
+  transform: translateY(10px);
+  opacity: .82;
+}
+
+.surprised .eye {
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  animation: pop .7s ease infinite alternate;
+}
+
+/* v0.7.1: 故障表情改成对称的“小红 X 眼”，避免一只眼竖起来的变形感。 */
+.error {
+  --eye-color: #ff5b91;
+  --eye-glow: rgba(255, 89, 145, .82);
+}
+.error .eyes { gap: 86px; }
+.error .eye {
+  width: 72px;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff9ab8, #ff4f8b 78%);
+  filter: drop-shadow(0 0 16px rgba(255, 79, 139, .82)) drop-shadow(0 7px 10px rgba(91, 70, 255, .55));
+  transform: rotate(24deg) translateY(2px);
+  animation: errorFlicker 1.65s ease-in-out infinite;
+}
+.error .right-eye { transform: rotate(-24deg) translateY(2px); }
+.error .eye::after {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff9ab8, #ff4f8b 78%);
+  opacity: .95;
+  transform: rotate(88deg);
+}
+.error .eye::before {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 80, 139, .16), transparent 62%);
+  z-index: -1;
+}
+
+.mouth {
+  position: absolute;
+  left: 50%;
+  bottom: 56px;
+  width: 64px;
+  height: 10px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(86, 240, 255, .9);
+  box-shadow: 0 0 18px rgba(72, 235, 255, .7);
+  opacity: .55;
+  transition: all 180ms ease;
+}
+
+.is-speaking .mouth {
+  animation: mouthTalk .22s infinite alternate;
+  opacity: .9;
+}
+
+.happy .mouth { width: 72px; height: 24px; border-radius: 0 0 70px 70px; bottom: 48px; opacity: .86; }
+.annoyed .mouth { width: 46px; height: 8px; bottom: 58px; opacity: .68; transform: translateX(-50%) rotate(-5deg); }
+.angry .mouth {
+  width: 52px;
+  height: 9px;
+  bottom: 57px;
+  opacity: .9;
+  background: rgba(255, 112, 155, .96);
+  transform: translateX(-50%) rotate(-7deg);
+  box-shadow: 0 0 18px rgba(255, 77, 126, .58);
+}
+.sad .mouth { width: 58px; height: 18px; border-radius: 70px 70px 0 0; bottom: 42px; opacity: .45; }
+.shy .mouth { width: 46px; height: 12px; opacity: .6; }
+.sleepy .mouth { width: 46px; opacity: .35; }
+.surprised .mouth { width: 34px; height: 34px; border-radius: 50%; bottom: 43px; opacity: .85; }
+.error .mouth { width: 54px; height: 9px; bottom: 48px; opacity: .72; background: rgba(255, 102, 150, .92); transform: translateX(-50%) rotate(7deg); box-shadow: 0 0 17px rgba(255, 79, 139, .58); }
+
+.symbol {
+  position: absolute;
+  transition: opacity 200ms ease, transform 200ms ease;
+  opacity: 0;
+  color: #c9c2ff;
+  text-shadow: 0 0 12px rgba(110, 92, 255, .9);
+}
+.anger {
+  top: 34px;
+  right: 72px;
+  font-size: 58px;
+  transform: rotate(18deg);
+}
+.annoyed .anger { opacity: .72; }
+.angry .anger {
+  opacity: 1;
+  color: #ff8aa7;
+  text-shadow: 0 0 16px rgba(255, 80, 120, .95), 0 0 26px rgba(255, 80, 120, .55);
+  animation: angryShake .32s infinite alternate;
+}
+.sparkle {
+  top: 42px;
+  right: 88px;
+  font-size: 46px;
+}
+.happy .sparkle, .surprised .sparkle { opacity: 1; }
+.zzz {
+  top: 34px;
+  right: 90px;
+  font-size: 42px;
+}
+.sleepy .zzz { opacity: 1; animation: floatZ 1.4s infinite alternate; }
+.blush {
+  bottom: 78px;
+  width: 52px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 110, 180, .38);
+  filter: blur(1px);
+}
+.left-blush { left: 118px; }
+.right-blush { right: 118px; }
+.shy .blush { opacity: 1; }
+
+.face-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  color: rgba(237, 251, 255, .92);
+  border: 1px solid rgba(255,255,255,.1);
+}
+.face-status small { color: rgba(237, 251, 255, .45); }
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #44f1ff;
+  box-shadow: 0 0 14px #44f1ff;
+}
+.angry ~ .face-status .pulse-dot { background: #ff7d99; }
+
+@keyframes idleBreath {
+  from { transform: translateY(1px) scaleX(.92); opacity: .66; }
+  to { transform: translateY(-1px) scaleX(1.02); opacity: .84; }
+}
+@keyframes idleBlink {
+  0%, 46%, 52%, 100% { height: 28px; transform: translateY(0); }
+  49% { height: 5px; transform: translateY(1px); }
+}
+@keyframes idleCornerBreath {
+  from { opacity: .32; transform: scale(.86); }
+  to { opacity: .52; transform: scale(1); }
+}
+@keyframes idleMouthRest {
+  from { opacity: .22; transform: translateX(-50%) scaleX(.82); }
+  to { opacity: .34; transform: translateX(-50%) scaleX(1); }
+}
+@keyframes listeningBlinkSoft {
+  0%, 43%, 51%, 100% { height: 70px; transform: translateY(-2px); }
+  47% { height: 13px; transform: translateY(-2px); }
+}
+@keyframes listeningFocus {
+  from {
+    filter: drop-shadow(0 8px 11px rgba(91, 70, 255, .82)) drop-shadow(0 0 18px rgba(66, 241, 255, .68));
+    transform: translateY(-1px) scale(.96);
+  }
+  to {
+    filter: drop-shadow(0 11px 15px rgba(91, 70, 255, 1)) drop-shadow(0 0 34px rgba(66, 241, 255, .98));
+    transform: translateY(-3px) scale(1.03);
+  }
+}
+@keyframes listeningCornerPulse {
+  from { transform: scale(.85); opacity: .7; }
+  to { transform: scale(1.25); opacity: 1; }
+}
+@keyframes listeningWave {
+  from { opacity: .28; transform: translateY(-50%) scaleX(.72); }
+  to { opacity: .9; transform: translateY(-50%) scaleX(1.1); }
+}
+@keyframes listenMouthPulse {
+  from { opacity: .48; transform: translateX(-50%) scale(.72); }
+  to { opacity: .86; transform: translateX(-50%) scale(1); }
+}
+@keyframes thinkingNarrow {
+  from { opacity: .76; filter: drop-shadow(0 7px 10px rgba(91, 70, 255, .78)) drop-shadow(0 0 12px rgba(66, 241, 255, .46)); }
+  50% { opacity: 1; filter: drop-shadow(0 7px 12px rgba(91, 70, 255, 1)) drop-shadow(0 0 22px rgba(66, 241, 255, .72)); }
+  to { opacity: .84; filter: drop-shadow(0 7px 10px rgba(91, 70, 255, .86)) drop-shadow(0 0 16px rgba(66, 241, 255, .52)); }
+}
+@keyframes thinkingScreenSweep {
+  from { background-position: -80px 0, 0 0, 0 0; }
+  to { background-position: 80px 0, 0 0, 0 0; }
+}
+@keyframes thinkingMouthDot {
+  from { transform: translateX(-50%) scale(.72); opacity: .42; }
+  to { transform: translateX(-50%) scale(1); opacity: .78; }
+}
+@keyframes thoughtDot {
+  0%, 100% { transform: translateY(2px); opacity: .35; }
+  50% { transform: translateY(-5px); opacity: 1; }
+}
+@keyframes errorFlicker {
+  0%, 100% { opacity: .92; filter: drop-shadow(0 0 14px rgba(255, 79, 139, .68)) drop-shadow(0 7px 10px rgba(91, 70, 255, .46)); }
+  45% { opacity: 1; filter: drop-shadow(0 0 23px rgba(255, 79, 139, .96)) drop-shadow(0 7px 12px rgba(91, 70, 255, .66)); }
+  55% { opacity: .72; }
+}
+@keyframes mouthTalk {
+  from { height: 8px; width: 54px; }
+  to { height: 32px; width: 42px; border-radius: 22px; }
+}
+@keyframes pop {
+  from { transform: scale(.94); }
+  to { transform: scale(1.08); }
+}
+@keyframes floatZ {
+  from { transform: translateY(4px); opacity: .6; }
+  to { transform: translateY(-8px); opacity: 1; }
+}
+@keyframes angryShake {
+  from { transform: rotate(15deg) translate(0, 0); }
+  to { transform: rotate(21deg) translate(2px, -1px); }
+}
