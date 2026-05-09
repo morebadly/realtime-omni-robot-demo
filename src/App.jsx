@@ -15,6 +15,7 @@ import ConnectionManagerPanel from './components/ConnectionManagerPanel';
 import RealtimeAudioPanel from './components/RealtimeAudioPanel';
 import RealtimeAudioOutputPlayer from './components/RealtimeAudioOutputPlayer';
 import OmniSessionPanel from './components/OmniSessionPanel';
+import DebugNavigation from './components/DebugNavigation';
 import { useRuntimeCore } from './runtime/useRuntimeCore';
 import './styles/app.css';
 
@@ -35,6 +36,7 @@ export default function App() {
     connectionSnapshot,
     networkQuality,
     realtimeSession,
+    realtimeSessionState,
     realtimeRoute,
     omniPacket,
     lastOmniTurn,
@@ -49,36 +51,21 @@ export default function App() {
   } = runtime;
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" id="top">
       <header className="hero">
         <div>
-          <p className="eyebrow">Realtime Omni Robot Demo v1.1.2</p>
+          <p className="eyebrow">Realtime Omni Robot Demo v1.1.4</p>
           <h1>云端优先、可本地调试的实时 Omni 机器人平台</h1>
-          <p className="hero-copy">当前版本新增 Mock interrupt / barge-in 控制：输入侧继续发送 PCM/JPEG，输出侧可用 omni.interrupt.v1 手动停止 reply_audio_frame 流。</p>
+          <p className="hero-copy">当前版本优化调试 UI：顶部改为简洁摘要，新增快速跳转导航，压缩可见信息面板并修复窄栏换行混乱。</p>
         </div>
-        <div className="hero-badges">
-          <span>RuntimeCore</span>
-          <span>Robot Registry</span>
-          <span>Delete Guard</span>
-          <span>Robot Identity Profile</span>
-          <span>Model Adapter Registry</span>
-          <span>Plugin Manifest</span>
-          <span>Connection Manager</span>
-          <span>Frame Policy</span>
-          <span>Omni Session Bridge</span>
-          <span>Tool Intent Router</span>
-          <span>Mock Tool Engine</span>
-          <span>Per Robot Config</span>
-          <span>LocalDev Adapter Client</span>
-          <span>Persistent Roundtrip</span>
-          <span>Media Frame Channels</span>
-          <span>PCM Audio Chunks</span>
-          <span>JPEG Frame Payload</span>
-          <span>Reply Audio Frames</span>
-          <span>Realtime Output Channel</span>
-          <span>Manual Barge-in Control</span>
+        <div className="hero-overview-card">
+          <span><small>当前重点</small><strong>UI 调试可用性</strong></span>
+          <span><small>实时核心</small><strong>Realtime Session State Machine</strong></span>
+          <span><small>安全边界</small><strong>Mock only · no real TTS/API/hardware</strong></span>
         </div>
       </header>
+
+      <DebugNavigation />
 
       <main className="dashboard">
         <aside className="left-column">
@@ -103,7 +90,7 @@ export default function App() {
               <span><small>enabled_plugins</small><strong>{plugins.filter((plugin) => plugin.enabled).length} / {plugins.length}</strong></span>
             </div>
           </section>
-          <div className="stage-card">
+          <div className="stage-card anchor-target" id="robot-console">
             <div className="stage-header">
               <div>
                 <p className="eyebrow">Robot Face Preview</p>
@@ -118,9 +105,11 @@ export default function App() {
               <div><small>身份昵称</small><strong>{robot.name}</strong></div>
               <div><small>Model Adapter</small><strong>{robot.adapter}</strong></div>
             </div>
-            <RealtimeAudioPanel robot={robot} session={realtimeSession} route={realtimeRoute} onStatus={actions.handleRealtimeSessionStatus} onAudioFrame={actions.handleAudioFrame} />
-            <RealtimeAudioOutputPlayer output={realtimeOutput} onFramePlayed={actions.handleReplyAudioFramePlayed} onInterrupt={actions.handleRealtimeOutputInterrupt} />
-            <CameraPreview robot={robot} framePolicy={framePolicy} onStatus={setCameraStatus} onFrame={actions.handleCameraFrame} />
+            <div className="anchor-target" id="audio-io">
+              <RealtimeAudioPanel robot={robot} session={realtimeSession} route={realtimeRoute} onStatus={actions.handleRealtimeSessionStatus} onAudioFrame={actions.handleAudioFrame} />
+              <RealtimeAudioOutputPlayer output={realtimeOutput} sessionState={realtimeSessionState} onFramePlayed={actions.handleReplyAudioFramePlayed} onInterrupt={actions.handleRealtimeOutputInterrupt} />
+              <CameraPreview robot={robot} framePolicy={framePolicy} onStatus={setCameraStatus} onFrame={actions.handleCameraFrame} />
+            </div>
             <EmotionInspector robot={robot} cameraStatus={cameraStatus} recentEvents={recentEvents} />
             <div className="telemetry-grid">
               <div><small>插件动作：空调</small><strong>{robot.ac.power} · {robot.ac.temperature}℃</strong></div>
@@ -133,24 +122,27 @@ export default function App() {
               <div><small>声音风格</small><strong>{robot.voiceStyle}</strong></div>
             </div>
           </div>
-          <RuntimeArchitecturePanel trace={runtimeTrace} />
+          <div className="anchor-target" id="runtime-state"><RuntimeArchitecturePanel trace={runtimeTrace} /></div>
           <ConnectionManagerPanel connection={connectionSnapshot} framePolicy={framePolicy} quality={networkQuality} onQuality={actions.handleNetworkQualityChange} onAutoFallback={actions.handleAutoFallback} />
-          <OmniSessionPanel
-            packet={omniPacket}
-            turn={lastOmniTurn}
-            route={realtimeRoute}
-            sessionStatus={omniSessionStatus}
-            localDevPreflight={localDevPreflight}
-            localDevBridge={localDevBridge}
-            mediaChannels={mediaChannels}
-            realtimeOutput={realtimeOutput}
-            onBuild={actions.handleOmniPacketBuild}
-            onSimulate={actions.handleOmniTurnSimulate}
-            onSendLocalDev={actions.handleLocalDevOmniSend}
-            onDisconnectLocalDev={actions.handleLocalDevOmniDisconnect}
-            onInterrupt={actions.handleRealtimeOutputInterrupt}
-            onClear={actions.handleOmniTurnClear}
-          />
+          <div className="anchor-target" id="omni-session">
+            <OmniSessionPanel
+              packet={omniPacket}
+              turn={lastOmniTurn}
+              route={realtimeRoute}
+              sessionStatus={omniSessionStatus}
+              localDevPreflight={localDevPreflight}
+              localDevBridge={localDevBridge}
+              mediaChannels={mediaChannels}
+              realtimeOutput={realtimeOutput}
+              realtimeSessionState={realtimeSessionState}
+              onBuild={actions.handleOmniPacketBuild}
+              onSimulate={actions.handleOmniTurnSimulate}
+              onSendLocalDev={actions.handleLocalDevOmniSend}
+              onDisconnectLocalDev={actions.handleLocalDevOmniDisconnect}
+              onInterrupt={actions.handleRealtimeOutputInterrupt}
+              onClear={actions.handleOmniTurnClear}
+            />
+          </div>
           <ModelProviderPanel
             activeMode={robot.mode}
             profiles={adapterProfiles}
@@ -158,17 +150,17 @@ export default function App() {
             onReset={actions.handleModelProviderReset}
             onTest={actions.handleModelProviderTest}
           />
-          <PluginCenter plugins={plugins} onToggle={actions.handlePluginToggle} onRun={actions.handlePluginRun} onAdd={actions.handlePluginAdd} onDelete={actions.handlePluginDelete} />
+          <div className="anchor-target" id="plugins"><PluginCenter plugins={plugins} onToggle={actions.handlePluginToggle} onRun={actions.handlePluginRun} onAdd={actions.handlePluginAdd} onDelete={actions.handlePluginDelete} /></div>
         </section>
 
         <aside className="right-column">
           <RobotRegistryPanel robots={robotRegistry} activeRobotId={activeRobotId} onSelect={actions.handleRobotSelect} onAdd={actions.handleRobotAdd} onDelete={actions.handleRobotDelete} />
-          <PermissionPanel permissions={permissions} onChange={actions.handlePermissionChange} />
-          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} />
+          <div className="anchor-target" id="permissions"><PermissionPanel permissions={permissions} onChange={actions.handlePermissionChange} /></div>
+          <div className="anchor-target" id="visible-context"><VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} /></div>
         </aside>
       </main>
 
-      <ActionLog logs={logs} />
+      <div className="anchor-target" id="logs"><ActionLog logs={logs} /></div>
     </div>
   );
 }

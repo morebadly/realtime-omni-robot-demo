@@ -10,6 +10,7 @@ import { normalizePlugin, summarizeManifest } from './pluginManifest';
 import { buildConnectionSnapshot } from './networkManager';
 import { getFramePolicy } from './framePolicy';
 import { buildRealtimeRoute, createDefaultRealtimeSession } from './realtimeSession';
+import { createDefaultRealtimeSessionState, transitionRealtimeSessionState } from './realtimeSessionState';
 import { buildOmniInputPacket, summarizeOmniPacket } from './omniPacket';
 import { applyMediaAck, applyMediaError, createAudioFrame, createCameraFrame, createDefaultMediaChannels, updateMediaChannelStats } from './omniMediaFrames';
 import { applyRealtimeOutputError, applyRealtimeOutputInterrupt, applyRealtimeOutputState, applyReplyAudioFrame, clearRealtimeOutputChannel, createDefaultRealtimeOutputChannel, markReplyAudioFramePlayed } from './realtimeOutputChannel';
@@ -96,10 +97,11 @@ export function useRuntimeCore() {
   const [permissions, setPermissions] = useState(initialSeed.permissions);
   const [plugins, setPlugins] = useState(initialSeed.plugins);
   const [logs, setLogs] = useState([
-    createLog('info', 'Demo Runtime v1.1.2 已启动', '新增 Mock Realtime Omni interrupt/barge-in 控制：可手动发送 omni.interrupt.v1 停止当前输出流。'),
+    createLog('info', 'Demo Runtime v1.1.3 已启动', '新增 Realtime Session State Machine：统一管理 listening / model_thinking / model_speaking / interrupted / recovering。'),
     createLog('info', 'Robot Identity Profile 已启用', '机器人昵称、唤醒名、默认角色、声音风格和称呼方式不再硬编码。'),
     createLog('info', '输入策略已固定', '原始语音流和摄像头关键帧直给 Omni；触摸/NFC 只作为事实事件。'),
-    createLog('info', '输出策略已固定', 'reply_audio_frame 是 Omni 输出媒体帧；reply_text 只作为字幕、日志和调试；audio_frame 不会自动触发打断。')
+    createLog('info', '输出策略已固定', 'reply_audio_frame 是 Omni 输出媒体帧；reply_text 只作为字幕、日志和调试；audio_frame 不会自动触发打断。'),
+    createLog('info', '实时会话状态机已启用', '播放时麦克风可以保持监听，但只有显式 omni.interrupt.v1 才能打断当前输出。')
   ]);
   const [runtimeTrace, setRuntimeTrace] = useState([
     createTrace('RuntimeCore', 'boot', '初始化 Event Bus / RobotRegistry / RobotStateStore / ModelAdapterManager / PluginManager / ConnectionManager / OmniSessionBridge。'),
@@ -109,6 +111,7 @@ export function useRuntimeCore() {
   const [recentEvents, setRecentEvents] = useState([]);
   const [networkQuality, setNetworkQuality] = useState('stable');
   const [realtimeSession, setRealtimeSession] = useState(createDefaultRealtimeSession);
+  const [realtimeSessionState, setRealtimeSessionState] = useState(createDefaultRealtimeSessionState);
   const [omniPacket, setOmniPacket] = useState(null);
   const [lastOmniTurn, setLastOmniTurn] = useState(null);
   const [omniSessionStatus, setOmniSessionStatus] = useState({
@@ -236,6 +239,7 @@ export function useRuntimeCore() {
       frameBufferSummary: []
     });
     setRealtimeSession(createDefaultRealtimeSession());
+    setRealtimeSessionState(transitionRealtimeSessionState(null, 'RESET'));
     setNetworkQuality('stable');
     cancelOmniSession();
   }
@@ -316,6 +320,11 @@ export function useRuntimeCore() {
         pushTrace('ToolEngine', 'mock.actions', `executed=${routing.executed}; guarded=${routing.guarded}`);
       }
     }
+    setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'OUTPUT_TURN_RECEIVED', {
+      turnId: turn.turnId,
+      requestId: turn.transport?.requestId || turn.requestId || null,
+      reason: '已收到 omni.output_turn.v1；reply_text 只作为字幕/日志/调试。'
+    }));
     bus.emit({ type: 'omni.output_turn.received', turnId: turn.turnId, expression: turn.expression?.expression });
   }
 
@@ -369,6 +378,10 @@ export function useRuntimeCore() {
       }
       pushLog('info', '发送 Omni 输入包到 LocalDev Adapter', `${packet.packetId} → ${endpoint}`);
       pushTrace('LocalDevOmniAdapter', 'packet.send', `${packet.packetId} → ${endpoint}`);
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'INPUT_PACKET_SENT', {
+        packetId: packet.packetId,
+        reason: '已发送 omni.input_packet.v1，等待 LocalDev Mock 输出状态。'
+      }));
       if (!localDevBridgeRef.current) {
         localDevBridgeRef.current = createLocalDevOmniBridge(handleLocalDevBridgeStatus);
       }
@@ -419,6 +432,7 @@ export function useRuntimeCore() {
     }
     localDevBridgeRef.current.close('manual_disconnect');
     setRealtimeOutput(clearRealtimeOutputChannel());
+    setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'SESSION_CLOSE', { reason: 'LocalDev WebSocket 手动断开。' }));
     pushLog('info', 'LocalDev Adapter 已手动断开', '只断开 WebSocket 调试会话，不影响 Runtime、插件、权限或机器人状态。');
     pushTrace('LocalDevOmniAdapter', 'socket.manual_disconnect', activeRobotId);
   }
@@ -432,6 +446,7 @@ export function useRuntimeCore() {
     setOmniPacket(null);
     setLastOmniTurn(null);
     setRealtimeOutput(clearRealtimeOutputChannel());
+    setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'RESET', { reason: '清空 Omni 调试回合。' }));
     pushLog('info', 'Omni 调试回合已清空', '仅清除前端调试面板，不影响机器人状态、插件和权限。');
     pushTrace('OmniSessionBridge', 'session.clear', 'clear debug packet/output');
   }
@@ -609,12 +624,23 @@ export function useRuntimeCore() {
 
     if (status.interrupt) {
       setRealtimeOutput((prev) => applyRealtimeOutputInterrupt(prev, status.interrupt));
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'INTERRUPT_ACK', {
+        turnId: status.interrupt.turnId,
+        requestId: status.interrupt.requestId,
+        reason: status.interrupt.reason || 'interrupt acknowledged'
+      }));
       pushTrace('RealtimeOutputChannel', 'interrupt.acknowledged', status.interrupt.interruptId || 'no_interrupt_id');
       return;
     }
     if (status.outputState) {
       setRealtimeOutput((prev) => applyRealtimeOutputState(prev, status.outputState));
       const outputState = status.outputState.state;
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'OUTPUT_STATE', {
+        outputState: status.outputState,
+        turnId: status.outputState.turnId,
+        requestId: status.outputState.requestId,
+        reason: status.outputState.reason || `output_state=${outputState}`
+      }));
       if (outputState === 'thinking' || outputState === 'speaking' || outputState === 'finished' || outputState === 'interrupted') {
         setRobot((prev) => {
           if (outputState === 'thinking') return { ...prev, state: 'thinking', expressionSource: 'local_dev_realtime_output' };
@@ -628,6 +654,12 @@ export function useRuntimeCore() {
     }
     if (status.replyAudioFrame) {
       setRealtimeOutput((prev) => applyReplyAudioFrame(prev, status.replyAudioFrame));
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'REPLY_AUDIO_FRAME_RECEIVED', {
+        replyAudioFrame: status.replyAudioFrame,
+        turnId: status.replyAudioFrame.turnId,
+        requestId: status.replyAudioFrame.requestId,
+        reason: `收到 reply_audio_frame seq=${status.replyAudioFrame.sequence ?? 'unknown'}`
+      }));
       setRobot((prev) => ({ ...prev, state: 'speaking', expressionSource: 'reply_audio_frame' }));
       syncActiveRobotSummary({ state: 'speaking', lastSeen: '刚刚' });
       pushTrace('RealtimeOutputChannel', 'reply_audio_frame.received', `${status.replyAudioFrame.turnId || 'no_turn'} seq=${status.replyAudioFrame.sequence ?? 'unknown'} bytes=${status.replyAudioFrame.audio?.byteLength || 0}`);
@@ -635,6 +667,7 @@ export function useRuntimeCore() {
     }
     if (status.status === 'failed' && status.error) {
       setRealtimeOutput((prev) => applyRealtimeOutputError(prev, status.error));
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'ERROR', { reason: status.error }));
     }
   }
 
@@ -648,6 +681,11 @@ export function useRuntimeCore() {
       }
       return next;
     });
+    setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'REPLY_AUDIO_FRAME_PLAYED', {
+      frameId,
+      outputDone: !(realtimeOutput?.queuedAudioFrames || []).some((frame) => frame.frameId !== frameId) && Boolean(realtimeOutput?.finalFrameReceived),
+      reason: 'reply_audio_frame 已由 Web Audio 播放器消费。'
+    }));
     pushTrace('RealtimeOutputChannel', 'reply_audio_frame.played', frameId);
   }
 
@@ -664,6 +702,10 @@ export function useRuntimeCore() {
     };
 
     setRealtimeOutput((prev) => applyRealtimeOutputInterrupt(prev, interruptSeed));
+    setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'INTERRUPT_LOCAL', {
+      turnId: interruptSeed.turnId,
+      reason: '手动模拟用户插话；清空播放队列并发送 omni.interrupt.v1。'
+    }));
     setRobot((prev) => ({
       ...prev,
       state: realtimeSession.active && realtimeSession.micActive ? 'listening' : 'idle',
@@ -706,6 +748,7 @@ export function useRuntimeCore() {
       setMediaChannels((prev) => applyMediaError(prev, result.error));
       setLocalDevBridge((prev) => ({ ...prev, status: 'failed', detail: '媒体帧发送失败。', error: result.error, updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }) }));
       pushTrace('LocalDevMediaChannel', 'frame.send.failed', `${frame.schema}; ${result.error}`);
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'ERROR', { reason: result.error }));
       return { sent: false, reason: result.error };
     }
     pushTrace('LocalDevMediaChannel', 'frame.send', `${frame.schema} / ${frame.frameId}`);
@@ -728,12 +771,22 @@ export function useRuntimeCore() {
     });
     const sent = await maybeSendMediaFrameToLocalDev(frame);
     setMediaChannels((prev) => updateMediaChannelStats(prev, frame, sent.sent ? 'sent' : 'observed'));
+    setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'INPUT_AUDIO_FRAME', {
+      sent: sent.sent,
+      frameId: frame.frameId,
+      reason: sent.sent ? '麦克风 PCM 输入帧已发送到 LocalDev。' : '麦克风 PCM 输入帧仅本地 observed。'
+    }));
   }
 
   async function handleCameraFrame(frameSeed) {
     const frame = createCameraFrame({ robot, frame: frameSeed, framePolicy, sequence: frameSeed?.sequence || 0 });
     const sent = await maybeSendMediaFrameToLocalDev(frame);
     setMediaChannels((prev) => updateMediaChannelStats(prev, frame, sent.sent ? 'sent' : 'observed'));
+    setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'INPUT_CAMERA_FRAME', {
+      sent: sent.sent,
+      frameId: frame.frameId,
+      reason: sent.sent ? '摄像头 JPEG 关键帧已发送到 LocalDev。' : '摄像头 JPEG 关键帧仅本地 observed。'
+    }));
   }
 
   function handleRealtimeSessionStatus(status) {
@@ -750,6 +803,10 @@ export function useRuntimeCore() {
       };
     });
     if (typeof status.active === 'boolean') {
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, status.active ? 'SESSION_OPEN' : 'SESSION_CLOSE', {
+        sessionId: status.sessionId,
+        reason: status.active ? '实时音频输入已开启；麦克风可在模型输出时继续监听。' : '实时音频输入已停止。'
+      }));
       syncActiveRobotSummary({ expression: status.active && status.micActive ? 'listening' : robot.expression, state: status.active && status.micActive ? 'listening' : robot.state, online: true, lastSeen: '刚刚' });
       pushLog(status.active ? 'success' : 'info', status.active ? '实时音频流已开启' : '实时音频流已停止', status.audioInput || 'raw_audio_stream');
       pushTrace('RealtimeSession', status.active ? 'audio.open' : 'audio.close', status.route || realtimeRoute.route);
@@ -918,6 +975,7 @@ export function useRuntimeCore() {
     connectionSnapshot,
     networkQuality,
     realtimeSession,
+    realtimeSessionState,
     realtimeRoute,
     adapterProfiles,
     omniPacket,

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { summarizeRealtimeOutputChannel } from '../runtime/realtimeOutputChannel';
+import { summarizeRealtimeSessionState } from '../runtime/realtimeSessionState';
 
 function decodePcmFloat32Base64(payload) {
   if (!payload || typeof atob === 'undefined') return new Float32Array();
@@ -14,7 +15,7 @@ function getAudioContext() {
   return AudioContextImpl ? new AudioContextImpl() : null;
 }
 
-export default function RealtimeAudioOutputPlayer({ output, onFramePlayed, onInterrupt }) {
+export default function RealtimeAudioOutputPlayer({ output, sessionState, onFramePlayed, onInterrupt }) {
   const audioContextRef = useRef(null);
   const playingRef = useRef(false);
   const currentSourceRef = useRef(null);
@@ -101,6 +102,11 @@ export default function RealtimeAudioOutputPlayer({ output, onFramePlayed, onInt
         <p>{playbackDetail}</p>
       </div>
       <div>
+        <small>Session State Machine</small>
+        <strong>{summarizeRealtimeSessionState(sessionState)}</strong>
+        <p>状态机负责区分 input audio、output audio、playback 和 interrupt；播放中可继续监听，但不会自动打断。</p>
+      </div>
+      <div>
         <small>协议语义</small>
         <strong>omni.reply_audio_frame.v1</strong>
         <p>服务端输出音频帧直接进入 Web Audio 播放队列；reply_text 只用于字幕、日志和调试，不进入 TTS。</p>
@@ -108,7 +114,7 @@ export default function RealtimeAudioOutputPlayer({ output, onFramePlayed, onInt
       <div>
         <small>Barge-in Mock Control</small>
         <button type="button" className="danger-button" onClick={onInterrupt} disabled={!canInterrupt}>模拟用户插话 / Interrupt</button>
-        <p>v1.1.2 只允许手动发送 omni.interrupt.v1；麦克风 audio_frame 不会自动打断，避免 Omni 自己打断自己。</p>
+        <p>v1.1.3 仍只允许手动发送 omni.interrupt.v1；麦克风 audio_frame 不会自动打断，避免 Omni 自己打断自己。</p>
       </div>
     </section>
   );

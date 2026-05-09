@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.1.2.
+Current version: v1.1.3.
 
 Tech stack:
 - Vite
@@ -151,7 +151,7 @@ Near-term development should focus on:
 8. Docs and release packaging.
 
 
-## v1.1.2 realtime media and interrupt rule
+## v1.1.3 realtime media and interrupt rule
 
 - `omni.input_packet.v1` carries low-frequency context and guardrails.
 - `omni.audio_frame.v1` now carries real browser microphone PCM Float32 chunks during LocalDev testing.
@@ -165,10 +165,27 @@ Near-term development should focus on:
 - Do not make ASR text the primary input.
 - Do not create frontend visual emotion summaries.
 
-## v1.1.2 implementation boundary
+## v1.1.3 implementation boundary
 
 - Keep LocalDev output audio as safe Mock realtime media frames.
 - Do not connect real Qwen2.5-Omni, real cloud APIs, real TTS, real email, real AC, or real hardware unless explicitly requested.
 - `reply_text` is subtitle/log/debug context only; do not make it the source for speech synthesis.
 - Keep input and output media channels separate: `omniMediaFrames.js` is Web/Robot -> Omni; `realtimeOutputChannel.js` is Omni -> Web/Robot.
-- v1.1.2 barge-in is manual Mock control only. Do not add automatic VAD/AEC-based interruption yet.
+- v1.1.3 barge-in is manual Mock control only. Do not add automatic VAD/AEC-based interruption yet.
+
+## v1.1.3 realtime session state machine rule
+
+- `realtimeSessionState.js` owns the observable call lifecycle: idle / listening / user_speaking / model_thinking / model_speaking / interrupted / recovering / error.
+- Do not bypass the state machine when adding future realtime input/output behavior.
+- `omni.audio_frame.v1` is input media and may continue during model_speaking, but it must not automatically become interrupt.
+- `omni.reply_audio_frame.v1` is output media and must never be fed back as user input.
+- `omni.interrupt.v1` remains the explicit control event for user barge-in in this Mock demo.
+- Any future automatic barge-in must first add VAD/AEC or equivalent self-interruption protection and must keep the manual interrupt path.
+
+
+## v1.1.4 UI debug ergonomics
+
+- Keep the top hero compact; do not re-add a large wall of architecture chips.
+- Use DebugNavigation anchors for long-page debugging.
+- Keep VisibleContext compact and readable; use collapsible details for long safety notes.
+- Do not change realtime protocol semantics when making UI-only improvements.

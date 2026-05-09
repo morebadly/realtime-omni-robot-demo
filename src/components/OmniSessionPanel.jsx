@@ -1,6 +1,7 @@
 import { summarizeOmniPacket } from '../runtime/omniPacket';
 import { summarizeMediaChannels } from '../runtime/omniMediaFrames';
 import { summarizeRealtimeOutputChannel } from '../runtime/realtimeOutputChannel';
+import { summarizeRealtimeSessionState, getRealtimeSessionStateLabel } from '../runtime/realtimeSessionState';
 
 function prettyJson(value) {
   if (!value) return '暂无';
@@ -49,6 +50,7 @@ export default function OmniSessionPanel({
   localDevBridge,
   mediaChannels,
   realtimeOutput,
+  realtimeSessionState,
   onBuild,
   onSimulate,
   onSendLocalDev,
@@ -137,6 +139,10 @@ export default function OmniSessionPanel({
 
 
       <div className="realtime-output-grid">
+        <div><small>Session State Machine</small><strong>{summarizeRealtimeSessionState(realtimeSessionState)}</strong><p>session={realtimeSessionState?.sessionId || '暂无'} · last={realtimeSessionState?.lastTransition || 'none'}</p></div>
+        <div><small>Current Lifecycle</small><strong>{getRealtimeSessionStateLabel(realtimeSessionState?.state)}</strong><p>turn={realtimeSessionState?.currentTurnId || '暂无'} · request={realtimeSessionState?.currentRequestId || '暂无'}</p></div>
+        <div><small>Input Channels</small><strong>A {realtimeSessionState?.inputAudioFramesSent || 0}/{realtimeSessionState?.inputAudioFramesObserved || 0} · C {realtimeSessionState?.inputCameraFramesSent || 0}/{realtimeSessionState?.inputCameraFramesObserved || 0}</strong><p>model_speaking 时仍可监听；audio_frame 不会自动变成 interrupt。</p></div>
+        <div><small>Output / Interrupt</small><strong>O {realtimeSessionState?.outputAudioFramesReceived || 0}/{realtimeSessionState?.outputAudioFramesPlayed || 0} · I {realtimeSessionState?.interruptCount || 0}</strong><p>can_interrupt={realtimeSessionState?.canInterruptOutput ? 'yes' : 'no'} · keep_mic={realtimeSessionState?.shouldKeepMicOpen ? 'yes' : 'no'}</p></div>
         <div><small>输出通道摘要</small><strong>{summarizeRealtimeOutputChannel(realtimeOutput)}</strong><p>{realtimeOutput?.guardrail || 'reply_audio_frame 是 Omni 输出媒体帧。'}</p></div>
         <div><small>Output State</small><strong>{realtimeOutput?.state || 'idle'}</strong><p>turn={realtimeOutput?.turnId || '暂无'} · reason={realtimeOutput?.lastStateReason || '暂无状态事件'}</p></div>
         <div><small>Reply Audio Frames</small><strong>{realtimeOutput?.lastFrameId || '暂无'}</strong><p>received={realtimeOutput?.receivedAudioFrames || 0} · played={realtimeOutput?.playedAudioFrames || 0} · queued={realtimeOutput?.queuedAudioFrames?.length || 0} · seq={realtimeOutput?.lastSequence ?? 'n/a'}</p></div>
@@ -164,7 +170,7 @@ export default function OmniSessionPanel({
         </div>
       </div>
 
-      <p className="omni-note">v1.1.2 是 Mock Realtime Omni 双向媒体通道 + 手动 barge-in 控制：运行 `npm run mock:localdev` 后，Web 会在同一个 WebSocket session 中发送 omni.input_packet.v1 / omni.audio_frame.v1 / omni.camera_frame.v1，并接收 omni.output_state.v1 / omni.reply_audio_frame.v1；用户插话通过 omni.interrupt.v1 手动表达。reply_text 只作为字幕、日志和调试，不是 TTS 输入。</p>
+      <p className="omni-note">v1.1.3 是 Mock Realtime Omni 双向媒体通道 + 手动 barge-in 控制 + 实时会话状态机：运行 `npm run mock:localdev` 后，Web 会在同一个 WebSocket session 中发送 omni.input_packet.v1 / omni.audio_frame.v1 / omni.camera_frame.v1，并接收 omni.output_state.v1 / omni.reply_audio_frame.v1；用户插话通过 omni.interrupt.v1 手动表达；Session State Machine 统一记录 listening / model_thinking / model_speaking / interrupted / recovering。reply_text 只作为字幕、日志和调试，不是 TTS 输入。</p>
     </section>
   );
 }

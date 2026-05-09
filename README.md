@@ -1,10 +1,10 @@
-# Realtime Omni Robot Demo v1.1.2
+# Realtime Omni Robot Demo v1.1.4
 
 这是一个用于投资人演示和后续工程开发的 **实时 Omni 机器人平台 Demo**。项目定位不是单纯本地部署机器人，而是：
 
 > 云端优先、可本地调试、可移动、多网络、自带插件和权限系统的实时 Omni 机器人平台。
 
-v1.1.2 是 Mock Realtime Omni 双向媒体通道 + 手动 barge-in 控制版：在 v1.1.1 流式输出音频帧基础上，Runtime 可以显式发送 `omni.interrupt.v1` 停止当前 Mock 输出流。麦克风 `omni.audio_frame.v1` 仍会作为输入媒体发送，但不会自动触发打断，避免机器人播放声音被麦克风采回后造成“Omni 自己打断自己”。
+v1.1.4 是 UI 调试可用性优化版本：在 v1.1.3 Realtime Session State Machine 基础上，顶部改为简洁摘要，新增 Debug Navigator 快速跳转，可见信息面板改为 compact/可折叠结构，并修复窄栏文本挤压看起来像乱码的问题。实时协议和 Mock 安全边界保持不变。
 
 ## 快速运行
 
@@ -36,16 +36,23 @@ npm run dev
 
 如果提示找不到 `node_modules` 或 `dist`，可以忽略；如果提示找不到 `package.json`，说明还没有 `cd` 进入项目文件夹。
 
-## v1.1.2 新增内容
+## v1.1.4 新增内容
 
-- 新增 `omni.interrupt.v1`：用明确控制事件表达用户插话 / barge-in，而不是把任意麦克风声音当作打断。
-- `RealtimeAudioOutputPlayer` 支持停止当前 `AudioBufferSourceNode`，清空播放队列，并显示 interrupt 状态。
-- `realtimeOutputChannel` 增加 `interruptCount`、`interruptToken`、`lastInterrupt`，把 output playback stop 与 input audio frame 解耦。
-- LocalDev Mock Server 支持取消当前 turn 的定时 `reply_audio_frame` 推送，并返回 `omni.output_state.v1: interrupted`。
-- WebUI 增加“模拟用户插话 / Interrupt”按钮，用手动 Mock 先验证实时通讯打断链路。
-- 明确安全边界：播放时可以继续采集/发送 `omni.audio_frame.v1`，但 `audio_frame` 不会自动触发 interrupt，避免 Omni 自己打断自己。
+- 顶部 Hero 不再堆满架构 chip，改为当前重点 / 实时核心 / 安全边界三项摘要。
+- 新增 `DebugNavigation`，可以快速跳转到机器人控制、实时音频/摄像头、Omni 会话、可见信息、插件权限和行为日志。
+- `VisibleContext` 改为 compact 面板，先显示输入音频、摄像头帧、输出音频和状态机摘要，再用折叠详情展示“当前能看到/不能看到”。
+- 增强响应式布局，窄窗口下切到单栏，减少横向滚动和中文挤压。
+
+## v1.1.3 新增内容
+
+- 新增 `src/runtime/realtimeSessionState.js`，统一管理 `idle / listening / user_speaking / model_thinking / model_speaking / interrupted / recovering / error`。
+- 状态机记录 `sessionId`、`currentTurnId`、`currentRequestId`、输入 audio/camera sent/observed 计数、输出 reply_audio_frame received/played 计数和 interrupt count。
+- `OmniSessionPanel` 新增 Session State Machine 调试卡片，能看到状态、turn、request、输入/输出计数、是否可打断、麦克风是否保持监听。
+- `VisibleContext` 新增实时会话透明信息，明确展示 Runtime 当前能看到什么、正在输出什么、为什么不会自动打断。
+- `RealtimeAudioOutputPlayer` 显示状态机摘要，确保播放队列、interrupt 和 session lifecycle 不再是散落状态。
+- 保留 v1.1.2 能力：`omni.interrupt.v1` 仍然是唯一打断当前输出 turn 的控制事件。
 - 保留 v1.1.1 能力：`omni.output_state.v1`、`omni.reply_audio_frame.v1`、Web Audio 流式播放和 RobotFace speaking 联动。
-- 继续坚持 Omni-first：ASR 文本只作字幕、日志、调试和插件关键词辅助；摄像头关键帧不做前端情绪摘要。
+- 明确 guardrails：`audio_frame` 不自动触发 interrupt，`reply_audio_frame` 不会回流成用户输入，`reply_text` 只作字幕、日志和调试，不进入 TTS 管线。
 
 ## 当前实现
 
@@ -89,7 +96,11 @@ realtime-omni-robot-demo/
 │   ├── RELEASE_NOTES_v1.1.1.md
 │   ├── UPDATE_GUIDE_v1.1.1.md
 │   ├── RELEASE_NOTES_v1.1.2.md
-│   └── UPDATE_GUIDE_v1.1.2.md
+│   ├── UPDATE_GUIDE_v1.1.2.md
+│   ├── RELEASE_NOTES_v1.1.3.md
+│   ├── UPDATE_GUIDE_v1.1.3.md
+│   ├── RELEASE_NOTES_v1.1.4.md
+│   └── UPDATE_GUIDE_v1.1.4.md
 ├── src/
 │   ├── components/
 │   │   ├── RobotRegistryPanel.jsx
@@ -267,7 +278,7 @@ npm run dev
 packet_schema=omni.input_packet.v1 packet_id=omni_xxx robot=robot_local_dev display_name=DemoBot 01 expression=idle intents=0 request=localdev_req_xxx
 ```
 
-这仍然不是接入真实 Qwen2.5-Omni；它只稳定 Web → LocalDev Adapter → Web 的协议回环。真实音频 chunk 和图片 payload 已经在 v1.0.9 / v1.1.0 接入，Mock reply_audio_frame 播放链路已在 v1.1.1 接入，手动 interrupt/barge-in 控制已在 v1.1.2 接入；真实模型语音输出、自动 VAD/AEC 打断仍在后续版本实现。
+这仍然不是接入真实 Qwen2.5-Omni；它只稳定 Web → LocalDev Adapter → Web 的协议回环。真实音频 chunk 和图片 payload 已经在 v1.0.9 / v1.1.0 接入，Mock reply_audio_frame 播放链路已在 v1.1.1 接入，手动 interrupt/barge-in 控制已在 v1.1.2 接入，状态机已在 v1.1.3 接入，UI 调试导航已在 v1.1.4 优化；真实模型语音输出、自动 VAD/AEC 打断仍在后续版本实现。
 
 
 ## v1.0.6：Codex 迁移准备与 LocalDev Mock Server

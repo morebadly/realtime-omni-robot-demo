@@ -1,4 +1,4 @@
-# 架构说明 v1.1.2
+# 架构说明 v1.1.3
 
 ## 1. 产品定位
 
@@ -588,9 +588,9 @@ Output media channel: Omni -> Web/Robot Speaker + Expression
 
 LocalDev Mock Server 的语义是“模拟 Realtime Omni 服务端流式输出”，不是 `reply_text -> TTS -> 播放`。真实模型接入后，应把模型原生音频输出映射到 `reply_audio_frame`，而不是把文本回复再送入前端语音合成。
 
-## 12. v1.1.2 Realtime Interrupt / Barge-in Mock Control
+## 12. v1.1.3 Realtime Interrupt / Barge-in Mock Control
 
-v1.1.2 在 v1.1.1 的 Realtime Output Channel 上增加显式打断控制。
+v1.1.3 在 v1.1.1 的 Realtime Output Channel 上增加显式打断控制。
 
 核心原则：
 
@@ -643,4 +643,71 @@ LocalDev Mock Server 为每个 active turn 保存定时器集合。收到 `omni.
 
 ### 12.4 非目标
 
-v1.1.2 不做自动 VAD / AEC / 回声抑制，不根据麦克风声音自动打断。自动 barge-in 需要后续版本在能够区分用户真实插话和机器人回声后再做。
+v1.1.3 不做自动 VAD / AEC / 回声抑制，不根据麦克风声音自动打断。自动 barge-in 需要后续版本在能够区分用户真实插话和机器人回声后再做。
+
+## 13. v1.1.3 Realtime Session State Machine
+
+v1.1.3 在 v1.1.1 的 Realtime Output Channel 和 v1.1.2 的显式 interrupt 控制上增加 `omni.realtime_session_state.v1`。
+
+状态机由 `src/runtime/realtimeSessionState.js` 实现，目标不是替代输入/输出协议，而是把它们统一到可观测的会话生命周期里。
+
+### 13.1 状态集合
+
+```text
+idle
+listening
+user_speaking
+model_thinking
+model_speaking
+interrupted
+recovering
+error
+```
+
+### 13.2 生命周期语义
+
+```text
+SESSION_OPEN              -> listening
+INPUT_AUDIO_FRAME         -> user_speaking 或保持 model_speaking
+INPUT_PACKET_SENT         -> model_thinking
+OUTPUT_STATE thinking     -> model_thinking
+OUTPUT_STATE speaking     -> model_speaking
+REPLY_AUDIO_FRAME         -> model_speaking
+REPLY_AUDIO_FRAME_PLAYED  -> listening 或保持 model_speaking
+INTERRUPT_LOCAL           -> interrupted
+OUTPUT_STATE interrupted  -> interrupted
+SESSION_CLOSE             -> idle
+```
+
+### 13.3 Guardrails
+
+```text
+inputOutputSeparated = true
+replyTextIsSubtitleOnly = true
+audioFrameDoesNotAutoInterrupt = true
+replyAudioFrameCannotTriggerInterrupt = true
+explicitInterruptOnly = true
+micCanRemainOpenDuringOutput = true
+```
+
+这意味着：模型输出时麦克风可以继续采集和发送 `omni.audio_frame.v1`，但音频帧本身不会自动触发 `omni.interrupt.v1`。只有明确的控制事件才能打断当前输出 turn。
+
+### 13.4 UI 观察面板
+
+`OmniSessionPanel` 和 `VisibleContext` 会展示：
+
+```text
+sessionId
+currentTurnId
+currentRequestId
+state
+input audio/camera sent/observed
+output received/played
+interrupt count
+last transition
+last reason
+canInterruptOutput
+shouldKeepMicOpen
+```
+
+这样后续接真实 Omni API、WebRTC 或实体机器人硬件时，不需要再从零梳理 listening / thinking / speaking / interrupted 的边界。

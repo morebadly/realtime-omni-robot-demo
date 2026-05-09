@@ -95,7 +95,7 @@ function streamMockRealtimeOutput(socket, response, packetInfo) {
   const turnId = response.turnId;
   const active = getActiveOutputs(socket);
 
-  // Only one mock output speaks at a time in v1.1.2. A new input turn cancels any previous mock stream.
+  // Only one mock output speaks at a time in v1.1.3. A new input turn cancels any previous mock stream; the Web runtime records this in the session state machine.
   for (const [oldTurnId, stream] of active.entries()) {
     stream.cancelled = true;
     for (const timer of stream.timers) clearTimeout(timer);
@@ -230,7 +230,7 @@ server.on('connection', (socket, request) => {
     }
     const packet = packetInfo.packet;
     const turn = simulateOmniTurn(packet);
-    const response = { ...turn, adapter: 'LocalDevOmniAdapterMock', route: packet.routing?.route || 'local_dev_omni', reply_audio: null, notes: ['来自 scripts/localdev-omni-mock-server.mjs 的本地 Mock Realtime Omni 输出。', '这个服务只验证 Web ↔ LocalDev Adapter 的双向实时通讯，不是真实 Qwen2.5-Omni，也不是 reply_text → TTS。', 'v1.1.2 支持 omni.interrupt.v1 手动模拟用户插话：audio_frame 不会自动打断输出，避免 Omni 自己打断自己。', 'v1.1.1 会在同一个 WebSocket session 中返回 omni.output_state.v1 与 omni.reply_audio_frame.v1；reply_text 只作为字幕/日志/调试。', 'v1.1.0 输入能力仍保留：omni.audio_frame.v1 可携带真实 PCM Float32 payload，omni.camera_frame.v1 可携带真实 JPEG payload。', ...(turn.notes || [])] };
+    const response = { ...turn, adapter: 'LocalDevOmniAdapterMock', route: packet.routing?.route || 'local_dev_omni', reply_audio: null, notes: ['来自 scripts/localdev-omni-mock-server.mjs 的本地 Mock Realtime Omni 输出。', '这个服务只验证 Web ↔ LocalDev Adapter 的双向实时通讯，不是真实 Qwen2.5-Omni，也不是 reply_text → TTS。', 'v1.1.3 支持 omni.interrupt.v1 手动模拟用户插话：audio_frame 不会自动打断输出，避免 Omni 自己打断自己。', 'v1.1.1 会在同一个 WebSocket session 中返回 omni.output_state.v1 与 omni.reply_audio_frame.v1；reply_text 只作为字幕/日志/调试。', 'v1.1.0 输入能力仍保留：omni.audio_frame.v1 可携带真实 PCM Float32 payload，omni.camera_frame.v1 可携带真实 JPEG payload。', ...(turn.notes || [])] };
     console.log(`[${now()}] packet_schema=${packet.schema || 'unknown'} packet_id=${packet.packetId || 'unknown'} robot=${packet.identity?.robotId || 'unknown'} display_name=${packet.identity?.displayName || 'unknown'} expression=${response.expression?.expression} intents=${response.tool_intents?.length || 0} request=${packetInfo.requestId || 'none'} realtime_output=streaming`);
     streamMockRealtimeOutput(socket, response, packetInfo);
   });
@@ -247,6 +247,6 @@ server.on('connection', (socket, request) => {
 server.on('listening', () => {
   console.log(`LocalDev Omni Mock Server listening on ws://${HOST}:${PORT}${PATH}`);
   console.log('Run the Vite app separately with: npm run dev');
-  console.log('v1.1.2 accepts input media frames, streams mock reply_audio_frame output, and supports manual omni.interrupt.v1 barge-in control.');
+  console.log('v1.1.3 accepts input media frames, streams mock reply_audio_frame output, and supports manual omni.interrupt.v1 barge-in control and the Web runtime observes it through a realtime session state machine.');
 });
 server.on('error', (error) => { console.error(`[${now()}] LocalDev Omni Mock Server error:`, error); process.exitCode = 1; });

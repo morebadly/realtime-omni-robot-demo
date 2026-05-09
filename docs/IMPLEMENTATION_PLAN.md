@@ -1,4 +1,4 @@
-# 技术落地路线 v1.1.2
+# 技术落地路线 v1.1.3
 
 ## 阶段 1：Web Demo + Runtime 骨架
 
@@ -387,7 +387,7 @@ Not implemented yet:
 3. Barge-in, interrupt, jitter buffer, and echo control.
 4. Real robot speaker hardware output.
 
-## 阶段 2.5：v1.1.2 Realtime Interrupt / Barge-in Mock Control
+## 阶段 2.5：v1.1.3 Realtime Interrupt / Barge-in Mock Control
 
 目标：在不做自动语音识别打断的前提下，先建立显式 interrupt 控制链路。
 
@@ -417,3 +417,35 @@ interrupt 是控制事件
 - speaking/listening 并行状态细化。
 - interrupt ack 和 turn cancellation trace 更细。
 - 设计自动 barge-in 的 VAD/AEC 草案，但暂不默认启用。
+
+## 阶段 2.6：v1.1.3 Realtime Session State Machine
+
+目标：把实时输入、实时输出、播放和 interrupt 控制统一为一个可观察、可扩展的会话状态机。
+
+### 已实现
+
+- 新增 `src/runtime/realtimeSessionState.js`。
+- 增加 `omni.realtime_session_state.v1` 状态结构。
+- 在 `useRuntimeCore` 中接入状态转移：实时音频开启、输入帧 observed/sent、输入包发送、output_state、reply_audio_frame、播放完成、interrupt、error、reset。
+- `OmniSessionPanel` 显示 sessionId、当前状态、turnId、requestId、输入/输出计数、是否可打断、麦克风是否保持监听。
+- `VisibleContext` 透明展示状态机 guardrails。
+- `RealtimeAudioOutputPlayer` 展示状态机摘要。
+
+### 原则
+
+```text
+播放中可以继续监听
+audio_frame 不自动触发 interrupt
+reply_audio_frame 不回流成用户输入
+reply_text 不进入 TTS 管线
+interrupt 必须是显式控制事件
+```
+
+### 后续建议
+
+v1.1.4 可以做：
+
+- 更细的 playback jitter buffer。
+- turn lifecycle trace 导出。
+- 对自动 barge-in 的 VAD/AEC 设计草案，但默认仍不启用。
+- 真实 Omni Adapter 接入前的协议兼容层设计。
