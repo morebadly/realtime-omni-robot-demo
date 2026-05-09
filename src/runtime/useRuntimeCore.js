@@ -12,6 +12,7 @@ import { getFramePolicy } from './framePolicy';
 import { buildRealtimeRoute, createDefaultRealtimeSession } from './realtimeSession';
 import { buildOmniInputPacket, summarizeOmniPacket } from './omniPacket';
 import { applyMediaAck, applyMediaError, createAudioFrame, createCameraFrame, createDefaultMediaChannels, updateMediaChannelStats } from './omniMediaFrames';
+import { applyRealtimeOutputError, applyRealtimeOutputInterrupt, applyRealtimeOutputState, applyReplyAudioFrame, clearRealtimeOutputChannel, createDefaultRealtimeOutputChannel, markReplyAudioFramePlayed } from './realtimeOutputChannel';
 import { simulateOmniTurn } from './omniTurnSimulator';
 import { routeToolIntents } from './toolIntentRouter';
 import { createLocalDevOmniBridge } from './localDevOmniClient';
@@ -95,9 +96,10 @@ export function useRuntimeCore() {
   const [permissions, setPermissions] = useState(initialSeed.permissions);
   const [plugins, setPlugins] = useState(initialSeed.plugins);
   const [logs, setLogs] = useState([
-    createLog('info', 'Demo Runtime v1.1.0 已启动', '新增摄像头 JPEG 关键帧 payload：LocalDev Mock 可看到 omni.camera_frame.v1 payload=yes。'),
+    createLog('info', 'Demo Runtime v1.1.2 已启动', '新增 Mock Realtime Omni interrupt/barge-in 控制：可手动发送 omni.interrupt.v1 停止当前输出流。'),
     createLog('info', 'Robot Identity Profile 已启用', '机器人昵称、唤醒名、默认角色、声音风格和称呼方式不再硬编码。'),
-    createLog('info', '输入策略已固定', '原始语音流和摄像头关键帧直给 Omni；触摸/NFC 只作为事实事件。')
+    createLog('info', '输入策略已固定', '原始语音流和摄像头关键帧直给 Omni；触摸/NFC 只作为事实事件。'),
+    createLog('info', '输出策略已固定', 'reply_audio_frame 是 Omni 输出媒体帧；reply_text 只作为字幕、日志和调试；audio_frame 不会自动触发打断。')
   ]);
   const [runtimeTrace, setRuntimeTrace] = useState([
     createTrace('RuntimeCore', 'boot', '初始化 Event Bus / RobotRegistry / RobotStateStore / ModelAdapterManager / PluginManager / ConnectionManager / OmniSessionBridge。'),
@@ -118,6 +120,7 @@ export function useRuntimeCore() {
     createLocalDevPreflightState(initialSeed.activeRobotId, initialSeed.robot.adapterDetail?.endpoint)
   ));
   const [mediaChannels, setMediaChannels] = useState(createDefaultMediaChannels);
+  const [realtimeOutput, setRealtimeOutput] = useState(createDefaultRealtimeOutputChannel);
   const [localDevBridge, setLocalDevBridge] = useState({
     status: 'idle',
     endpoint: initialSeed.robot.adapterDetail?.endpoint || '未配置',
@@ -223,6 +226,7 @@ export function useRuntimeCore() {
     setRecentEvents([]);
     setOmniPacket(null);
     setLastOmniTurn(null);
+    setRealtimeOutput(clearRealtimeOutputChannel());
     setMediaChannels(createDefaultMediaChannels());
     setCameraStatus({
       cameraActive: false,
@@ -366,10 +370,7 @@ export function useRuntimeCore() {
       pushLog('info', '发送 Omni 输入包到 LocalDev Adapter', `${packet.packetId} → ${endpoint}`);
       pushTrace('LocalDevOmniAdapter', 'packet.send', `${packet.packetId} → ${endpoint}`);
       if (!localDevBridgeRef.current) {
-        localDevBridgeRef.current = createLocalDevOmniBridge((status) => {
-          setLocalDevBridge((prev) => ({ ...prev, ...status }));
-          if (status.mediaAck) setMediaChannels((prev) => applyMediaAck(prev, status.mediaAck));
-        });
+        localDevBridgeRef.current = createLocalDevOmniBridge(handleLocalDevBridgeStatus);
       }
       const result = await localDevBridgeRef.current.send(packet, endpoint);
       if (!isActiveOmniSession(sessionId)) return;
@@ -417,6 +418,7 @@ export function useRuntimeCore() {
       return;
     }
     localDevBridgeRef.current.close('manual_disconnect');
+    setRealtimeOutput(clearRealtimeOutputChannel());
     pushLog('info', 'LocalDev Adapter 已手动断开', '只断开 WebSocket 调试会话，不影响 Runtime、插件、权限或机器人状态。');
     pushTrace('LocalDevOmniAdapter', 'socket.manual_disconnect', activeRobotId);
   }
@@ -429,6 +431,7 @@ export function useRuntimeCore() {
     }
     setOmniPacket(null);
     setLastOmniTurn(null);
+    setRealtimeOutput(clearRealtimeOutputChannel());
     pushLog('info', 'Omni 调试回合已清空', '仅清除前端调试面板，不影响机器人状态、插件和权限。');
     pushTrace('OmniSessionBridge', 'session.clear', 'clear debug packet/output');
   }
@@ -595,6 +598,104 @@ export function useRuntimeCore() {
     pushTrace('ConnectionManager', 'fallback.none', 'connection stable');
   }
 
+
+
+  function handleLocalDevBridgeStatus(status) {
+    setLocalDevBridge((prev) => ({ ...prev, ...status }));
+    if (status.mediaAck) {
+      setMediaChannels((prev) => applyMediaAck(prev, status.mediaAck));
+      return;
+    }
+
+    if (status.interrupt) {
+      setRealtimeOutput((prev) => applyRealtimeOutputInterrupt(prev, status.interrupt));
+      pushTrace('RealtimeOutputChannel', 'interrupt.acknowledged', status.interrupt.interruptId || 'no_interrupt_id');
+      return;
+    }
+    if (status.outputState) {
+      setRealtimeOutput((prev) => applyRealtimeOutputState(prev, status.outputState));
+      const outputState = status.outputState.state;
+      if (outputState === 'thinking' || outputState === 'speaking' || outputState === 'finished' || outputState === 'interrupted') {
+        setRobot((prev) => {
+          if (outputState === 'thinking') return { ...prev, state: 'thinking', expressionSource: 'local_dev_realtime_output' };
+          if (outputState === 'speaking') return { ...prev, state: 'speaking', expressionSource: 'local_dev_realtime_output' };
+          if ((outputState === 'finished' || outputState === 'interrupted') && prev.state === 'speaking') return { ...prev, state: 'idle', expressionSource: 'local_dev_realtime_output' };
+          return prev;
+        });
+      }
+      pushTrace('RealtimeOutputChannel', 'output.state', `${status.outputState.turnId || 'no_turn'} → ${outputState}`);
+      return;
+    }
+    if (status.replyAudioFrame) {
+      setRealtimeOutput((prev) => applyReplyAudioFrame(prev, status.replyAudioFrame));
+      setRobot((prev) => ({ ...prev, state: 'speaking', expressionSource: 'reply_audio_frame' }));
+      syncActiveRobotSummary({ state: 'speaking', lastSeen: '刚刚' });
+      pushTrace('RealtimeOutputChannel', 'reply_audio_frame.received', `${status.replyAudioFrame.turnId || 'no_turn'} seq=${status.replyAudioFrame.sequence ?? 'unknown'} bytes=${status.replyAudioFrame.audio?.byteLength || 0}`);
+      return;
+    }
+    if (status.status === 'failed' && status.error) {
+      setRealtimeOutput((prev) => applyRealtimeOutputError(prev, status.error));
+    }
+  }
+
+  function handleReplyAudioFramePlayed(frameId) {
+    if (!frameId) return;
+    setRealtimeOutput((prev) => {
+      const next = markReplyAudioFramePlayed(prev, frameId);
+      if (!next.playbackActive) {
+        setRobot((current) => (current.state === 'speaking' ? { ...current, state: 'idle', expressionSource: 'reply_audio_frame.played' } : current));
+        syncActiveRobotSummary({ state: 'idle', lastSeen: '刚刚' });
+      }
+      return next;
+    });
+    pushTrace('RealtimeOutputChannel', 'reply_audio_frame.played', frameId);
+  }
+
+
+  async function handleRealtimeOutputInterrupt() {
+    const currentOutput = realtimeOutput || createDefaultRealtimeOutputChannel();
+    const interruptSeed = {
+      turnId: currentOutput.turnId,
+      robotId: activeRobotId,
+      displayName: robot.name,
+      reason: 'user_barge_in',
+      source: 'client_runtime_manual_button',
+      target: 'current_output'
+    };
+
+    setRealtimeOutput((prev) => applyRealtimeOutputInterrupt(prev, interruptSeed));
+    setRobot((prev) => ({
+      ...prev,
+      state: realtimeSession.active && realtimeSession.micActive ? 'listening' : 'idle',
+      expression: realtimeSession.active && realtimeSession.micActive ? 'listening' : prev.expression,
+      expressionSource: 'manual_barge_in_interrupt'
+    }));
+    syncActiveRobotSummary({ state: realtimeSession.active && realtimeSession.micActive ? 'listening' : 'idle', lastSeen: '刚刚' });
+    pushLog('warn', '模拟用户插话：已中断当前输出', '发送 omni.interrupt.v1；清空本地 reply_audio_frame 播放队列。audio_frame 仍只是输入媒体，不会自动触发打断。');
+    pushTrace('RealtimeOutputChannel', 'interrupt.local', `${interruptSeed.turnId || 'no_turn'} · user_barge_in`);
+
+    const endpoint = robot.adapterDetail?.endpoint;
+    const connected = localDevBridgeRef.current?.getStatus?.().connected;
+    if (robot.mode === 'local_dev' && endpoint && connected) {
+      const result = await localDevBridgeRef.current.sendInterrupt(interruptSeed, endpoint, 5000);
+      if (!result.ok) {
+        setLocalDevBridge((prev) => ({ ...prev, status: 'failed', detail: 'interrupt 发送失败。', error: result.error, updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }) }));
+        setRealtimeOutput((prev) => applyRealtimeOutputError(prev, result.error));
+        pushTrace('RealtimeOutputChannel', 'interrupt.send.failed', result.error);
+        return;
+      }
+      pushTrace('RealtimeOutputChannel', 'interrupt.sent', `${result.interrupt?.interruptId || 'no_interrupt_id'} → ${endpoint}`);
+      return;
+    }
+
+    setLocalDevBridge((prev) => ({
+      ...prev,
+      status: 'interrupt_local_only',
+      detail: '已本地停止播放；LocalDev WebSocket 未连接，因此没有发送 omni.interrupt.v1 到服务端。',
+      updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false })
+    }));
+    pushTrace('RealtimeOutputChannel', 'interrupt.local_only', 'no connected LocalDev bridge');
+  }
 
   async function maybeSendMediaFrameToLocalDev(frame) {
     const endpoint = robot.adapterDetail?.endpoint;
@@ -825,6 +926,7 @@ export function useRuntimeCore() {
     localDevPreflight,
     localDevBridge,
     mediaChannels,
+    realtimeOutput,
     setCameraStatus,
     actions: {
       handleRobotSelect,
@@ -845,6 +947,8 @@ export function useRuntimeCore() {
       handleLocalDevOmniSend,
       handleLocalDevOmniDisconnect,
       handleOmniTurnClear,
+      handleReplyAudioFramePlayed,
+      handleRealtimeOutputInterrupt,
       handleModelProviderUpdate,
       handleModelProviderReset,
       handleModelProviderTest,

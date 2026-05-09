@@ -1,4 +1,4 @@
-# 技术落地路线 v1.1.0
+# 技术落地路线 v1.1.2
 
 ## 阶段 1：Web Demo + Runtime 骨架
 
@@ -85,6 +85,26 @@
 3. Qwen2.5-Omni 真实模型服务适配。
 4. 语音流式回放和打断控制。
 
+
+
+## 阶段 2.4：v1.1.1 Mock Realtime Omni 双向媒体通道
+
+已完成：
+
+1. 新增 `omni.output_state.v1`，LocalDev Mock Server 可在同一 WebSocket session 中返回 thinking / speaking / finished。
+2. 新增 `omni.reply_audio_frame.v1`，Mock Server 流式返回 PCM Float32 输出音频帧。
+3. 新增 `src/runtime/realtimeOutputChannel.js`，把 Omni 输出状态、输出音频帧队列和播放进度从输入媒体通道中分离。
+4. 新增 `src/runtime/omniOutputFrames.js`，统一输出状态与 reply audio frame 协议。
+5. 新增 `RealtimeAudioOutputPlayer`，使用 AudioContext 播放服务端输出音频帧，并驱动 RobotFace speaking 状态。
+6. Omni Session / Visible Context 面板新增实时输出通道状态。
+7. 明确 `reply_text` 只作为字幕、日志和调试，不是 TTS 输入。
+
+仍未完成：
+
+1. 真实 Qwen2.5-Omni / 云端 Omni 的原生输出音频映射。
+2. WebRTC / binary WebSocket 等生产级媒体传输。
+3. barge-in / interrupt / jitter buffer / echo cancellation。
+4. 真实机器人扬声器、麦克风阵列和硬件播放链路。
 
 ## 阶段 2：LocalDevOmniAdapter
 
@@ -345,3 +365,55 @@ Not implemented yet:
 5. Cloud upload gating beyond the current Demo permission/FramePolicy display.
 
 Recommended next step: v1.1.1 should add mock streaming reply audio and playback state so the realtime dialogue loop can show listening → thinking → speaking more naturally.
+
+
+## v1.1.1 Implementation Notes
+
+v1.1.1 adds the output half of the LocalDev realtime session. The goal is bidirectional realtime communication, not text-to-speech.
+
+Implemented:
+
+1. `omni.output_state.v1` for thinking / speaking / finished state events.
+2. `omni.reply_audio_frame.v1` for mock service-side PCM Float32 output audio chunks.
+3. `realtimeOutputChannel.js` to keep Omni -> Web output state separate from Web -> Omni input media channels.
+4. `RealtimeAudioOutputPlayer.jsx` to play reply audio frames with Web Audio.
+5. `LocalDevOmniClient` handling for output state and reply audio frame messages without resolving the pending request too early.
+6. `LocalDev Mock Server` streaming output state, output turn, reply audio frames, and final state over the same WebSocket session.
+
+Not implemented yet:
+
+1. Real Qwen2.5-Omni or cloud Omni native audio output.
+2. Production binary transport / WebRTC.
+3. Barge-in, interrupt, jitter buffer, and echo control.
+4. Real robot speaker hardware output.
+
+## 阶段 2.5：v1.1.2 Realtime Interrupt / Barge-in Mock Control
+
+目标：在不做自动语音识别打断的前提下，先建立显式 interrupt 控制链路。
+
+### 已实现
+
+- `omni.interrupt.v1` 协议。
+- Runtime 手动 interrupt action。
+- Web Audio 播放源停止与播放队列清空。
+- LocalDev Mock Server 当前输出 turn 取消。
+- UI 面板展示 interrupted 状态、interrupt count 和 last reason。
+
+### 原则
+
+```text
+audio_frame 是输入媒体
+reply_audio_frame 是输出媒体
+interrupt 是控制事件
+```
+
+三者不能混淆。
+
+### 后续建议
+
+下一步可以做 v1.1.3：
+
+- output jitter buffer 稳定性。
+- speaking/listening 并行状态细化。
+- interrupt ack 和 turn cancellation trace 更细。
+- 设计自动 barge-in 的 VAD/AEC 草案，但暂不默认启用。

@@ -1,10 +1,10 @@
-# Realtime Omni Robot Demo v1.1.0
+# Realtime Omni Robot Demo v1.1.2
 
 这是一个用于投资人演示和后续工程开发的 **实时 Omni 机器人平台 Demo**。项目定位不是单纯本地部署机器人，而是：
 
 > 云端优先、可本地调试、可移动、多网络、自带插件和权限系统的实时 Omni 机器人平台。
 
-v1.1.0 是真实摄像头 JPEG 关键帧 payload 版：在 v1.0.9 真实麦克风 PCM chunk 基础上，浏览器摄像头关键帧也会携带 JPEG base64 payload，通过 `omni.camera_frame.v1` 发送到 LocalDev Adapter。
+v1.1.2 是 Mock Realtime Omni 双向媒体通道 + 手动 barge-in 控制版：在 v1.1.1 流式输出音频帧基础上，Runtime 可以显式发送 `omni.interrupt.v1` 停止当前 Mock 输出流。麦克风 `omni.audio_frame.v1` 仍会作为输入媒体发送，但不会自动触发打断，避免机器人播放声音被麦克风采回后造成“Omni 自己打断自己”。
 
 ## 快速运行
 
@@ -36,12 +36,15 @@ npm run dev
 
 如果提示找不到 `node_modules` 或 `dist`，可以忽略；如果提示找不到 `package.json`，说明还没有 `cd` 进入项目文件夹。
 
-## v1.1.0 新增内容
+## v1.1.2 新增内容
 
-- `omni.camera_frame.v1` 现在会携带浏览器摄像头 JPEG base64 payload，不再只是关键帧元数据。
-- `LocalDev Mock Server` 日志会显示摄像头帧 `payload=yes bytes=... 640x... selector=...`，用于确认真实 JPEG 关键帧已经通过 WebSocket 到达。
-- Omni Session / Visible Context 面板显示最近视觉帧 bytes 和 payload 状态。
-- `omni.audio_frame.v1` 保持 v1.0.9 的真实 PCM Float32 chunk 发送能力。
+- 新增 `omni.interrupt.v1`：用明确控制事件表达用户插话 / barge-in，而不是把任意麦克风声音当作打断。
+- `RealtimeAudioOutputPlayer` 支持停止当前 `AudioBufferSourceNode`，清空播放队列，并显示 interrupt 状态。
+- `realtimeOutputChannel` 增加 `interruptCount`、`interruptToken`、`lastInterrupt`，把 output playback stop 与 input audio frame 解耦。
+- LocalDev Mock Server 支持取消当前 turn 的定时 `reply_audio_frame` 推送，并返回 `omni.output_state.v1: interrupted`。
+- WebUI 增加“模拟用户插话 / Interrupt”按钮，用手动 Mock 先验证实时通讯打断链路。
+- 明确安全边界：播放时可以继续采集/发送 `omni.audio_frame.v1`，但 `audio_frame` 不会自动触发 interrupt，避免 Omni 自己打断自己。
+- 保留 v1.1.1 能力：`omni.output_state.v1`、`omni.reply_audio_frame.v1`、Web Audio 流式播放和 RobotFace speaking 联动。
 - 继续坚持 Omni-first：ASR 文本只作字幕、日志、调试和插件关键词辅助；摄像头关键帧不做前端情绪摘要。
 
 ## 当前实现
@@ -54,8 +57,8 @@ npm run dev
 - 浏览器摄像头预览，模拟未来机器人摄像头视角
 - Visual Frame Buffer / Frame Selector / FramePolicyEngine 关键帧策略演示
 - Omni Session Bridge：把音频、视觉、事件、身份、权限、插件和网络状态打包给 Adapter
-- LocalDev Omni Client：保持 WebSocket 调试会话，把统一输入包通过 requestId 发送并匹配输出回合，同时可发送音频/摄像头媒体帧
-- LocalDev Omni Mock Server：本地验证 `omni.input_packet.v1` → `omni.output_turn.v1`，并识别带真实 PCM payload 的 `omni.audio_frame.v1` 与带真实 JPEG payload 的 `omni.camera_frame.v1` 媒体帧
+- LocalDev Omni Client：保持 WebSocket 调试会话，把统一输入包通过 requestId 发送并匹配输出回合，同时可发送音频/摄像头媒体帧，并接收 output_state / reply_audio_frame 流式输出
+- LocalDev Omni Mock Server：本地验证 `omni.input_packet.v1`、`omni.audio_frame.v1`、`omni.camera_frame.v1` 输入，并在同一 WebSocket session 中流式返回 `omni.output_state.v1` / `omni.reply_audio_frame.v1` / `omni.output_turn.v1`
 - Tool Intent Router：把 Omni 输出的工具/插件意图路由回插件触发器
 - Mock Tool Engine：执行 Demo 级空调、邮件、表情、动作和角色切换
 - LOOI 风格动态机器人表情
@@ -82,12 +85,17 @@ realtime-omni-robot-demo/
 │   ├── IMPLEMENTATION_PLAN.md
 │   ├── INVESTOR_NOTES.md
 │   ├── RELEASE_NOTES_v1.1.0.md
-│   └── UPDATE_GUIDE_v1.1.0.md
+│   ├── UPDATE_GUIDE_v1.1.0.md
+│   ├── RELEASE_NOTES_v1.1.1.md
+│   ├── UPDATE_GUIDE_v1.1.1.md
+│   ├── RELEASE_NOTES_v1.1.2.md
+│   └── UPDATE_GUIDE_v1.1.2.md
 ├── src/
 │   ├── components/
 │   │   ├── RobotRegistryPanel.jsx
 │   │   ├── OmniSessionPanel.jsx
 │   │   ├── RealtimeAudioPanel.jsx
+│   │   ├── RealtimeAudioOutputPlayer.jsx
 │   │   ├── ConnectionManagerPanel.jsx
 │   │   ├── RobotFace.jsx
 │   │   ├── RobotProfilePanel.jsx
@@ -110,6 +118,8 @@ realtime-omni-robot-demo/
 │   │   ├── toolEngine.js
 │   │   ├── localDevOmniClient.js
 │   │   ├── omniMediaFrames.js
+│   │   ├── omniOutputFrames.js
+│   │   ├── realtimeOutputChannel.js
 │   │   ├── visualFrameBuffer.js
 │   │   ├── useRuntimeCore.js
 │   │   ├── realtimeSession.js
@@ -158,6 +168,7 @@ Runtime Layer
 - Runtime Mode Manager
 - Model Adapter Registry
 - Realtime Session
+- Realtime Output Channel
 - Omni Session Bridge
 - Event Bus
 - Visual Frame Buffer
@@ -191,6 +202,23 @@ Client Layer
 8. 接入实体机器人屏幕与舵机。
 9. WebUI 保持开发控制台，普通用户主入口迁移到 App。
 
+
+
+## v1.1.1：Mock Realtime Omni 双向媒体通道
+
+这版把 v1.1.0 的输入媒体帧链路推进成双向 realtime session：Web 继续发送 `omni.input_packet.v1`、`omni.audio_frame.v1`、`omni.camera_frame.v1`，LocalDev Mock Server 会在同一个 WebSocket session 中流式返回 `omni.output_state.v1` 和 `omni.reply_audio_frame.v1`。
+
+重点：这不是 TTS。Mock 音频帧被视为 Omni 服务端原生输出媒体帧；`reply_text` 只作为字幕、日志和调试信息。
+
+验证方式：
+
+```bash
+npm install
+npm run mock:localdev
+npm run dev
+```
+
+页面中点击“发送到 LocalDev Adapter”后，应看到 Realtime Output Channel 的 received / played / queued 计数变化，RobotFace 进入 speaking 状态，并播放 Mock 输出音频。
 
 ## v1.1.0：真实摄像头 JPEG 关键帧 payload 版
 
@@ -239,7 +267,7 @@ npm run dev
 packet_schema=omni.input_packet.v1 packet_id=omni_xxx robot=robot_local_dev display_name=DemoBot 01 expression=idle intents=0 request=localdev_req_xxx
 ```
 
-这仍然不是接入真实 Qwen2.5-Omni；它只稳定 Web → LocalDev Adapter → Web 的协议回环。真实音频 chunk 和图片 payload 已经在 v1.0.9 / v1.1.0 接入，回复语音流、播放和打断机制仍在后续版本实现。
+这仍然不是接入真实 Qwen2.5-Omni；它只稳定 Web → LocalDev Adapter → Web 的协议回环。真实音频 chunk 和图片 payload 已经在 v1.0.9 / v1.1.0 接入，Mock reply_audio_frame 播放链路已在 v1.1.1 接入，手动 interrupt/barge-in 控制已在 v1.1.2 接入；真实模型语音输出、自动 VAD/AEC 打断仍在后续版本实现。
 
 
 ## v1.0.6：Codex 迁移准备与 LocalDev Mock Server

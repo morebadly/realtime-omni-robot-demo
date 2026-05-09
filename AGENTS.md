@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.1.0.
+Current version: v1.1.2.
 
 Tech stack:
 - Vite
@@ -80,6 +80,8 @@ Runtime:
 - `src/runtime/visualFrameBuffer.js`
 - `src/runtime/omniPacket.js`
 - `src/runtime/omniTurnSimulator.js`
+- `src/runtime/omniOutputFrames.js`
+- `src/runtime/realtimeOutputChannel.js`
 
 UI:
 - `src/App.jsx`
@@ -87,6 +89,7 @@ UI:
 - `src/components/RobotProfilePanel.jsx`
 - `src/components/ModelProviderPanel.jsx`
 - `src/components/OmniSessionPanel.jsx`
+- `src/components/RealtimeAudioOutputPlayer.jsx`
 - `src/components/PluginCenter.jsx`
 - `src/components/PermissionPanel.jsx`
 - `src/components/RobotFace.jsx`
@@ -148,12 +151,24 @@ Near-term development should focus on:
 8. Docs and release packaging.
 
 
-## v1.1.0 media channel rule
+## v1.1.2 realtime media and interrupt rule
 
 - `omni.input_packet.v1` carries low-frequency context and guardrails.
 - `omni.audio_frame.v1` now carries real browser microphone PCM Float32 chunks during LocalDev testing.
 - Audio payload is base64 encoded inside the demo JSON envelope so the mock server can verify `payload=yes` and `bytes > 0`.
 - This is still a development bridge, not the final production transport; future RobotMicAdapter may use PCM, Opus, WebRTC, or binary WebSocket frames.
-- `omni.camera_frame.v1` carries selected keyframe metadata now and future full JPEG/video payloads.
+- `omni.camera_frame.v1` carries selected keyframe JPEG payloads during LocalDev testing.
+- `omni.output_state.v1` carries service-side output state such as thinking / speaking / finished.
+- `omni.reply_audio_frame.v1` carries Omni output audio frames. It must not be described or implemented as reply_text -> TTS.
+- `omni.interrupt.v1` is the explicit barge-in control event. Do not make `omni.audio_frame.v1` automatically interrupt output in this mock version.
+- Prevent self-interruption: robot playback captured by the mic is not enough to stop the current output turn.
 - Do not make ASR text the primary input.
 - Do not create frontend visual emotion summaries.
+
+## v1.1.2 implementation boundary
+
+- Keep LocalDev output audio as safe Mock realtime media frames.
+- Do not connect real Qwen2.5-Omni, real cloud APIs, real TTS, real email, real AC, or real hardware unless explicitly requested.
+- `reply_text` is subtitle/log/debug context only; do not make it the source for speech synthesis.
+- Keep input and output media channels separate: `omniMediaFrames.js` is Web/Robot -> Omni; `realtimeOutputChannel.js` is Omni -> Web/Robot.
+- v1.1.2 barge-in is manual Mock control only. Do not add automatic VAD/AEC-based interruption yet.

@@ -1429,3 +1429,66 @@ li { color: rgba(237,250,255,.58); font-size: 12px; margin-bottom: 6px; }
 .media-channel-grid strong { display: block; color: rgba(238, 253, 255, .92); overflow-wrap: anywhere; font-size: 12px; }
 .media-channel-grid p { margin: 5px 0 0; color: rgba(190, 215, 226, .7); font-size: 12px; line-height: 1.45; }
 @media (max-width: 1300px) { .media-channel-grid { grid-template-columns: 1fr; } }
+
+/* v1.1.1 realtime output audio channel */
+.realtime-output-player,
+.realtime-output-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 12px 0;
+}
+.realtime-output-player > div,
+.realtime-output-grid > div {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(93, 247, 174, .045);
+  border: 1px solid rgba(93, 247, 174, .14);
+}
+.realtime-output-player small,
+.realtime-output-grid small {
+  display: block;
+  color: rgba(190, 235, 214, .68);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.realtime-output-player strong,
+.realtime-output-grid strong {
+  display: block;
+  color: rgba(238, 255, 246, .94);
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.realtime-output-player p,
+.realtime-output-grid p {
+  margin: 5px 0 0;
+  color: rgba(196, 225, 214, .72);
+  font-size: 12px;
+  line-height: 1.45;
+}
+@media (max-width: 1300px) {
+  .realtime-output-player,
+  .realtime-output-grid { grid-template-columns: 1fr; }
+}
+
+/* v1.1.2 manual barge-in / interrupt control */
+button.danger-button,
+.omni-actions button.danger-button,
+.realtime-output-player button.danger-button {
+  border-color: rgba(255, 125, 153, .36);
+  color: #ff9caf;
+  background: rgba(255, 125, 153, .09);
+}
+button.danger-button:hover:not(:disabled),
+.omni-actions button.danger-button:hover:not(:disabled),
+.realtime-output-player button.danger-button:hover:not(:disabled) {
+  border-color: rgba(255, 125, 153, .62);
+  background: rgba(255, 125, 153, .14);
+}
+.realtime-output-player button.danger-button {
+  margin-top: 8px;
+  width: 100%;
+  border-radius: 12px;
+  padding: 9px 11px;
+}

@@ -13,6 +13,7 @@ import ModelProviderPanel from './components/ModelProviderPanel';
 import RuntimeArchitecturePanel from './components/RuntimeArchitecturePanel';
 import ConnectionManagerPanel from './components/ConnectionManagerPanel';
 import RealtimeAudioPanel from './components/RealtimeAudioPanel';
+import RealtimeAudioOutputPlayer from './components/RealtimeAudioOutputPlayer';
 import OmniSessionPanel from './components/OmniSessionPanel';
 import { useRuntimeCore } from './runtime/useRuntimeCore';
 import './styles/app.css';
@@ -41,6 +42,7 @@ export default function App() {
     localDevPreflight,
     localDevBridge,
     mediaChannels,
+    realtimeOutput,
     adapterProfiles,
     setCameraStatus,
     actions
@@ -50,9 +52,9 @@ export default function App() {
     <div className="app-shell">
       <header className="hero">
         <div>
-          <p className="eyebrow">Realtime Omni Robot Demo v1.1.0</p>
+          <p className="eyebrow">Realtime Omni Robot Demo v1.1.2</p>
           <h1>云端优先、可本地调试的实时 Omni 机器人平台</h1>
-          <p className="hero-copy">当前版本新增真实摄像头 JPEG 关键帧 payload：音频 PCM chunk 和视觉关键帧都可通过 LocalDev 媒体通道送达。</p>
+          <p className="hero-copy">当前版本新增 Mock interrupt / barge-in 控制：输入侧继续发送 PCM/JPEG，输出侧可用 omni.interrupt.v1 手动停止 reply_audio_frame 流。</p>
         </div>
         <div className="hero-badges">
           <span>RuntimeCore</span>
@@ -72,6 +74,9 @@ export default function App() {
           <span>Media Frame Channels</span>
           <span>PCM Audio Chunks</span>
           <span>JPEG Frame Payload</span>
+          <span>Reply Audio Frames</span>
+          <span>Realtime Output Channel</span>
+          <span>Manual Barge-in Control</span>
         </div>
       </header>
 
@@ -106,7 +111,7 @@ export default function App() {
               </div>
               <span className="tag">{robot.adapter}</span>
             </div>
-            <RobotFace expression={robot.expression} state={robot.state} speaking={robot.state === 'speaking'} />
+            <RobotFace expression={robot.expression} state={robot.state} speaking={robot.state === 'speaking' || realtimeOutput?.playbackActive} />
             <div className="speech-motion-strip">
               <div><small>机器人说</small><strong>{robot.lastSpeech || '暂无'}</strong></div>
               <div><small>机器人动作</small><strong>{robot.motion?.name || 'idle'}</strong></div>
@@ -114,6 +119,7 @@ export default function App() {
               <div><small>Model Adapter</small><strong>{robot.adapter}</strong></div>
             </div>
             <RealtimeAudioPanel robot={robot} session={realtimeSession} route={realtimeRoute} onStatus={actions.handleRealtimeSessionStatus} onAudioFrame={actions.handleAudioFrame} />
+            <RealtimeAudioOutputPlayer output={realtimeOutput} onFramePlayed={actions.handleReplyAudioFramePlayed} onInterrupt={actions.handleRealtimeOutputInterrupt} />
             <CameraPreview robot={robot} framePolicy={framePolicy} onStatus={setCameraStatus} onFrame={actions.handleCameraFrame} />
             <EmotionInspector robot={robot} cameraStatus={cameraStatus} recentEvents={recentEvents} />
             <div className="telemetry-grid">
@@ -137,10 +143,12 @@ export default function App() {
             localDevPreflight={localDevPreflight}
             localDevBridge={localDevBridge}
             mediaChannels={mediaChannels}
+            realtimeOutput={realtimeOutput}
             onBuild={actions.handleOmniPacketBuild}
             onSimulate={actions.handleOmniTurnSimulate}
             onSendLocalDev={actions.handleLocalDevOmniSend}
             onDisconnectLocalDev={actions.handleLocalDevOmniDisconnect}
+            onInterrupt={actions.handleRealtimeOutputInterrupt}
             onClear={actions.handleOmniTurnClear}
           />
           <ModelProviderPanel
@@ -156,7 +164,7 @@ export default function App() {
         <aside className="right-column">
           <RobotRegistryPanel robots={robotRegistry} activeRobotId={activeRobotId} onSelect={actions.handleRobotSelect} onAdd={actions.handleRobotAdd} onDelete={actions.handleRobotDelete} />
           <PermissionPanel permissions={permissions} onChange={actions.handlePermissionChange} />
-          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} />
+          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} />
         </aside>
       </main>
 

@@ -1,5 +1,6 @@
 import { summarizeOmniPacket } from '../runtime/omniPacket';
 import { summarizeMediaChannels } from '../runtime/omniMediaFrames';
+import { summarizeRealtimeOutputChannel } from '../runtime/realtimeOutputChannel';
 
 function prettyJson(value) {
   if (!value) return '暂无';
@@ -23,14 +24,19 @@ const bridgeLabels = {
   failed: '连接失败',
   disconnected: '已断开',
   media_sending: '发送媒体帧',
-  media_ack: '媒体帧已确认'
+  media_ack: '媒体帧已确认',
+  output_state: '输出状态',
+  reply_audio_frame: '收到输出音频帧',
+  interrupt_sending: '发送打断',
+  interrupt_sent: '已发送打断',
+  interrupt_local_only: '本地打断'
 };
 
 function statusClass(status) {
-  if (status === 'connected' || status === 'received' || status === 'media_ack') return 'connected';
-  if (status === 'connecting' || status === 'sending' || status === 'media_sending') return 'checking';
+  if (status === 'connected' || status === 'received' || status === 'media_ack' || status === 'reply_audio_frame' || status === 'interrupt_sent') return 'connected';
+  if (status === 'connecting' || status === 'sending' || status === 'media_sending' || status === 'output_state' || status === 'interrupt_sending') return 'checking';
   if (status === 'failed') return 'failed';
-  if (status === 'disconnected') return 'skipped';
+  if (status === 'disconnected' || status === 'interrupt_local_only') return 'skipped';
   return 'pending';
 }
 
@@ -42,10 +48,12 @@ export default function OmniSessionPanel({
   localDevPreflight,
   localDevBridge,
   mediaChannels,
+  realtimeOutput,
   onBuild,
   onSimulate,
   onSendLocalDev,
   onDisconnectLocalDev,
+  onInterrupt,
   onClear
 }) {
   const busy = Boolean(sessionStatus?.busy);
@@ -57,7 +65,7 @@ export default function OmniSessionPanel({
       <div className="panel-header">
         <div>
           <p className="eyebrow">Omni Session Bridge</p>
-          <h2>实时 Omni 输入包 / 输出回合预览</h2>
+          <h2>实时 Omni 双向会话预览</h2>
         </div>
         <span className={`tag ${route?.canStream ? 'connection-status-connected' : 'connection-status-degraded'}`}>{route?.route || 'not_connected'}</span>
       </div>
@@ -76,7 +84,7 @@ export default function OmniSessionPanel({
         <div>
           <small>最近模型回合</small>
           <strong>{turn ? turn.turnId : '暂无'}</strong>
-          <p>{turn ? `${turn.expression?.expression} · ${turn.tool_intents?.length || 0} tool intents` : '可先构建输入包，再模拟 Omni 输出。'}</p>
+          <p>{turn ? `${turn.expression?.expression} · ${turn.tool_intents?.length || 0} tool intents` : '可先构建输入包，再模拟 Omni 输出。reply_text 只作字幕/日志。'}</p>
         </div>
       </div>
 
@@ -127,11 +135,20 @@ export default function OmniSessionPanel({
         <div><small>LocalDev Media Ack</small><strong>{mediaChannels?.localDev?.lastFrameId || '暂无'}</strong><p>ack={mediaChannels?.localDev?.ackCount || 0} · {mediaChannels?.localDev?.lastFrameSchema || '等待媒体帧确认'}</p></div>
       </div>
 
+
+      <div className="realtime-output-grid">
+        <div><small>输出通道摘要</small><strong>{summarizeRealtimeOutputChannel(realtimeOutput)}</strong><p>{realtimeOutput?.guardrail || 'reply_audio_frame 是 Omni 输出媒体帧。'}</p></div>
+        <div><small>Output State</small><strong>{realtimeOutput?.state || 'idle'}</strong><p>turn={realtimeOutput?.turnId || '暂无'} · reason={realtimeOutput?.lastStateReason || '暂无状态事件'}</p></div>
+        <div><small>Reply Audio Frames</small><strong>{realtimeOutput?.lastFrameId || '暂无'}</strong><p>received={realtimeOutput?.receivedAudioFrames || 0} · played={realtimeOutput?.playedAudioFrames || 0} · queued={realtimeOutput?.queuedAudioFrames?.length || 0} · seq={realtimeOutput?.lastSequence ?? 'n/a'}</p></div>
+        <div><small>Playback</small><strong>{realtimeOutput?.playbackActive ? 'playing' : 'idle'}</strong><p>final={realtimeOutput?.finalFrameReceived ? 'yes' : 'no'} · interrupted={realtimeOutput?.interruptCount || 0} · error={realtimeOutput?.lastError || 'none'}</p></div>
+      </div>
+
       <div className="omni-actions">
         <button type="button" onClick={onBuild} disabled={busy}>构建 Omni 输入包</button>
         <button type="button" onClick={onSimulate} disabled={busy}>{busy && sessionStatus?.action === 'mock_turn' ? '模拟中...' : '模拟 Omni 回合'}</button>
         <button type="button" onClick={onSendLocalDev} disabled={busy}>{busy && sessionStatus?.action === 'local_dev_send' ? '发送中...' : '发送到 LocalDev Adapter'}</button>
         <button type="button" onClick={onDisconnectLocalDev} disabled={busy}>断开 LocalDev</button>
+        <button type="button" className="danger-button" onClick={onInterrupt} disabled={!(realtimeOutput?.playbackActive || realtimeOutput?.queuedAudioFrames?.length || realtimeOutput?.state === 'speaking')}>模拟用户插话 / Interrupt</button>
         <button type="button" onClick={onClear} disabled={busy}>清空回合</button>
       </div>
       {busy && <p className="omni-busy-note">{sessionStatus?.label || 'Omni 会话'}正在进行中，已暂时锁定新的输入，避免多重回包覆盖当前机器人状态。</p>}
@@ -142,12 +159,12 @@ export default function OmniSessionPanel({
           <pre>{prettyJson(packet)}</pre>
         </div>
         <div>
-          <h3>Adapter 返回的统一输出</h3>
+          <h3>Adapter 返回的统一输出 / 字幕</h3>
           <pre>{prettyJson(turn)}</pre>
         </div>
       </div>
 
-      <p className="omni-note">v1.1.0 在真实麦克风 PCM chunk 基础上新增摄像头 JPEG payload：运行 `npm run mock:localdev` 后，Web 会通过保持连接的 WebSocket 发送 omni.input_packet.v1、带 payload 的 omni.audio_frame.v1 与 omni.camera_frame.v1；服务未启动时仍可继续使用 Mock 回合。</p>
+      <p className="omni-note">v1.1.2 是 Mock Realtime Omni 双向媒体通道 + 手动 barge-in 控制：运行 `npm run mock:localdev` 后，Web 会在同一个 WebSocket session 中发送 omni.input_packet.v1 / omni.audio_frame.v1 / omni.camera_frame.v1，并接收 omni.output_state.v1 / omni.reply_audio_frame.v1；用户插话通过 omni.interrupt.v1 手动表达。reply_text 只作为字幕、日志和调试，不是 TTS 输入。</p>
     </section>
   );
 }

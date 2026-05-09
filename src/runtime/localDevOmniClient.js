@@ -1,3 +1,4 @@
+import { createOmniInterrupt, normalizeOutputStateMessage, normalizeReplyAudioFrameMessage } from './omniOutputFrames';
 function createRequestId() {
   const rand = Math.random().toString(36).slice(2, 8);
   return `localdev_req_${Date.now().toString(36)}_${rand}`;
@@ -202,6 +203,36 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
             });
             return;
           }
+
+          const outputState = normalizeOutputStateMessage(message);
+          if (outputState) {
+            emit({
+              status: 'output_state',
+              endpoint,
+              requestId: outputState.requestId,
+              outputState: outputState.state,
+              lastTurnId: outputState.state?.turnId,
+              detail: `已收到 LocalDev 输出状态：${outputState.state?.state || 'unknown'} / ${outputState.state?.turnId || 'no_turn'}`,
+              error: null
+            });
+            return;
+          }
+
+          const replyAudioFrame = normalizeReplyAudioFrameMessage(message);
+          if (replyAudioFrame) {
+            emit({
+              status: 'reply_audio_frame',
+              endpoint,
+              requestId: replyAudioFrame.requestId,
+              replyAudioFrame: replyAudioFrame.frame,
+              lastTurnId: replyAudioFrame.frame?.turnId,
+              lastReplyAudioFrameId: replyAudioFrame.frame?.frameId,
+              detail: `已收到 LocalDev 输出音频帧：seq=${replyAudioFrame.frame?.sequence ?? 'unknown'} / ${replyAudioFrame.frame?.frameId || 'unknown'}`,
+              error: null
+            });
+            return;
+          }
+
           const output = normalizeOutputEnvelope(message);
           const requestId = output.requestId;
           const pendingItem = requestId ? pending.get(requestId) : pending.values().next().value;
@@ -328,10 +359,58 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
     return { ok: true, endpoint, requestId, frameId: frame?.frameId, frameSchema: frame?.schema, reused: connected.reused };
   }
 
+
+  async function sendInterrupt(seed = {}, endpoint, timeoutMs = 5000) {
+    const connected = await connect(endpoint, timeoutMs);
+    if (!connected.ok) return connected;
+    if (!isSocketOpen(socket)) {
+      return { ok: false, endpoint, error: `LocalDev WebSocket 当前不是 open 状态，无法发送 interrupt：${endpoint}` };
+    }
+    const requestId = createRequestId();
+    const interrupt = createOmniInterrupt({
+      ...seed,
+      requestId,
+      source: seed.source || 'client_runtime',
+      reason: seed.reason || 'user_barge_in'
+    });
+    const envelope = {
+      schema: 'cloudgenie.local_dev.control_envelope.v1',
+      type: 'omni.interrupt',
+      requestId,
+      sentAt: nowIso(),
+      interruptSchema: interrupt.schema,
+      interruptId: interrupt.interruptId,
+      robotId: interrupt.robotId || null,
+      turnId: interrupt.turnId || null,
+      interrupt
+    };
+    emit({
+      status: 'interrupt_sending',
+      endpoint,
+      requestId,
+      lastInterruptId: interrupt.interruptId,
+      lastTurnId: interrupt.turnId || seed.turnId || null,
+      detail: `正在发送 omni.interrupt.v1：${interrupt.reason}。`,
+      error: null
+    });
+    socket.send(JSON.stringify(envelope));
+    emit({
+      status: 'interrupt_sent',
+      endpoint,
+      requestId,
+      lastInterruptId: interrupt.interruptId,
+      lastTurnId: interrupt.turnId || seed.turnId || null,
+      detail: '已发送 omni.interrupt.v1；等待服务端返回 output_state=interrupted。',
+      error: null
+    });
+    return { ok: true, endpoint, requestId, interrupt, reused: connected.reused };
+  }
+
   return {
     connect,
     send,
     sendMediaFrame,
+    sendInterrupt,
     close,
     getStatus() {
       return {

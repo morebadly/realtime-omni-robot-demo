@@ -1,4 +1,4 @@
-# 架构说明 v1.1.0
+# 架构说明 v1.1.2
 
 ## 1. 产品定位
 
@@ -38,6 +38,7 @@ Runtime Layer
 - Runtime Mode Manager
 - Model Adapter Registry
 - LocalDev Omni Client
+- Realtime Output Channel
 - LocalDev Omni Mock Server（开发辅助，不进入正式产品核心）
 - Event Bus
 - Visual Frame Buffer
@@ -91,7 +92,10 @@ Web 不是核心，只是客户端。当前 v1.0.6 已把多机器人注册、�
 src/runtime/useRuntimeCore.js
 src/runtime/robotProfile.js
 src/runtime/robotRuntimeConfig.js
+src/runtime/realtimeOutputChannel.js
+src/runtime/omniOutputFrames.js
 src/components/RobotProfilePanel.jsx
+src/components/RealtimeAudioOutputPlayer.jsx
 ```
 
 ## 4. Model Adapter Registry
@@ -565,3 +569,78 @@ The frontend still does not generate a visual emotion summary. It only selects f
 ### Current transport limitation
 
 The v1.1.0 LocalDev transport keeps JPEG payloads inside JSON envelopes for easy inspection. A production RobotCameraAdapter can later switch to binary WebSocket frames, WebRTC data/media channels, object storage handles, or model-provider-specific upload APIs without changing the Runtime principle.
+
+
+## 11. v1.1.1 Realtime Output Channel
+
+`Realtime Output Channel` 负责 Omni 服务端到 Web/机器人扬声器方向的输出媒体流。它与 `omniMediaFrames.js` 的输入媒体通道分离：
+
+```text
+Input media channel:  Web/Robot Mic + Camera -> Omni
+Output media channel: Omni -> Web/Robot Speaker + Expression
+```
+
+当前 Mock 协议：
+
+- `omni.output_state.v1`：thinking / speaking / finished / interrupted / error。
+- `omni.reply_audio_frame.v1`：服务端输出 PCM Float32 音频帧，Web 端按 sequence 播放。
+- `omni.output_turn.v1`：保留 reply_text、expression、tool_intents；其中 `reply_text` 是字幕、日志和调试文本，不是 TTS 输入。
+
+LocalDev Mock Server 的语义是“模拟 Realtime Omni 服务端流式输出”，不是 `reply_text -> TTS -> 播放`。真实模型接入后，应把模型原生音频输出映射到 `reply_audio_frame`，而不是把文本回复再送入前端语音合成。
+
+## 12. v1.1.2 Realtime Interrupt / Barge-in Mock Control
+
+v1.1.2 在 v1.1.1 的 Realtime Output Channel 上增加显式打断控制。
+
+核心原则：
+
+```text
+omni.audio_frame.v1 ≠ interrupt
+omni.reply_audio_frame.v1 ≠ interrupt
+只有 omni.interrupt.v1 才能停止当前输出 turn
+```
+
+这样可以避免机器人播放声音被麦克风采回后，被误判成用户插话，导致 Omni 自己打断自己。
+
+### 12.1 新协议
+
+`omni.interrupt.v1` 表达用户插话 / barge-in intent：
+
+```js
+{
+  schema: 'omni.interrupt.v1',
+  turnId,
+  robotId,
+  displayName,
+  reason: 'user_barge_in',
+  source: 'client_runtime_manual_button',
+  target: 'current_output'
+}
+```
+
+### 12.2 Runtime 状态
+
+`realtimeOutputChannel` 维护：
+
+```text
+interruptCount
+interruptToken
+lastInterrupt
+queuedAudioFrames
+playbackActive
+```
+
+`interruptToken` 用于通知 Web Audio 播放组件停止当前 `AudioBufferSourceNode`，并清空旧帧播放状态。
+
+### 12.3 LocalDev Mock Server
+
+LocalDev Mock Server 为每个 active turn 保存定时器集合。收到 `omni.interrupt.v1` 后：
+
+1. 标记当前 stream cancelled。
+2. 清除尚未发送的 `reply_audio_frame` 定时器。
+3. 返回 `omni.output_state.v1`，state=`interrupted`。
+4. 不再发送当前 turn 的剩余输出帧。
+
+### 12.4 非目标
+
+v1.1.2 不做自动 VAD / AEC / 回声抑制，不根据麦克风声音自动打断。自动 barge-in 需要后续版本在能够区分用户真实插话和机器人回声后再做。
