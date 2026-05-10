@@ -1,4 +1,13 @@
-# 架构说明 v1.2.2
+# 架构说明 v1.2.3
+
+## v1.2.3 Contract Test Matrix Architecture
+
+v1.2.3 does not change Runtime architecture. It adds a stronger LocalDev contract compliance matrix around the existing Mock Server and adapter boundary:
+
+- input/media/control paths are tested separately.
+- output state, structured output turn, and native reply audio frames are verified as separate channels.
+- malformed and unsupported messages are diagnostics, not reasons to convert the product into text chat.
+- no real provider, cloud, hardware, email, AC, TTS, or automatic VAD/AEC behavior is enabled.
 
 ## v1.2.2 LocalDev Recovery Architecture
 

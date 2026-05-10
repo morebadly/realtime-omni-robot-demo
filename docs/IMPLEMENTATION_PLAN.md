@@ -1,4 +1,21 @@
-# 技术落地路线 v1.2.2
+# 技术落地路线 v1.2.3
+
+## v1.2.3 Adapter Contract Test Completion
+
+Goal: complete a broader LocalDev contract compliance matrix before provider configuration work begins.
+
+Completed:
+
+1. Added Mock Server compliance coverage for malformed messages, unsupported schemas, media ack, input packet output lifecycle, reply audio frame output, and explicit interrupt.
+2. Added `test:localdev-contract-matrix` and included it in the safe smoke suite.
+3. Kept input/output/media/interrupt channels separate and Mock-only.
+
+Out of scope:
+
+1. Real provider configuration.
+2. Real cloud health checks.
+3. Real microphone/camera upload to cloud.
+4. Real TTS or text-chat pipeline.
 
 ## v1.2.2 LocalDev Adapter Recovery Stabilization
 

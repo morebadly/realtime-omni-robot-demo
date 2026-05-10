@@ -1,6 +1,6 @@
 {
   "name": "realtime-omni-robot-demo",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -24,6 +24,7 @@
     "health:localdev:qwen": "node scripts/localdev-health-check.mjs qwen",
     "health:dashscope-omni": "node scripts/dashscope-omni-realtime-health.mjs",
     "test:localdev-adapter-contract": "node scripts/localdev-adapter-contract-smoke.mjs",
+    "test:localdev-contract-matrix": "node scripts/localdev-contract-matrix-smoke.mjs",
     "test:localdev-adapter-contract:qwen-loopback": "powershell -NoProfile -Command \"$env:LOCALDEV_CONTRACT_PROVIDER='qwen_stub'; $env:LOCALDEV_CONTRACT_SCENARIO='qwen_loopback'; $env:LOCALDEV_QWEN_DRY_RUN='0'; $env:LOCALDEV_QWEN_TRANSPORT='loopback'; $env:LOCALDEV_QWEN_ENDPOINT='loopback://local'; node scripts/localdev-adapter-contract-smoke.mjs\"",
     "test:localdev-adapter-contract:qwen-omni-loopback": "powershell -NoProfile -Command \"$env:LOCALDEV_CONTRACT_PROVIDER='qwen_omni'; $env:LOCALDEV_CONTRACT_SCENARIO='qwen_loopback'; $env:LOCALDEV_QWEN_DRY_RUN='0'; $env:LOCALDEV_QWEN_TRANSPORT='loopback'; $env:LOCALDEV_QWEN_ENDPOINT='loopback://local'; node scripts/localdev-adapter-contract-smoke.mjs\"",
     "test:localdev-adapter-contract:qwen-websocket": "powershell -NoProfile -Command \"$env:LOCALDEV_CONTRACT_PROVIDER='qwen_stub'; $env:LOCALDEV_CONTRACT_SCENARIO='qwen_websocket'; node scripts/localdev-adapter-contract-smoke.mjs\"",

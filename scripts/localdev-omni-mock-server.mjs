@@ -212,6 +212,11 @@ server.on('connection', (socket, request) => {
     const parsed = safeParse(raw.toString());
     if (!parsed.ok) {
       const turn = createErrorTurn(`LocalDev Mock 收到了无法解析的 JSON：${parsed.error.message}`, 'error', ['Mock server error response.']);
+      socket.send(JSON.stringify(createOmniOutputState({
+        state: 'error',
+        reason: `malformed_message: Invalid JSON: ${parsed.error.message}`,
+        source: 'local_dev_mock_server'
+      })));
       socket.send(JSON.stringify(createOutputEnvelope(turn, { requestId: null, packet: null })));
       return;
     }
@@ -239,6 +244,12 @@ server.on('connection', (socket, request) => {
     if (!packetInfo?.packet) {
       const turn = createErrorTurn('LocalDev Mock 没有收到 omni.input_packet.v1，请检查 Web 端发送协议。', 'thinking', ['Expected envelope schema cloudgenie.local_dev.envelope.v1 with type=omni.input_packet and packet.schema=omni.input_packet.v1.']);
       console.log(`[${now()}] packet_schema=unknown packet_id=unknown robot=unknown expression=${turn.expression.expression} intents=0`);
+      socket.send(JSON.stringify(createOmniOutputState({
+        state: 'error',
+        requestId: parsed.value?.requestId || null,
+        reason: 'unsupported_schema: Expected omni.input_packet.v1, omni.audio_frame.v1, omni.camera_frame.v1, or omni.interrupt.v1.',
+        source: 'local_dev_mock_server'
+      })));
       socket.send(JSON.stringify(createOutputEnvelope(turn, packetInfo)));
       return;
     }

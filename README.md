@@ -1,4 +1,13 @@
-# Realtime Omni Robot Demo v1.2.2
+# Realtime Omni Robot Demo v1.2.3
+
+## v1.2.3 Adapter Contract Test Matrix
+
+v1.2.3 expands LocalDev Adapter Contract verification without adding any real provider traffic. The new contract matrix smoke test starts the safe local Mock Server and covers input packet, audio frame, camera frame, output state, output turn, reply audio frame, explicit interrupt, malformed message, and unsupported schema behavior.
+
+- No real cloud API, hardware, email, AC, camera upload, or TTS is enabled.
+- `reply_text` remains subtitles/log/debug only.
+- `omni.audio_frame.v1` remains input media and does not imply interrupt.
+- `omni.reply_audio_frame.v1` remains output media and is not user input.
 
 ## v1.2.2 LocalDev Reconnect Recovery
 

@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.2.2.
+Current version: v1.2.3.
 
 Tech stack:
 - Vite
@@ -326,3 +326,9 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - Disconnected output must clear or stop stale `omni.reply_audio_frame.v1` playback state so RobotFace cannot stay speaking forever.
 - Protocol warnings/errors are diagnostics; after malformed or unsupported messages, the same connection may continue processing later valid messages.
 - This remains safe Mock-only work: no real Omni provider, DashScope/Qwen cloud realtime, hardware, email, AC, TTS, or automatic VAD/AEC barge-in.
+
+## v1.2.3 Adapter Contract test matrix rule
+
+- v1.2.3 expands LocalDev Adapter Contract smoke coverage. It does not change realtime protocol semantics or add real provider traffic.
+- Contract matrix tests should cover input packets, audio frames, camera frames, output states, output turns, reply audio frames, explicit interrupts, malformed messages, and unsupported schemas.
+- Mock server compliance remains safe and local only; no real cloud API, model, hardware, TTS, email, or AC access is allowed.

@@ -1,4 +1,20 @@
-# LocalDev Adapter Contract v1.2.2
+# LocalDev Adapter Contract v1.2.3
+
+## v1.2.3 Compliance Matrix
+
+The LocalDev contract matrix must cover the safe Mock Server path:
+
+```text
+input_packet      -> output_state thinking, output_turn, output_state speaking
+audio_frame       -> media_ack
+camera_frame      -> media_ack
+reply_audio_frame -> native output media frame, not TTS
+interrupt         -> output_state interrupted
+malformed message -> output_state error, connection remains usable
+unsupported schema-> output_state error, connection remains usable
+```
+
+The matrix is implemented by `npm run test:localdev-contract-matrix` and is included in the safe smoke suite. It does not call real cloud APIs, real models, real hardware, real email, real AC, or real TTS.
 
 ## v1.2.2 Recovery Addendum
 
