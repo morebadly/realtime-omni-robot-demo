@@ -1,10 +1,19 @@
-# Realtime Omni Robot Demo v1.1.5
+# Realtime Omni Robot Demo v1.2.0
+
+## v1.2.0 LocalDev Adapter Contract
+
+v1.2.0 is the LocalDev Adapter Contract stable release. It keeps the demo Mock-first and focuses on protocol consistency, contract smoke coverage, and error-path behavior for the local realtime adapter boundary. It does not add real Qwen/DashScope traffic, real hardware, real email, real AC, real cloud inference, real TTS, or automatic VAD/AEC barge-in.
+
+- Runtime and adapter docs/tests align around `omni.input_packet.v1`, `omni.audio_frame.v1`, `omni.camera_frame.v1`, `omni.output_state.v1`, `omni.output_turn.v1`, `omni.reply_audio_frame.v1`, `omni.interrupt.v1`, and `cloudgenie.local_dev.media_ack.v1`.
+- Contract smoke verifies media ack, thinking/speaking/finished output states, native reply audio, explicit interrupt cancellation, malformed messages, unsupported schemas, media frames before an active output turn, and interrupt with no active turn.
+- Realtime output queue smoke covers duplicate and out-of-order `omni.reply_audio_frame.v1` handling.
+- `npm run verify` explicitly runs build, version doctor, adapter contract, realtime readiness, LocalDev preflight, and the safe smoke suite.
 
 这是一个用于投资人演示和后续工程开发的 **实时 Omni 机器人平台 Demo**。项目定位不是单纯本地部署机器人，而是：
 
 > 云端优先、可本地调试、可移动、多网络、自带插件和权限系统的实时 Omni 机器人平台。
 
-v1.1.5 是点击式调试工作台版本：在 v1.1.4 基础上，不再把插件中心、权限、可见信息、日志和 Omni 会话全部铺成长页面，而是通过顶部 Debug Navigator 切换独立工作区。插件中心内部也改为标签页，避免一次性展开动作库、无代码表单、代码插件表单和 manifest。实时协议和 Mock 安全边界保持不变。
+v1.2.0 是 LocalDev Adapter Contract 稳定版：在 v1.1.6 维护层基础上，统一 Runtime 与 Adapter 的协议文档、contract smoke 覆盖和错误路径表现。它仍然不新增真实模型、真实云 API、真实硬件或真实 TTS。
 
 ## 快速运行
 
@@ -157,6 +166,18 @@ To check DashScope Qwen-Omni realtime WebSocket after setting `DASHSCOPE_API_KEY
 npm run health:dashscope-omni
 ```
 
+常用维护命令：
+
+```bash
+npm run verify:quick
+npm run verify
+npm run clean
+```
+
+- `verify:quick`：构建 + 版本一致性 + readiness/preflight 快速检查。
+- `verify`：构建 + 当前安全 smoke suite。
+- `clean`：删除 `node_modules/`、`dist/`、本地 lockfile 和本地日志，方便重新打包或迁移。
+
 浏览器打开终端输出的地址，通常是：
 
 ```text
@@ -173,6 +194,15 @@ npm run dev
 ```
 
 如果提示找不到 `node_modules` 或 `dist`，可以忽略；如果提示找不到 `package.json`，说明还没有 `cd` 进入项目文件夹。
+
+## v1.1.6 新增内容
+
+- `package.json` 版本提升到 `1.1.6`，并新增 `verify`、`verify:quick`、`clean`、`test:smoke`、`test:version-doctor` 维护脚本。
+- 新增 `scripts/run-smoke-suite.mjs`，统一执行当前安全 smoke tests，避免每次手动复制一长串测试命令。
+- 新增 `scripts/version-doctor.mjs`，检查 README、AGENTS、ARCHITECTURE、IMPLEMENTATION_PLAN、Release Notes 和 Update Guide 的版本一致性。
+- 新增 `scripts/clean-local-artifacts.mjs`，清理本地依赖、构建产物、lockfile 和日志，避免把 Windows 本地文件继续带进压缩包。
+- 新增 `docs/MAINTENANCE.md`，固定 Git / build / smoke / tag / push 的维护流程。
+- 新增 v1.1.6 release notes 和 update guide；当前版本仍然保持 Mock-first，不接真实模型、真实云 API、真实硬件或真实 TTS。
 
 ## v1.1.5 新增内容
 
@@ -252,7 +282,10 @@ realtime-omni-robot-demo/
 │   ├── RELEASE_NOTES_v1.1.4.md
 │   ├── UPDATE_GUIDE_v1.1.4.md
 │   ├── RELEASE_NOTES_v1.1.5.md
-│   └── UPDATE_GUIDE_v1.1.5.md
+│   ├── UPDATE_GUIDE_v1.1.5.md
+│   ├── RELEASE_NOTES_v1.1.6.md
+│   ├── UPDATE_GUIDE_v1.1.6.md
+│   └── MAINTENANCE.md
 ├── src/
 │   ├── components/
 │   │   ├── RobotRegistryPanel.jsx

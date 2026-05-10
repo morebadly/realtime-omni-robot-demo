@@ -187,7 +187,14 @@ function createOutputEnvelope(turn, packetInfo) {
 }
 
 function createMediaAck(frameInfo) {
-  return createLocalDevMediaAck({ requestId: frameInfo?.requestId || null, frame: frameInfo?.frame || null, receivedAt: now() });
+  const sessionActive = frameInfo?.socket ? getActiveOutputs(frameInfo.socket).size > 0 : false;
+  return createLocalDevMediaAck({
+    requestId: frameInfo?.requestId || null,
+    frame: frameInfo?.frame || null,
+    receivedAt: now(),
+    sessionActive,
+    warning: 'media_ack is debug-only; input media frames never imply interrupt.'
+  });
   const frame = frameInfo?.frame;
   return { schema: 'cloudgenie.local_dev.media_ack.v1', type: 'omni.media_ack', requestId: frameInfo?.requestId || null, receivedAt: now(), receivedFrame: { schema: frame?.schema || 'unknown', frameId: frame?.frameId || 'unknown', robotId: frame?.robotId || null, displayName: frame?.displayName || null, mediaKind: frame?.media?.kind || null, codec: frame?.media?.codec || null, payloadIncluded: Boolean(frame?.media?.payloadIncluded), byteLength: frame?.media?.byteLength || 0 }, note: 'LocalDev Mock 已识别媒体帧。audio_frame / camera_frame 只作为输入媒体，不会自动触发 interrupt；用户插话必须由 omni.interrupt.v1 表达。' };
 }
@@ -225,7 +232,7 @@ server.on('connection', (socket, request) => {
         ? ` samples=${media.sampleCount || 0} duration=${media.durationMs || 0}ms`
         : ` ${media.width || 0}x${media.height || 0} selector=${media.selectorPolicy || 'unknown'}`;
       console.log(`[${now()}] media_frame schema=${frame.schema || 'unknown'} frame_id=${frame.frameId || 'unknown'} robot=${frame.robotId || 'unknown'} display_name=${frame.displayName || 'unknown'} kind=${media.kind || 'unknown'} codec=${media.codec || 'unknown'} payload=${payloadFlag} bytes=${media.byteLength || 0}${detailInfo} request=${frameInfo.requestId || 'none'}`);
-      socket.send(JSON.stringify(createMediaAck(frameInfo)));
+      socket.send(JSON.stringify(createMediaAck({ ...frameInfo, socket })));
       return;
     }
     const packetInfo = normalizePacket(parsed.value);

@@ -101,7 +101,7 @@ export function useRuntimeCore() {
   const [permissions, setPermissions] = useState(initialSeed.permissions);
   const [plugins, setPlugins] = useState(initialSeed.plugins);
   const [logs, setLogs] = useState([
-    createLog('info', 'Demo Runtime v1.1.5 已启动', '当前是点击式调试工作台；Realtime Session State Machine、LocalDev Bridge、reply_audio_frame 和 interrupt 链路保持启用。'),
+    createLog('info', 'Demo Runtime v1.2.0 已启动', '当前是 LocalDev Adapter Contract 稳定版；点击式调试工作台、Realtime Session State Machine、LocalDev Bridge、reply_audio_frame 和 interrupt 链路保持启用。'),
     createLog('info', 'Robot Identity Profile 已启用', '机器人昵称、唤醒名、默认角色、声音风格和称呼方式不再硬编码。'),
     createLog('info', '输入策略已固定', '原始语音流和摄像头关键帧直给 Omni；触摸/NFC 只作为事实事件。'),
     createLog('info', '输出策略已固定', 'reply_audio_frame 是 Omni 输出媒体帧；reply_text 只作为字幕、日志和调试；audio_frame 不会自动触发打断。'),

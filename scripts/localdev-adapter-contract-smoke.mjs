@@ -428,6 +428,60 @@ async function assertPlaceholderAudioScenario({ socket, messages, packet }) {
   }
 }
 
+async function assertAdapterErrorPaths(url) {
+  const socket = await openWebSocket(url);
+  const messages = [];
+  socket.on('message', (raw) => {
+    try {
+      messages.push(JSON.parse(raw.toString()));
+    } catch (error) {
+      messages.push({ schema: 'invalid_json', error: error.message, raw: raw.toString() });
+    }
+  });
+
+  socket.send('{');
+  await waitFor(messages, 'malformed message error', (message) => (
+    message.schema === 'omni.output_state.v1'
+    && message.state === 'error'
+    && String(message.reason || '').includes('malformed_message')
+  ));
+
+  sendJson(socket, { schema: 'contract.unsupported.v1', type: 'unsupported.contract_smoke' });
+  await waitFor(messages, 'unsupported schema error', (message) => (
+    message.schema === 'omni.output_state.v1'
+    && message.state === 'error'
+    && String(message.reason || '').includes('unsupported_schema')
+  ));
+
+  const audioFrame = createAudioFrame();
+  sendJson(socket, createLocalDevMediaEnvelope({ requestId: `${REQUEST_ID}_pre`, frame: audioFrame, sentAt: nowIso() }));
+  await waitFor(messages, 'media frame without active session ack', (message) => (
+    message.schema === 'cloudgenie.local_dev.media_ack.v1'
+    && message.receivedFrame?.schema === 'omni.audio_frame.v1'
+    && message.sessionActive === false
+    && String(message.warning || message.note || '').includes('media_frame_without_active')
+  ));
+
+  const interrupt = createOmniInterrupt({
+    turnId: 'turn_not_active_contract',
+    robotId: 'robot_contract_001',
+    displayName: 'ContractBot',
+    requestId: `${REQUEST_ID}_noop`,
+    reason: 'contract_smoke_no_active_turn'
+  });
+  sendJson(socket, createLocalDevControlEnvelope({ requestId: `${REQUEST_ID}_noop`, interrupt, sentAt: nowIso() }));
+  await waitFor(messages, 'interrupt with no active turn', (message) => (
+    message.schema === 'omni.output_state.v1'
+    && message.state === 'interrupted'
+    && String(message.reason || '').includes('no output turn was active')
+  ));
+
+  socket.close();
+  await delay(100);
+  const reconnect = await openWebSocket(url, 1000);
+  reconnect.close();
+}
+
 async function assertQwenLoopbackScenario({ socket, messages, packet }) {
   const errorState = await waitFor(messages, 'qwen output_state error', (message) => (
     message.schema === 'omni.output_state.v1'
@@ -566,6 +620,7 @@ async function main() {
   let socket = null;
   const messages = [];
   try {
+    await assertAdapterErrorPaths(url);
     socket = await openWebSocket(url);
     socket.on('message', (raw) => {
       try {

@@ -1,4 +1,24 @@
-# 架构说明 v1.1.5
+# 架构说明 v1.2.0
+
+## v1.2.0 LocalDev Adapter Contract Stable Baseline
+
+v1.2.0 does not change the product into text chat and does not enable real cloud/model/hardware integrations. The architecture focus is the LocalDev realtime contract between Runtime and Adapter:
+
+```text
+Runtime -> Adapter:
+omni.input_packet.v1
+omni.audio_frame.v1
+omni.camera_frame.v1
+omni.interrupt.v1
+
+Adapter -> Runtime:
+omni.output_state.v1
+omni.output_turn.v1
+omni.reply_audio_frame.v1
+cloudgenie.local_dev.media_ack.v1
+```
+
+The adapter boundary remains Omni-first: media frames are native input media, `reply_text` is subtitles/log/debug context only, and interruption is only `omni.interrupt.v1`. Contract tests now cover the happy path plus malformed message, unsupported schema, media-before-active-turn, no-active-turn interrupt, and duplicate/out-of-order reply audio diagnostics.
 
 ## 1. 产品定位
 
@@ -712,3 +732,25 @@ shouldKeepMicOpen
 ```
 
 这样后续接真实 Omni API、WebRTC 或实体机器人硬件时，不需要再从零梳理 listening / thinking / speaking / interrupted 的边界。
+
+
+## 14. v1.1.6 Maintenance Layer
+
+v1.1.6 不改变 realtime 协议语义，而是增加维护层约束，确保后续 v1.2.0 Adapter Contract 迭代更稳定。
+
+新增维护脚本：
+
+```text
+scripts/run-smoke-suite.mjs
+scripts/version-doctor.mjs
+scripts/clean-local-artifacts.mjs
+```
+
+维护层职责：
+
+- `verify`：构建项目并运行安全 smoke suite。
+- `verify:quick`：用于小改动的快速验证。
+- `version-doctor`：检查 package、README、AGENTS、架构文档和版本文档一致性。
+- `clean`：清理本地生成物，避免把 `node_modules/`、`dist/`、lockfile 和日志带入发布包。
+
+这些脚本不属于 Runtime 业务链路，也不会默认调用真实云 API、真实硬件、真实邮箱或真实空调。

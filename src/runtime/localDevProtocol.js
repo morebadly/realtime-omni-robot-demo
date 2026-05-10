@@ -89,7 +89,13 @@ export function createLocalDevOutputEnvelope({ requestId, turn, packet, received
   };
 }
 
-export function createLocalDevMediaAck({ requestId, frame, receivedAt }) {
+export function createLocalDevMediaAck({
+  requestId,
+  frame,
+  receivedAt,
+  sessionActive = true,
+  warning = null
+} = {}) {
   return {
     schema: LOCALDEV_PROTOCOL.mediaAckSchema,
     type: 'omni.media_ack',
@@ -105,7 +111,9 @@ export function createLocalDevMediaAck({ requestId, frame, receivedAt }) {
       payloadIncluded: Boolean(frame?.media?.payloadIncluded),
       byteLength: frame?.media?.byteLength || 0
     },
-    note: 'LocalDev service recognized the input media frame. audio_frame and camera_frame are input media; they must not automatically trigger interrupt.'
+    sessionActive: Boolean(sessionActive),
+    warning,
+    note: warning || 'LocalDev service recognized the input media frame. audio_frame and camera_frame are input media; they must not automatically trigger interrupt.'
   };
 }
 

@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.1.5.
+Current version: v1.2.0.
 
 Tech stack:
 - Vite
@@ -202,6 +202,24 @@ Build:
 npm run build
 ```
 
+Run quick project verification:
+
+```bash
+npm run verify:quick
+```
+
+Run the full safe smoke suite:
+
+```bash
+npm run verify
+```
+
+Clean generated local artifacts before packaging:
+
+```bash
+npm run clean
+```
+
 ## Change policy
 
 When making changes:
@@ -284,3 +302,19 @@ When a provider exposes `onReplyAudioFrame(listener)`, the adapter skeleton may 
 The `qwen_websocket` contract smoke test asserts that native reply audio reaches the adapter client before the structured output turn envelope. Do not relax that ordering unless the realtime adapter design changes explicitly.
 
 Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts may start temporary child processes and are for development verification only. Use `health:localdev*` commands for no-side-effect connectivity checks.
+
+
+## v1.1.6 maintenance rule
+
+- Keep `package.json`, README, AGENTS, architecture docs, release notes, and update guide on the same version.
+- Run `npm run verify:quick` for small edits and `npm run verify` before packaging or tagging.
+- Use `npm run clean` before creating a zip package so `node_modules/`, `dist/`, `package-lock.json`, and local logs are not shipped.
+- Do not treat Codex or ChatGPT-generated code as complete until the working tree is clean and verification commands pass.
+- v1.1.x remains Mock-first. Do not enable real Qwen/DashScope traffic, real hardware, real email, or real AC by default.
+
+## v1.2.0 LocalDev Adapter Contract rule
+
+- v1.2.0 stabilizes the LocalDev Adapter Contract. It does not enable real Omni providers, DashScope/Qwen realtime cloud traffic, hardware, automatic VAD/AEC barge-in, real email, real AC, or real TTS.
+- Runtime and adapters must keep these schemas aligned in docs and smoke tests: `omni.input_packet.v1`, `omni.audio_frame.v1`, `omni.camera_frame.v1`, `omni.output_state.v1`, `omni.output_turn.v1`, `omni.reply_audio_frame.v1`, `omni.interrupt.v1`, and `cloudgenie.local_dev.media_ack.v1`.
+- Contract tests must cover safe success and error paths: media ack, thinking/speaking/finished output state, native reply audio, explicit interrupt cancellation, malformed messages, unsupported schemas, duplicate/out-of-order reply audio handling, interrupt without an active turn, and media frames before an active output turn.
+- Media frames may arrive before an output turn as realtime pre-roll. They should be acknowledged and marked as not interrupting; they must not trigger barge-in by themselves.

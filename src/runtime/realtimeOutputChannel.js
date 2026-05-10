@@ -35,6 +35,7 @@ export function createDefaultRealtimeOutputChannel() {
     lastError: null,
     droppedAudioFrames: 0,
     duplicateAudioFrames: 0,
+    outOfOrderAudioFrames: 0,
     lastDropReason: null,
     guardrail: 'reply_audio_frame 是 Omni 输出媒体帧；reply_text 只作为字幕/日志/调试；audio_frame 不会自动触发 interrupt。'
   };
@@ -92,6 +93,9 @@ export function applyReplyAudioFrame(prev, frame) {
     receivedAt: nowLabel(),
     played: false
   };
+  const sequence = Number(frame?.sequence || 0);
+  const lastSequence = Number(current.lastSequence || 0);
+  const outOfOrder = Boolean(lastSequence && sequence && sequence < lastSequence);
   const sortedQueue = [...(current.queuedAudioFrames || []), normalizedFrame]
     .sort((a, b) => Number(a.sequence || 0) - Number(b.sequence || 0));
   const overflow = Math.max(0, sortedQueue.length - MAX_QUEUED_AUDIO_FRAMES);
@@ -107,14 +111,19 @@ export function applyReplyAudioFrame(prev, frame) {
     receivedAudioFrames: current.receivedAudioFrames + 1,
     queuedAudioFrames: nextQueue,
     recentAudioFrames: recent,
-    lastSequence: frame?.sequence ?? current.lastSequence,
+    lastSequence: outOfOrder ? current.lastSequence : frame?.sequence ?? current.lastSequence,
     lastFrameId: frame?.frameId || current.lastFrameId,
     lastFrameAt: nowLabel(),
     playbackActive: true,
     finalFrameReceived: Boolean(frame?.isFinal) || current.finalFrameReceived,
     lastError: null,
     droppedAudioFrames: (current.droppedAudioFrames || 0) + overflow,
-    lastDropReason: overflow ? `reply_audio_queue_overflow:${overflow}` : current.lastDropReason
+    outOfOrderAudioFrames: (current.outOfOrderAudioFrames || 0) + (outOfOrder ? 1 : 0),
+    lastDropReason: overflow
+      ? `reply_audio_queue_overflow:${overflow}`
+      : outOfOrder
+        ? `out_of_order_reply_audio_frame:${frame?.frameId || sequence}`
+        : current.lastDropReason
   };
 }
 

@@ -1,4 +1,22 @@
-# 技术落地路线 v1.1.5
+# 技术落地路线 v1.2.0
+
+## v1.2.0 LocalDev Adapter Contract Stable Release
+
+Goal: stabilize the LocalDev Adapter Contract before any real Omni provider work.
+
+Completed in this release:
+
+1. Keep the Runtime <-> Adapter schema list explicit: `omni.input_packet.v1`, `omni.audio_frame.v1`, `omni.camera_frame.v1`, `omni.output_state.v1`, `omni.output_turn.v1`, `omni.reply_audio_frame.v1`, `omni.interrupt.v1`, and `cloudgenie.local_dev.media_ack.v1`.
+2. Strengthen contract tests for mock media ack, thinking/speaking/finished state, native reply audio, explicit interrupt cancellation, malformed message, unsupported schema, media before active output turn, and interrupt with no active turn.
+3. Strengthen output queue diagnostics for duplicate and out-of-order `omni.reply_audio_frame.v1`.
+4. Expand `npm run verify` so it explicitly includes build, version doctor, adapter contract, realtime readiness, LocalDev preflight, and the safe smoke suite.
+
+Still not implemented in v1.2.0:
+
+1. Real Qwen/DashScope realtime cloud traffic.
+2. Real hardware, email, AC, or filesystem access from plugins.
+3. Real TTS or `reply_text -> playback`.
+4. Automatic VAD/AEC barge-in.
 
 ## 阶段 1：Web Demo + Runtime 骨架
 
@@ -449,3 +467,32 @@ v1.1.4 可以做：
 - turn lifecycle trace 导出。
 - 对自动 barge-in 的 VAD/AEC 设计草案，但默认仍不启用。
 - 真实 Omni Adapter 接入前的协议兼容层设计。
+
+
+## 阶段 2.9：v1.1.6 项目稳定性整理
+
+目标：在继续进入 v1.2.0 LocalDev Adapter Contract 之前，先把脚本、版本、文档和验证流程整理成固定维护节奏。
+
+### 已实现
+
+1. `package.json` 统一到 v1.1.6。
+2. 新增 `npm run verify`，执行构建和安全 smoke suite。
+3. 新增 `npm run verify:quick`，用于小改动快速检查。
+4. 新增 `npm run clean`，清理本地生成物和日志。
+5. 新增 `npm run test:version-doctor`，检查版本一致性。
+6. 新增 `npm run test:smoke`，集中运行当前安全 smoke tests。
+7. 新增 `docs/MAINTENANCE.md`，固定 Git、build、smoke、tag 和 push 维护流程。
+
+### 原则
+
+```text
+v1.1.6 不接真实模型
+v1.1.6 不接真实云 API
+v1.1.6 不接真实硬件
+v1.1.6 不接真实 TTS
+v1.1.6 只整理维护与验证流程
+```
+
+### 下一步
+
+进入 v1.2.0：LocalDev Adapter Contract 稳定版，重点做协议合约、错误恢复、断线重连、media ack、interrupt 和 output frame 兼容测试。

@@ -228,9 +228,18 @@ async function streamProviderOutput(socket, packetInfo) {
 async function handleMediaFrame(socket, frameInfo) {
   const session = getSession(socket);
   const frame = frameInfo.frame;
+  const sessionActive = Boolean(session.activeTurn);
   await session.provider.observeMediaFrame(frame, frameInfo.requestId);
-  socketSend(socket, createLocalDevMediaAck({ requestId: frameInfo.requestId, frame, receivedAt: now() }));
-  console.log(`[${now()}] media kind=${frame.media?.kind || 'unknown'} schema=${frame.schema} frame=${frame.frameId} bytes=${frame.media?.byteLength || 0}`);
+  socketSend(socket, createLocalDevMediaAck({
+    requestId: frameInfo.requestId,
+    frame,
+    receivedAt: now(),
+    sessionActive,
+    warning: sessionActive
+      ? null
+      : 'media_frame_without_active_output_turn: accepted as realtime session pre-roll; this is not an interrupt.'
+  }));
+  console.log(`[${now()}] media kind=${frame.media?.kind || 'unknown'} schema=${frame.schema} frame=${frame.frameId} bytes=${frame.media?.byteLength || 0} session_active=${sessionActive ? 'yes' : 'no'}`);
 }
 
 async function handleInterrupt(socket, interruptInfo) {
@@ -260,7 +269,11 @@ server.on('connection', (socket, request) => {
   socket.on('message', (raw) => {
     const parsed = safeParse(raw.toString());
     if (!parsed.ok) {
-      socketSend(socket, createOmniOutputState({ state: 'error', reason: `Invalid JSON: ${parsed.error.message}` }));
+      socketSend(socket, createOmniOutputState({
+        state: 'error',
+        reason: `malformed_message: Invalid JSON: ${parsed.error.message}`,
+        source: 'local_dev_adapter_skeleton'
+      }));
       return;
     }
 
@@ -319,7 +332,13 @@ server.on('connection', (socket, request) => {
 
     socketSend(socket, createOmniOutputState({
       state: 'error',
-      reason: 'Unsupported LocalDev message. Expected input_packet, media_frame, or interrupt envelope.'
+      reason: `unsupported_schema: Expected ${[
+        'omni.input_packet.v1',
+        'omni.audio_frame.v1',
+        'omni.camera_frame.v1',
+        'omni.interrupt.v1'
+      ].join(', ')} inside a LocalDev envelope.`,
+      source: 'local_dev_adapter_skeleton'
     }));
   });
 

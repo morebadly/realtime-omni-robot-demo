@@ -1,4 +1,32 @@
-# LocalDev Adapter Contract v1.1.5
+# LocalDev Adapter Contract v1.2.0
+
+v1.2.0 is the stable LocalDev Adapter Contract baseline. It keeps LocalDev safe and Mock-first while making the Runtime <-> Adapter message surface explicit and testable.
+
+Required contract schemas:
+
+```text
+Client -> Adapter:
+- omni.input_packet.v1
+- omni.audio_frame.v1
+- omni.camera_frame.v1
+- omni.interrupt.v1
+
+Adapter -> Client:
+- omni.output_state.v1
+- omni.output_turn.v1
+- omni.reply_audio_frame.v1
+- cloudgenie.local_dev.media_ack.v1
+```
+
+Required safe error-path behavior:
+
+- malformed JSON or malformed envelopes must return `omni.output_state.v1` with `state=error`.
+- unsupported schemas must return `omni.output_state.v1` with `state=error` and must not crash the WebSocket session.
+- media frames may arrive before an active output turn as realtime pre-roll; they must receive `cloudgenie.local_dev.media_ack.v1` with `sessionActive=false` and must not imply interrupt.
+- `omni.interrupt.v1` with no active output turn must return `omni.output_state.v1` with `state=interrupted` and a no-op reason.
+- duplicate `omni.reply_audio_frame.v1` frames are dropped by Runtime output queue accounting.
+- out-of-order `omni.reply_audio_frame.v1` frames are retained in playback order and counted for diagnostics.
+- adapter disconnects must clear active local output timers and must not leave the Runtime waiting indefinitely.
 
 This document defines the minimum WebSocket contract that a real `LocalDevOmniAdapter` service should implement before replacing `scripts/localdev-omni-mock-server.mjs`.
 
@@ -344,7 +372,7 @@ User barge-in is explicit:
 }
 ```
 
-Only this control message should stop the current output turn in the v1.1.x demo contract.
+Only this control message should stop the current output turn in the v1.2.0 demo contract.
 
 ## Adapter To Client
 

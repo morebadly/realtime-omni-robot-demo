@@ -1,11 +1,14 @@
 {
   "name": "realtime-omni-robot-demo",
-  "version": "1.1.5",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
+    "verify": "npm run build && npm run test:version-doctor && npm run test:localdev-adapter-contract && npm run test:realtime-readiness && npm run test:localdev-preflight && npm run test:smoke",
+    "verify:quick": "npm run build && npm run test:version-doctor && npm run test:localdev-adapter-contract && npm run test:realtime-readiness && npm run test:localdev-preflight",
+    "clean": "node scripts/clean-local-artifacts.mjs",
     "preview": "vite preview --host 0.0.0.0",
     "mock:localdev": "node scripts/localdev-omni-mock-server.mjs",
     "adapter:localdev:skeleton": "node scripts/localdev-omni-adapter-skeleton.mjs",
@@ -37,7 +40,9 @@
     "test:localdev-qwen-config": "node scripts/localdev-qwen-config-smoke.mjs",
     "test:realtime-output-queue": "node scripts/realtime-output-queue-smoke.mjs",
     "test:dashscope-omni-config": "node scripts/dashscope-omni-realtime-config-smoke.mjs",
-    "test:localdev-provider-registry": "node scripts/localdev-provider-registry-smoke.mjs"
+    "test:localdev-provider-registry": "node scripts/localdev-provider-registry-smoke.mjs",
+    "test:version-doctor": "node scripts/version-doctor.mjs",
+    "test:smoke": "node scripts/run-smoke-suite.mjs"
   },
   "dependencies": {
     "vite": "latest",

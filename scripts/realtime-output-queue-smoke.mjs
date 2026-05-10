@@ -35,13 +35,18 @@ output = applyReplyAudioFrame(output, frame(1, 'dup_frame'));
 assert(output.receivedAudioFrames === 1, `duplicate should not increase received frames, got ${output.receivedAudioFrames}`);
 assert(output.duplicateAudioFrames === 1, `expected duplicate count=1, got ${output.duplicateAudioFrames}`);
 
-for (let i = 2; i <= 60; i += 1) {
+output = applyReplyAudioFrame(output, frame(3, 'seq_3'));
+output = applyReplyAudioFrame(output, frame(2, 'seq_2'));
+assert(output.outOfOrderAudioFrames === 1, `expected out-of-order count=1, got ${output.outOfOrderAudioFrames}`);
+assert(output.queuedAudioFrames.map((item) => item.sequence).join(',') === '1,2,3', 'out-of-order reply frames should be retained in playback order');
+
+for (let i = 4; i <= 62; i += 1) {
   output = applyReplyAudioFrame(output, frame(i));
 }
 
 assert(output.queuedAudioFrames.length === 48, `queue should cap at 48, got ${output.queuedAudioFrames.length}`);
 assert(output.droppedAudioFrames > 0, 'queue overflow should record dropped frames');
-assert(output.queuedAudioFrames[0].sequence === 13, `oldest retained sequence should be 13, got ${output.queuedAudioFrames[0].sequence}`);
+assert(output.queuedAudioFrames[0].sequence === 15, `oldest retained sequence should be 15, got ${output.queuedAudioFrames[0].sequence}`);
 
 output = applyRealtimeOutputInterrupt(output, { reason: 'user_barge_in', turnId: 'turn_queue_smoke' });
 assert(output.queuedAudioFrames.length === 0, 'interrupt should clear queued output');
