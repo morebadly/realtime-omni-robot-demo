@@ -1,4 +1,13 @@
-# Realtime Omni Robot Demo v1.2.0
+# Realtime Omni Robot Demo v1.2.2
+
+## v1.2.2 LocalDev Reconnect Recovery
+
+v1.2.2 is a safe Mock-first recovery release. It stabilizes LocalDev disconnect, reconnect, send failure, mid-output-stream disconnect, interrupt no-op, malformed message, and unsupported schema recovery behavior. It does not connect real Omni providers, DashScope/Qwen cloud realtime, real hardware, real email, real AC, or real TTS.
+
+- `audio_frame` remains input media and never implies `omni.interrupt.v1`.
+- `reply_audio_frame` remains output media and is never fed back as user input.
+- `reply_text` remains subtitles/log/debug context only and is not TTS input.
+- `npm run verify` includes the LocalDev reconnect recovery smoke test.
 
 ## v1.2.0 LocalDev Adapter Contract
 

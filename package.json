@@ -1,6 +1,6 @@
 {
   "name": "realtime-omni-robot-demo",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -38,6 +38,7 @@
     "test:connection-manager-view-model": "node scripts/connection-manager-view-model-smoke.mjs",
     "test:localdev-preflight": "node scripts/localdev-preflight-smoke.mjs",
     "test:localdev-qwen-config": "node scripts/localdev-qwen-config-smoke.mjs",
+    "test:localdev-reconnect-recovery": "node scripts/localdev-reconnect-recovery-smoke.mjs",
     "test:realtime-output-queue": "node scripts/realtime-output-queue-smoke.mjs",
     "test:dashscope-omni-config": "node scripts/dashscope-omni-realtime-config-smoke.mjs",
     "test:localdev-provider-registry": "node scripts/localdev-provider-registry-smoke.mjs",

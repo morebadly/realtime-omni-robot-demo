@@ -191,6 +191,21 @@ export function applyRealtimeOutputError(prev, error) {
   };
 }
 
+export function applyRealtimeOutputDisconnect(prev, reason = 'LocalDev WebSocket disconnected') {
+  const current = prev || createDefaultRealtimeOutputChannel();
+  return {
+    ...current,
+    state: 'error',
+    playbackActive: false,
+    queuedAudioFrames: [],
+    finalFrameReceived: false,
+    interruptToken: nextInterruptToken(current),
+    lastError: reason,
+    lastStateAt: nowLabel(),
+    lastStateReason: String(reason || 'LocalDev WebSocket disconnected during output')
+  };
+}
+
 export function clearRealtimeOutputChannel() {
   return createDefaultRealtimeOutputChannel();
 }

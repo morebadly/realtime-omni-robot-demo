@@ -13,7 +13,7 @@ import { buildRealtimeRoute, createDefaultRealtimeSession } from './realtimeSess
 import { createDefaultRealtimeSessionState, transitionRealtimeSessionState } from './realtimeSessionState';
 import { buildOmniInputPacket, summarizeOmniPacket } from './omniPacket';
 import { applyMediaAck, applyMediaError, createAudioFrame, createCameraFrame, createDefaultMediaChannels, updateMediaChannelStats } from './omniMediaFrames';
-import { applyRealtimeOutputError, applyRealtimeOutputInterrupt, applyRealtimeOutputState, applyReplyAudioFrame, clearRealtimeOutputChannel, createDefaultRealtimeOutputChannel, markReplyAudioFramePlayed } from './realtimeOutputChannel';
+import { applyRealtimeOutputDisconnect, applyRealtimeOutputError, applyRealtimeOutputInterrupt, applyRealtimeOutputState, applyReplyAudioFrame, clearRealtimeOutputChannel, createDefaultRealtimeOutputChannel, markReplyAudioFramePlayed } from './realtimeOutputChannel';
 import { simulateOmniTurn } from './omniTurnSimulator';
 import { routeToolIntents } from './toolIntentRouter';
 import { createLocalDevOmniBridge } from './localDevOmniClient';
@@ -713,6 +713,30 @@ export function useRuntimeCore() {
     if (status.status === 'failed' && status.error) {
       setRealtimeOutput((prev) => applyRealtimeOutputError(prev, status.error));
       setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'ERROR', { reason: status.error }));
+    }
+    if (status.status === 'send_failed') {
+      setRealtimeOutput((prev) => applyRealtimeOutputError(prev, status.error));
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'SEND_FAILED', { reason: status.error }));
+      pushTrace('LocalDevOmniAdapter', 'send.failed', status.error || status.action || 'send_failed');
+    }
+    if (status.status === 'disconnected') {
+      if (status.disconnectedDuringPending || realtimeOutput?.playbackActive || realtimeOutput?.queuedAudioFrames?.length) {
+        setRealtimeOutput((prev) => applyRealtimeOutputDisconnect(prev, status.error || status.detail));
+      }
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'SOCKET_DISCONNECTED', {
+        reason: status.error || status.detail || 'LocalDev WebSocket disconnected',
+        recoverable: status.recoverable !== false
+      }));
+      setRobot((prev) => (prev.state === 'speaking' || prev.state === 'thinking'
+        ? { ...prev, state: realtimeSession.active && realtimeSession.micActive ? 'listening' : 'idle', expressionSource: 'local_dev_disconnect_recovery' }
+        : prev));
+      pushTrace('LocalDevOmniAdapter', 'socket.disconnected', status.error || status.detail || 'disconnected');
+    }
+    if (status.status === 'recovered') {
+      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'SOCKET_RECOVERED', {
+        reason: status.detail || 'LocalDev WebSocket recovered'
+      }));
+      pushTrace('LocalDevOmniAdapter', 'socket.recovered', status.endpoint || 'unknown_endpoint');
     }
   }
 

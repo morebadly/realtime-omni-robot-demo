@@ -1,5 +1,5 @@
-import { createOmniInterrupt, normalizeOutputStateMessage, normalizeReplyAudioFrameMessage } from './omniOutputFrames';
-import { createLocalDevControlEnvelope, createLocalDevInputEnvelope, createLocalDevMediaEnvelope, isLocalDevMediaAck, isLocalDevWebSocketEndpoint } from './localDevProtocol';
+import { createOmniInterrupt, normalizeOutputStateMessage, normalizeReplyAudioFrameMessage } from './omniOutputFrames.js';
+import { createLocalDevControlEnvelope, createLocalDevInputEnvelope, createLocalDevMediaEnvelope, isLocalDevMediaAck, isLocalDevWebSocketEndpoint } from './localDevProtocol.js';
 function createRequestId() {
   const rand = Math.random().toString(36).slice(2, 8);
   return `localdev_req_${Date.now().toString(36)}_${rand}`;
@@ -92,6 +92,8 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
   let socket = null;
   let activeEndpoint = null;
   let connectPromise = null;
+  let hadSuccessfulConnection = false;
+  let lastDisconnectReason = null;
   const pending = new Map();
 
   function emit(patch) {
@@ -114,6 +116,30 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
     pending.clear();
   }
 
+  function createSendFailure(endpoint, action, error) {
+    const message = error || `LocalDev WebSocket is not open; cannot send ${action}.`;
+    emit({
+      status: 'send_failed',
+      endpoint,
+      detail: `LocalDev send failed: ${action}`,
+      action,
+      error: message
+    });
+    return { ok: false, endpoint, error: message };
+  }
+
+  function safeSendJson(payload, endpoint, action) {
+    if (!isSocketOpen(socket)) {
+      return createSendFailure(endpoint, action, `LocalDev WebSocket is not open; cannot send ${action}.`);
+    }
+    try {
+      socket.send(JSON.stringify(payload));
+      return { ok: true };
+    } catch (error) {
+      return createSendFailure(endpoint, action, `LocalDev WebSocket send failed for ${action}: ${error?.message || String(error)}`);
+    }
+  }
+
   function close(reason = 'manual_close') {
     if (socket) {
       try {
@@ -124,6 +150,7 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
     }
     socket = null;
     connectPromise = null;
+    lastDisconnectReason = reason;
     failPending(`LocalDev Adapter 连接已关闭：${reason}`);
     emit({
       status: 'disconnected',
@@ -162,12 +189,21 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
 
     activeEndpoint = endpoint;
     socket = new WebSocketImpl(endpoint);
+    const recovering = hadSuccessfulConnection || Boolean(lastDisconnectReason);
     emit({
       status: 'connecting',
       endpoint,
       detail: '正在连接 LocalDev WebSocket，会话会保持到手动断开或切换机器人/endpoint。',
       error: null
     });
+    if (recovering) {
+      emit({
+        status: 'reconnecting',
+        endpoint,
+        detail: 'Reconnecting LocalDev WebSocket after disconnect; old turns are not replayed automatically.',
+        error: null
+      });
+    }
 
     connectPromise = new Promise((resolve) => {
       const timer = window.setTimeout(() => {
@@ -180,8 +216,11 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
 
       socket.onopen = () => {
         window.clearTimeout(timer);
+        const recovered = hadSuccessfulConnection || Boolean(lastDisconnectReason);
+        hadSuccessfulConnection = true;
+        lastDisconnectReason = null;
         emit({
-          status: 'connected',
+          status: recovered ? 'recovered' : 'connected',
           endpoint,
           detail: 'LocalDev WebSocket 已连接并保持会话。',
           error: null
@@ -191,7 +230,7 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
 
       socket.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data);
+          const message = JSON.parse(event?.data ?? event);
           const mediaAck = normalizeMediaAck(message);
           if (mediaAck) {
             emit({
@@ -234,6 +273,20 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
             return;
           }
 
+          const looksLikeOutputTurn = (message?.schema === 'cloudgenie.local_dev.envelope.v1' && message?.type === 'omni.output_turn' && message?.turn)
+            || (message?.type === 'omni.output_turn' && message?.turn)
+            || message?.schema === 'omni.output_turn.v1';
+          if (!looksLikeOutputTurn) {
+            emit({
+              status: 'protocol_warning',
+              endpoint,
+              requestId: message?.requestId || null,
+              detail: `Unsupported LocalDev server message ignored: ${message?.schema || message?.type || 'unknown'}`,
+              error: null
+            });
+            return;
+          }
+
           const output = normalizeOutputEnvelope(message);
           const requestId = output.requestId;
           const pendingItem = requestId ? pending.get(requestId) : pending.values().next().value;
@@ -269,7 +322,7 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
         } catch (error) {
           const message = `LocalDevOmniAdapter 返回了无法解析的消息：${error?.message || String(error)}`;
           emit({ status: 'failed', endpoint, detail: '返回解析失败。', error: message });
-          failPending(message);
+          // Keep the socket open after malformed service JSON so the next valid message can recover.
         }
       };
 
@@ -283,10 +336,13 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
       socket.onclose = () => {
         window.clearTimeout(timer);
         const wasPending = pending.size > 0;
+        lastDisconnectReason = wasPending ? 'pending_output_disconnected' : 'socket_closed';
         if (wasPending) failPending(`LocalDevOmniAdapter 在返回输出前关闭连接：${endpoint}`);
         emit({
           status: 'disconnected',
           endpoint,
+          disconnectedDuringPending: wasPending,
+          recoverable: true,
           detail: wasPending ? '连接在返回输出前断开。' : 'LocalDev WebSocket 已断开。',
           error: wasPending ? `LocalDevOmniAdapter 在返回输出前关闭连接：${endpoint}` : null
         });
@@ -334,7 +390,12 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
       }, timeoutMs);
 
       pending.set(requestId, { requestId, packet, timer, resolve, reused: connected.reused });
-      socket.send(JSON.stringify(envelope));
+      const sent = safeSendJson(envelope, endpoint, 'omni.input_packet');
+      if (!sent.ok) {
+        window.clearTimeout(timer);
+        pending.delete(requestId);
+        resolve({ ...sent, requestId });
+      }
     });
   }
 
@@ -347,7 +408,8 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
     const requestId = createRequestId();
     const envelope = createLocalDevMediaEnvelope({ requestId, sentAt: nowIso(), frame });
     emit({ status: 'media_sending', endpoint, requestId, lastMediaFrameId: frame?.frameId, lastMediaFrameSchema: frame?.schema, detail: `正在发送媒体帧 ${frame?.schema || 'unknown'} / ${frame?.frameId || 'unknown'}。`, error: null });
-    socket.send(JSON.stringify(envelope));
+    const sent = safeSendJson(envelope, endpoint, frame?.schema || 'media_frame');
+    if (!sent.ok) return { ...sent, requestId, frameId: frame?.frameId, frameSchema: frame?.schema };
     return { ok: true, endpoint, requestId, frameId: frame?.frameId, frameSchema: frame?.schema, reused: connected.reused };
   }
 
@@ -379,7 +441,8 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
       detail: `正在发送 omni.interrupt.v1：${interrupt.reason}。`,
       error: null
     });
-    socket.send(JSON.stringify(envelope));
+    const sent = safeSendJson(envelope, endpoint, 'omni.interrupt');
+    if (!sent.ok) return { ...sent, requestId, interrupt };
     emit({
       status: 'interrupt_sent',
       endpoint,
@@ -404,7 +467,8 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
         socketState: socket?.readyState ?? null,
         connected: isSocketOpen(socket),
         connecting: isSocketConnecting(socket),
-        pending: pending.size
+        pending: pending.size,
+        lastDisconnectReason
       };
     }
   };

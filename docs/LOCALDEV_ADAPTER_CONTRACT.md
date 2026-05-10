@@ -1,4 +1,17 @@
-# LocalDev Adapter Contract v1.2.0
+# LocalDev Adapter Contract v1.2.2
+
+## v1.2.2 Recovery Addendum
+
+LocalDev adapters and clients must recover cleanly from disconnect and protocol-error paths:
+
+- WebSocket disconnect during thinking/speaking must move Runtime toward `disconnected`, `recovering`, or `error`; it must not stay permanently in `model_thinking` or `model_speaking`.
+- Output queue state must stop stale playback and clear queued `omni.reply_audio_frame.v1` frames when the stream disconnects mid-turn.
+- Sending `omni.input_packet.v1`, `omni.audio_frame.v1`, `omni.camera_frame.v1`, or `omni.interrupt.v1` while the socket is unavailable must return an explicit failure and must not be counted as successfully sent media.
+- Reconnect may emit `reconnecting` / `recovered`, but it must not automatically replay the old input packet.
+- Malformed JSON and unsupported schemas should be reported as diagnostics while allowing later valid messages on the same connection.
+- `omni.interrupt.v1` with no active turn remains a no-op warning/interrupted state, not a fatal error.
+
+These rules do not change the core contract: `audio_frame` is not interrupt, `reply_audio_frame` is not user input, and `reply_text` is not TTS.
 
 v1.2.0 is the stable LocalDev Adapter Contract baseline. It keeps LocalDev safe and Mock-first while making the Runtime <-> Adapter message surface explicit and testable.
 

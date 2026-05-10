@@ -111,8 +111,13 @@ function deriveState(prev, event, detail = {}) {
     case 'INTERRUPT_LOCAL':
     case 'INTERRUPT_ACK':
       return REALTIME_SESSION_STATES.INTERRUPTED;
+    case 'SOCKET_DISCONNECTED':
+      return detail.recoverable ? REALTIME_SESSION_STATES.RECOVERING : REALTIME_SESSION_STATES.ERROR;
+    case 'SOCKET_RECOVERED':
     case 'RECOVER_TO_LISTENING':
       return REALTIME_SESSION_STATES.LISTENING;
+    case 'SEND_FAILED':
+      return REALTIME_SESSION_STATES.RECOVERING;
     case 'ERROR':
       return REALTIME_SESSION_STATES.ERROR;
     case 'RESET':
@@ -176,19 +181,19 @@ export function transitionRealtimeSessionState(prev, event, detail = {}) {
     outputAudioFramesReceived: event === 'REPLY_AUDIO_FRAME_RECEIVED' ? current.outputAudioFramesReceived + 1 : current.outputAudioFramesReceived,
     outputAudioFramesPlayed: event === 'REPLY_AUDIO_FRAME_PLAYED' ? current.outputAudioFramesPlayed + 1 : current.outputAudioFramesPlayed,
     interruptCount: event === 'INTERRUPT_LOCAL' || event === 'INTERRUPT_ACK' ? current.interruptCount + 1 : current.interruptCount,
-    errorCount: event === 'ERROR' ? current.errorCount + 1 : current.errorCount,
+    errorCount: event === 'ERROR' || event === 'SEND_FAILED' ? current.errorCount + 1 : current.errorCount,
     playbackActive: event === 'REPLY_AUDIO_FRAME_RECEIVED'
       ? true
       : event === 'OUTPUT_STATE' && (detail.outputState?.state || detail.outputState) === 'finished'
         ? false
-        : event === 'INTERRUPT_LOCAL' || event === 'INTERRUPT_ACK' || event === 'SESSION_CLOSE'
+        : event === 'INTERRUPT_LOCAL' || event === 'INTERRUPT_ACK' || event === 'SESSION_CLOSE' || event === 'SOCKET_DISCONNECTED' || event === 'SEND_FAILED'
           ? false
           : event === 'REPLY_AUDIO_FRAME_PLAYED' && detail.outputDone
             ? false
             : current.playbackActive,
     outputStreamActive: event === 'OUTPUT_STATE'
       ? !['finished', 'interrupted', 'error'].includes(detail.outputState?.state || detail.outputState)
-      : event === 'INTERRUPT_LOCAL' || event === 'INTERRUPT_ACK' || event === 'SESSION_CLOSE'
+      : event === 'INTERRUPT_LOCAL' || event === 'INTERRUPT_ACK' || event === 'SESSION_CLOSE' || event === 'SOCKET_DISCONNECTED' || event === 'SEND_FAILED'
         ? false
         : current.outputStreamActive,
     shouldKeepMicOpen: event === 'SESSION_OPEN'

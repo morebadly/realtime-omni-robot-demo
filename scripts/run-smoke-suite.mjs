@@ -11,6 +11,7 @@ const DEFAULT_SCRIPTS = [
   'test:connection-manager-view-model',
   'test:localdev-preflight',
   'test:localdev-qwen-config',
+  'test:localdev-reconnect-recovery',
   'test:dashscope-omni-config',
   'test:localdev-provider-registry',
   'test:realtime-output-queue',

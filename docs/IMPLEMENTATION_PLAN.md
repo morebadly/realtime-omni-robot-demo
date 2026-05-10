@@ -1,4 +1,23 @@
-# 技术落地路线 v1.2.0
+# 技术落地路线 v1.2.2
+
+## v1.2.2 LocalDev Adapter Recovery Stabilization
+
+Goal: make LocalDev reconnect and recovery behavior testable without adding real providers.
+
+Completed:
+
+1. LocalDev client reports explicit send failures and reconnect/recovered status.
+2. Malformed service JSON no longer makes the client connection unusable; later valid messages can still resolve.
+3. Unsupported server messages are protocol warnings instead of output turns.
+4. Runtime session state and output queue can recover from socket disconnect and clear stale reply audio frames.
+5. Added `test:localdev-reconnect-recovery` and included it in the smoke suite.
+
+Still out of scope:
+
+1. Real Qwen/DashScope realtime cloud traffic.
+2. Real hardware, email, AC, or filesystem access.
+3. Real TTS or `reply_text -> playback`.
+4. Automatic VAD/AEC barge-in.
 
 ## v1.2.0 LocalDev Adapter Contract Stable Release
 

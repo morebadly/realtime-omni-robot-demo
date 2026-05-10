@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.2.0.
+Current version: v1.2.2.
 
 Tech stack:
 - Vite
@@ -318,3 +318,11 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - Runtime and adapters must keep these schemas aligned in docs and smoke tests: `omni.input_packet.v1`, `omni.audio_frame.v1`, `omni.camera_frame.v1`, `omni.output_state.v1`, `omni.output_turn.v1`, `omni.reply_audio_frame.v1`, `omni.interrupt.v1`, and `cloudgenie.local_dev.media_ack.v1`.
 - Contract tests must cover safe success and error paths: media ack, thinking/speaking/finished output state, native reply audio, explicit interrupt cancellation, malformed messages, unsupported schemas, duplicate/out-of-order reply audio handling, interrupt without an active turn, and media frames before an active output turn.
 - Media frames may arrive before an output turn as realtime pre-roll. They should be acknowledged and marked as not interrupting; they must not trigger barge-in by themselves.
+
+## v1.2.2 LocalDev recovery rule
+
+- v1.2.2 stabilizes LocalDev Adapter recovery after disconnects, send failures, mid-output-stream disconnects, no-op interrupts, malformed messages, and unsupported schemas.
+- Reconnect recovery must not replay old `omni.input_packet.v1` automatically.
+- Disconnected output must clear or stop stale `omni.reply_audio_frame.v1` playback state so RobotFace cannot stay speaking forever.
+- Protocol warnings/errors are diagnostics; after malformed or unsupported messages, the same connection may continue processing later valid messages.
+- This remains safe Mock-only work: no real Omni provider, DashScope/Qwen cloud realtime, hardware, email, AC, TTS, or automatic VAD/AEC barge-in.

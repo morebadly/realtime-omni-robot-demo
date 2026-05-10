@@ -1,4 +1,15 @@
-# 架构说明 v1.2.0
+# 架构说明 v1.2.2
+
+## v1.2.2 LocalDev Recovery Architecture
+
+v1.2.2 keeps the architecture Mock-first and Omni-first. It adds recovery semantics around the existing LocalDev Adapter boundary:
+
+- LocalDev client status can distinguish `reconnecting`, `recovered`, `send_failed`, protocol diagnostics, and disconnected-during-pending-output.
+- Realtime session state can move to `recovering` after socket disconnect or send failure, then back to `listening` after recovery.
+- Realtime output channel clears queued reply audio frames on disconnect so speaking playback cannot remain stuck.
+- Recovery does not replay old input packets automatically and does not change protocol semantics.
+
+No real provider, cloud API, hardware, TTS, or automatic VAD/AEC barge-in is enabled.
 
 ## v1.2.0 LocalDev Adapter Contract Stable Baseline
 
