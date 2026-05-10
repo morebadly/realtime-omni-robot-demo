@@ -24,11 +24,32 @@ export function createDefaultMediaChannels() {
     policy: 'audio_payload_and_camera_payload_ready',
     audio: { observed: 0, sent: 0, lastFrame: null, lastSentAt: null },
     camera: { observed: 0, sent: 0, lastFrame: null, lastSentAt: null },
-    localDev: { lastAck: null, lastError: null, lastFrameId: null, lastFrameSchema: null, ackCount: 0 }
+    localDev: {
+      lastAck: null,
+      lastError: null,
+      lastFrameId: null,
+      lastFrameSchema: null,
+      ackCount: 0,
+      audioAckCount: 0,
+      cameraAckCount: 0,
+      ackBySchema: {}
+    }
   };
 }
 
-export function createAudioFrame({ robot, session, route, level, sequence = 0, payloadBase64 = null, byteLength = 0, sampleCount = 0, durationMs = 250, codec = 'pcm_float32', channels = 1 }) {
+export function createAudioFrame({
+  robot,
+  session,
+  route,
+  level,
+  sequence = 0,
+  payloadBase64 = null,
+  byteLength = 0,
+  sampleCount = 0,
+  durationMs = 250,
+  codec = 'pcm_float32',
+  channels = 1
+}) {
   const sampleRate = session?.sampleRate || 48000;
   const hasPayload = Boolean(payloadBase64 && byteLength > 0);
   return {
@@ -52,8 +73,8 @@ export function createAudioFrame({ robot, session, route, level, sequence = 0, p
       byteLength: hasPayload ? byteLength : 0,
       payload: hasPayload ? payloadBase64 : null,
       note: hasPayload
-        ? 'v1.0.9 已发送浏览器麦克风 PCM Float32 chunk；ASR 文本仍只用于字幕/日志/调试。'
-        : '未包含真实音频 payload；可能是浏览器音频处理器不可用或麦克风尚未启动。'
+        ? 'Browser microphone PCM Float32 chunk is included. ASR text remains only for subtitles, logs, debugging, and plugin keyword assistance.'
+        : 'No real audio payload is included. The browser audio processor may be unavailable or the microphone has not started.'
     },
     guardrails: { asrTextIsNotPrimaryInput: true, rawAudioStreamFirst: true }
   };
@@ -86,8 +107,8 @@ export function createCameraFrame({ robot, frame, framePolicy, sequence = 0, inc
       payload: hasPayload ? payloadBase64 : null,
       dataUrlPreview: frame?.dataUrl ? frame.dataUrl.slice(0, 96) : null,
       note: hasPayload
-        ? 'v1.1.0 已通过 omni.camera_frame.v1 发送浏览器摄像头 JPEG payload；关键帧仍由 FramePolicy/FrameSelector 决定，不做前端情绪摘要。'
-        : '未包含 JPEG payload；可能是摄像头尚未启动、关键帧未生成，或后续策略选择只发送元数据。'
+        ? 'Browser camera JPEG payload is included. Keyframes are selected by FramePolicy/FrameSelector and are not frontend emotion summaries.'
+        : 'No JPEG payload is included. The camera may not have started, a keyframe may not exist yet, or strategy may choose metadata only.'
     },
     guardrails: { noFrontendEmotionSummary: true, selectedFramesGoToOmniAdapter: true }
   };
@@ -110,6 +131,10 @@ export function updateMediaChannelStats(prev, frame, status = 'observed') {
 
 export function applyMediaAck(prev, ack) {
   const current = prev || createDefaultMediaChannels();
+  const schema = ack?.receivedFrame?.schema || ack?.schema || 'unknown';
+  const isAudio = schema === 'omni.audio_frame.v1';
+  const isCamera = schema === 'omni.camera_frame.v1';
+  const ackBySchema = current.localDev?.ackBySchema || {};
   return {
     ...current,
     localDev: {
@@ -117,8 +142,14 @@ export function applyMediaAck(prev, ack) {
       lastAck: ack,
       lastError: null,
       lastFrameId: ack?.receivedFrame?.frameId || ack?.frameId || current.localDev.lastFrameId,
-      lastFrameSchema: ack?.receivedFrame?.schema || ack?.schema || current.localDev.lastFrameSchema,
-      ackCount: current.localDev.ackCount + 1
+      lastFrameSchema: schema || current.localDev.lastFrameSchema,
+      ackCount: (current.localDev.ackCount || 0) + 1,
+      audioAckCount: (current.localDev.audioAckCount || 0) + (isAudio ? 1 : 0),
+      cameraAckCount: (current.localDev.cameraAckCount || 0) + (isCamera ? 1 : 0),
+      ackBySchema: {
+        ...ackBySchema,
+        [schema]: (ackBySchema[schema] || 0) + 1
+      }
     }
   };
 }
@@ -133,5 +164,7 @@ export function summarizeMediaChannels(channels) {
   const audio = channels.audio || {};
   const camera = channels.camera || {};
   const ack = channels.localDev?.ackCount || 0;
-  return `audio ${audio.sent || 0}/${audio.observed || 0} · camera ${camera.sent || 0}/${camera.observed || 0} · ack ${ack}`;
+  const audioAck = channels.localDev?.audioAckCount || 0;
+  const cameraAck = channels.localDev?.cameraAckCount || 0;
+  return `audio ${audio.sent || 0}/${audio.observed || 0}/ack ${audioAck} · camera ${camera.sent || 0}/${camera.observed || 0}/ack ${cameraAck} · totalAck ${ack}`;
 }

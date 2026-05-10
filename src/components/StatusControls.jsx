@@ -1,4 +1,5 @@
-import { ROBOT_STATES, RUNTIME_MODES } from '../data/demoConfig';
+import { ROBOT_STATES } from '../data/demoConfig';
+import { CONNECTION_MODE_OPTIONS } from '../runtime/connectionModes';
 
 export default function StatusControls({ robot, onState, onMode }) {
   return (
@@ -33,7 +34,7 @@ export default function StatusControls({ robot, onState, onMode }) {
       </div>
       <h3>运行模式预留</h3>
       <div className="mode-list">
-        {RUNTIME_MODES.map((mode) => (
+        {CONNECTION_MODE_OPTIONS.map((mode) => (
           <button
             key={mode.key}
             className={robot.mode === mode.key ? 'active mode-button' : 'mode-button'}

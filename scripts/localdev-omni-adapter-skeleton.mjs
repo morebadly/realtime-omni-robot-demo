@@ -69,6 +69,21 @@ function cancelActiveTurn(socket, reason = 'new_turn_or_interrupt') {
   return { ...active, reason };
 }
 
+function withAdapterIdentity(frame, { requestId, robotId, displayName }) {
+  return {
+    ...frame,
+    requestId: frame.requestId || requestId,
+    robotId: frame.robotId || robotId,
+    displayName: frame.displayName || displayName,
+    guardrails: {
+      realtimeOutputFirst: true,
+      notTtsPipeline: true,
+      replyTextIsSubtitleOnly: true,
+      ...(frame.guardrails || {})
+    }
+  };
+}
+
 async function streamProviderOutput(socket, packetInfo) {
   const session = getSession(socket);
   const packet = packetInfo.packet;
@@ -77,9 +92,53 @@ async function streamProviderOutput(socket, packetInfo) {
   const displayName = packet.identity?.displayName || null;
 
   cancelActiveTurn(socket, 'new_input_packet');
+  const activeTurn = {
+    turnId: `pending_${Date.now().toString(36)}`,
+    requestId,
+    robotId,
+    displayName,
+    timers: [],
+    cancelled: false,
+    realtimeAudioFrames: 0,
+    speakingStarted: false
+  };
+  session.activeTurn = activeTurn;
+
+  socketSend(socket, createOmniOutputState({
+    turnId: activeTurn.turnId,
+    requestId,
+    robotId,
+    displayName,
+    state: 'thinking',
+    reason: `Adapter skeleton received omni.input_packet.v1 and entered ${describeProviderStatus(session.provider)} thinking.`
+  }));
+
+  const unsubscribeReplyAudio = typeof session.provider.onReplyAudioFrame === 'function'
+    ? session.provider.onReplyAudioFrame((frame) => {
+      if (activeTurn.cancelled || session.activeTurn !== activeTurn) return;
+      const outputFrame = withAdapterIdentity(frame, { requestId, robotId, displayName });
+      if (!activeTurn.speakingStarted) {
+        activeTurn.speakingStarted = true;
+        socketSend(socket, createOmniOutputState({
+          turnId: outputFrame.turnId || activeTurn.turnId,
+          requestId,
+          robotId,
+          displayName,
+          state: 'speaking',
+          reason: `Adapter skeleton is forwarding native ${describeProviderStatus(session.provider)} omni.reply_audio_frame.v1 output.`
+        }));
+      }
+      activeTurn.realtimeAudioFrames += 1;
+      socketSend(socket, outputFrame);
+    })
+    : () => {};
+
   const turn = await session.provider.runInference({ packet, requestId });
+  activeTurn.turnId = turn.turnId;
   const providerFailed = turn.providerStatus && turn.providerStatus.ok === false;
   if (providerFailed) {
+    unsubscribeReplyAudio();
+    session.activeTurn = null;
     socketSend(socket, createOmniOutputState({
       turnId: turn.turnId,
       requestId,
@@ -96,24 +155,6 @@ async function streamProviderOutput(socket, packetInfo) {
     }));
     return;
   }
-  const activeTurn = {
-    turnId: turn.turnId,
-    requestId,
-    robotId,
-    displayName,
-    timers: [],
-    cancelled: false
-  };
-  session.activeTurn = activeTurn;
-
-  socketSend(socket, createOmniOutputState({
-    turnId: turn.turnId,
-    requestId,
-    robotId,
-    displayName,
-      state: 'thinking',
-      reason: `Adapter skeleton received omni.input_packet.v1 and entered ${describeProviderStatus(session.provider)} thinking.`
-  }));
 
   socketSend(socket, createLocalDevOutputEnvelope({
     requestId,
@@ -122,17 +163,9 @@ async function streamProviderOutput(socket, packetInfo) {
     receivedAt: now()
   }));
 
-  socketSend(socket, createOmniOutputState({
-    turnId: turn.turnId,
-    requestId,
-    robotId,
-    displayName,
-    state: 'speaking',
-    reason: `Adapter skeleton is streaming ${describeProviderStatus(session.provider)} omni.reply_audio_frame.v1 output.`
-  }));
-
   const audioPlan = session.provider.createReplyAudioPlan({ turn, packet, requestId });
   if (!audioPlan.length) {
+    unsubscribeReplyAudio();
     session.activeTurn = null;
     socketSend(socket, createOmniOutputState({
       turnId: turn.turnId,
@@ -140,9 +173,22 @@ async function streamProviderOutput(socket, packetInfo) {
       robotId,
       displayName,
       state: 'finished',
-      reason: `${describeProviderStatus(session.provider)} returned no reply_audio_frame plan; output turn finished without audio.`
+      reason: activeTurn.realtimeAudioFrames
+        ? `${describeProviderStatus(session.provider)} native reply_audio_frame output finished.`
+        : `${describeProviderStatus(session.provider)} returned no reply_audio_frame plan; output turn finished without audio.`
     }));
     return;
+  }
+  if (!activeTurn.speakingStarted) {
+    activeTurn.speakingStarted = true;
+    socketSend(socket, createOmniOutputState({
+      turnId: turn.turnId,
+      requestId,
+      robotId,
+      displayName,
+      state: 'speaking',
+      reason: `Adapter skeleton is streaming ${describeProviderStatus(session.provider)} omni.reply_audio_frame.v1 output.`
+    }));
   }
   for (const item of audioPlan) {
     const timer = setTimeout(() => {
@@ -163,6 +209,7 @@ async function streamProviderOutput(socket, packetInfo) {
       });
       socketSend(socket, frame);
       if (frame.isFinal) {
+        unsubscribeReplyAudio();
         session.activeTurn = null;
         socketSend(socket, createOmniOutputState({
           turnId: turn.turnId,
@@ -284,7 +331,7 @@ server.on('connection', (socket, request) => {
 
 server.on('listening', () => {
   console.log(`LocalDev Adapter Skeleton listening on ws://${HOST}:${PORT}${PATH}`);
-  console.log('This is a contract-compatible placeholder, not real Qwen2.5-Omni inference.');
+  console.log('This is a contract-compatible placeholder, not real Qwen-Omni inference.');
   console.log(`Provider selection: LOCALDEV_OMNI_PROVIDER=${process.env.LOCALDEV_OMNI_PROVIDER || 'placeholder'}; available=${listLocalDevProviderKeys().join(', ')}`);
 });
 

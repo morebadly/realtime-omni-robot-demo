@@ -125,7 +125,7 @@ export default function OmniSessionPanel({
           <div>
             <small>bridge_error</small>
             <strong>{localDevBridge.error}</strong>
-            <p>请确认 `npm run mock:localdev` 或本地 Qwen2.5-Omni Adapter 正在运行。</p>
+            <p>请确认 `npm run mock:localdev` 或本地 Qwen-Omni 兼容 Adapter 正在运行。</p>
           </div>
         )}
       </div>

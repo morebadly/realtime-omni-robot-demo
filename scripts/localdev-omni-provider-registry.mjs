@@ -1,9 +1,10 @@
 import { createPlaceholderOmniProvider } from './localdev-omni-placeholder-provider.mjs';
-import { createQwenOmniProviderStub } from './localdev-omni-qwen-provider-stub.mjs';
+import { createQwenOmniCompatibleProvider } from './localdev-omni-qwen-provider-stub.mjs';
 
 const PROVIDERS = {
   placeholder: createPlaceholderOmniProvider,
-  qwen_stub: createQwenOmniProviderStub
+  qwen_omni: createQwenOmniCompatibleProvider,
+  qwen_stub: createQwenOmniCompatibleProvider
 };
 
 export function listLocalDevProviderKeys() {

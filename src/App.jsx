@@ -13,6 +13,7 @@ import EmotionInspector from './components/EmotionInspector';
 import ModelProviderPanel from './components/ModelProviderPanel';
 import RuntimeArchitecturePanel from './components/RuntimeArchitecturePanel';
 import ConnectionManagerPanel from './components/ConnectionManagerPanel';
+import RobotConnectionStatusPanel from './components/RobotConnectionStatusPanel';
 import RealtimeAudioPanel from './components/RealtimeAudioPanel';
 import RealtimeAudioOutputPlayer from './components/RealtimeAudioOutputPlayer';
 import OmniSessionPanel from './components/OmniSessionPanel';
@@ -40,6 +41,7 @@ export default function App() {
     realtimeSession,
     realtimeSessionState,
     realtimeRoute,
+    realtimeReadiness,
     omniPacket,
     lastOmniTurn,
     omniSessionStatus,
@@ -94,7 +96,16 @@ export default function App() {
               <div><small>身份昵称</small><strong>{robot.name}</strong></div>
               <div><small>Model Adapter</small><strong>{robot.adapter}</strong></div>
             </div>
-            <RealtimeAudioPanel robot={robot} session={realtimeSession} route={realtimeRoute} onStatus={actions.handleRealtimeSessionStatus} onAudioFrame={actions.handleAudioFrame} />
+            <RealtimeAudioPanel
+              robot={robot}
+              session={realtimeSession}
+              route={realtimeRoute}
+              localDevPreflight={localDevPreflight}
+              localDevBridge={localDevBridge}
+              onStatus={actions.handleRealtimeSessionStatus}
+              onAudioFrame={actions.handleAudioFrame}
+              onAdapterTest={actions.handleLocalDevAdapterTest}
+            />
             <RealtimeAudioOutputPlayer output={realtimeOutput} sessionState={realtimeSessionState} onFramePlayed={actions.handleReplyAudioFramePlayed} onInterrupt={actions.handleRealtimeOutputInterrupt} />
             <CameraPreview robot={robot} framePolicy={framePolicy} onStatus={setCameraStatus} onFrame={actions.handleCameraFrame} />
             <EmotionInspector robot={robot} cameraStatus={cameraStatus} recentEvents={recentEvents} />
@@ -110,6 +121,21 @@ export default function App() {
         </section>
 
         <aside className="right-column">
+          <RobotConnectionStatusPanel
+            robot={robot}
+            connection={connectionSnapshot}
+            route={realtimeRoute}
+            realtimeSession={realtimeSession}
+            realtimeSessionState={realtimeSessionState}
+            localDevPreflight={localDevPreflight}
+            localDevBridge={localDevBridge}
+            mediaChannels={mediaChannels}
+            realtimeOutput={realtimeOutput}
+            readiness={realtimeReadiness}
+            onConnectionMode={actions.handleMode}
+            onAdapterTest={actions.handleLocalDevAdapterTest}
+            onAdapterDisconnect={actions.handleLocalDevOmniDisconnect}
+          />
           <RobotRegistryPanel robots={robotRegistry} activeRobotId={activeRobotId} onSelect={actions.handleRobotSelect} onAdd={actions.handleRobotAdd} onDelete={actions.handleRobotDelete} />
           <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} />
         </aside>
@@ -203,6 +229,21 @@ export default function App() {
           <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} />
         </section>
         <aside className="right-column">
+          <RobotConnectionStatusPanel
+            robot={robot}
+            connection={connectionSnapshot}
+            route={realtimeRoute}
+            realtimeSession={realtimeSession}
+            realtimeSessionState={realtimeSessionState}
+            localDevPreflight={localDevPreflight}
+            localDevBridge={localDevBridge}
+            mediaChannels={mediaChannels}
+            realtimeOutput={realtimeOutput}
+            readiness={realtimeReadiness}
+            onConnectionMode={actions.handleMode}
+            onAdapterTest={actions.handleLocalDevAdapterTest}
+            onAdapterDisconnect={actions.handleLocalDevOmniDisconnect}
+          />
           <RobotRegistryPanel robots={robotRegistry} activeRobotId={activeRobotId} onSelect={actions.handleRobotSelect} onAdd={actions.handleRobotAdd} onDelete={actions.handleRobotDelete} />
           <ConnectionManagerPanel connection={connectionSnapshot} framePolicy={framePolicy} quality={networkQuality} onQuality={actions.handleNetworkQualityChange} onAutoFallback={actions.handleAutoFallback} />
         </aside>

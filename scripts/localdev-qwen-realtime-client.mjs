@@ -10,6 +10,9 @@ export function createQwenRealtimeClient(config = {}) {
     audioFrames: 0,
     cameraFrames: 0,
     interrupts: 0,
+    inboundMessages: 0,
+    outputTurns: 0,
+    replyAudioFrames: 0,
     lastError: null
   };
 
@@ -66,12 +69,53 @@ export function createQwenRealtimeClient(config = {}) {
     return { ...result, reason, state: snapshot() };
   }
 
+  async function waitForOutputTurn({ requestId = null, timeoutMs = config.timeoutMs || 15000 } = {}) {
+    if (typeof transport.waitForOutputTurn !== 'function') {
+      return {
+        ok: false,
+        code: 'qwen_output_turn_wait_not_supported',
+        error: `Transport ${transport.name} does not support waiting for output turns.`,
+        state: snapshot()
+      };
+    }
+    const result = await transport.waitForOutputTurn({ requestId, timeoutMs });
+    state.inboundMessages = typeof transport.getReceivedMessages === 'function'
+      ? transport.getReceivedMessages().length
+      : state.inboundMessages;
+    if (result.ok) state.outputTurns += 1;
+    state.replyAudioFrames = typeof transport.getReplyAudioFrames === 'function'
+      ? transport.getReplyAudioFrames({ requestId }).length
+      : state.replyAudioFrames;
+    state.lastError = result.ok ? null : result.error;
+    return { ...result, requestId, state: snapshot() };
+  }
+
+  function getReplyAudioFrames({ requestId = null } = {}) {
+    if (typeof transport.getReplyAudioFrames !== 'function') return [];
+    const frames = transport.getReplyAudioFrames({ requestId });
+    state.replyAudioFrames = frames.length;
+    state.inboundMessages = typeof transport.getReceivedMessages === 'function'
+      ? transport.getReceivedMessages().length
+      : state.inboundMessages;
+    return frames;
+  }
+
+  function getReceivedMessages() {
+    if (typeof transport.getReceivedMessages !== 'function') return [];
+    const messages = transport.getReceivedMessages();
+    state.inboundMessages = messages.length;
+    return messages;
+  }
+
   return {
     connect,
     ensureSession,
     sendInputPacket,
     sendMediaFrame,
     sendInterrupt,
+    waitForOutputTurn,
+    getReplyAudioFrames,
+    getReceivedMessages,
     close,
     getStatus: snapshot
   };

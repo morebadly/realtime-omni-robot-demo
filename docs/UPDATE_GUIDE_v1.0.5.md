@@ -16,7 +16,7 @@ npm run dev
 2. 确认当前机器人处于 `local_dev` 模式。
 3. 在 Omni Session 面板点击“构建 Omni 输入包”。
 4. 点击“发送到 LocalDev Adapter”。
-5. 如果本地服务未启动，行为日志会提示无法连接 `ws://localhost:8000/omni/realtime`。
+5. 如果本地服务未启动，行为日志会提示无法连接 `ws://127.0.0.1:8000/omni/realtime`。
 6. 如果本地服务返回 `omni.output_turn.v1`，页面会更新模型回合、表情和工具意图。
 
 ## 本地服务返回格式

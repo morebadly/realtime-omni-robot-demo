@@ -43,7 +43,7 @@ npm run mock:localdev
 默认监听：
 
 ```text
-ws://localhost:8000/omni/realtime
+ws://127.0.0.1:8000/omni/realtime
 ```
 
 然后在 Web 页面里：

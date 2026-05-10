@@ -1,7 +1,7 @@
-export const NETWORK_PROFILES = {
+import { CONNECTION_MODE_OPTIONS, getConnectionModeOption } from './connectionModes.js';
+
+const NETWORK_BASE_PROFILES = {
   local_dev: {
-    key: 'local_dev',
-    label: '本地调试网络',
     connection: 'local_loopback',
     transport: 'Localhost / LAN',
     latencyMs: 18,
@@ -12,13 +12,11 @@ export const NETWORK_PROFILES = {
     audioPriority: 'realtime_raw_audio',
     frameStrategy: 'local_debug_frame_buffer',
     cloudUpload: false,
-    description: '开发机本地调试，音频/关键帧进入 LocalDevOmniAdapter，不上传公网云端。'
+    description: '开发机本地调试，音频和关键帧进入 LocalDevOmniAdapter，不上传公网云端。'
   },
   wifi_cloud: {
-    key: 'wifi_cloud',
-    label: 'Wi‑Fi 云端主体验',
     connection: 'wifi',
-    transport: 'Wi‑Fi + Cloud Realtime',
+    transport: 'Wi-Fi + Cloud Realtime',
     latencyMs: 62,
     jitterMs: 13,
     packetLoss: 0.4,
@@ -30,8 +28,6 @@ export const NETWORK_PROFILES = {
     description: '家庭/办公室主体验，允许更稳定的实时音频与关键帧上传。'
   },
   cellular_cloud: {
-    key: 'cellular_cloud',
-    label: 'eSIM / 实体 SIM 移动模式',
     connection: 'cellular',
     transport: 'Cellular + Cloud Realtime',
     latencyMs: 115,
@@ -42,11 +38,9 @@ export const NETWORK_PROFILES = {
     audioPriority: 'audio_first',
     frameStrategy: 'low_rate_or_on_demand',
     cloudUpload: true,
-    description: '外出移动体验，音频优先；关键帧低频或用户明确询问时上传高清。'
+    description: '出门移动体验，音频优先；关键帧低频或按需上传。'
   },
   self_hosted_cloud: {
-    key: 'self_hosted_cloud',
-    label: '自建云 Omni Gateway',
     connection: 'wifi_or_wan',
     transport: 'Robot Gateway + Self Hosted Cloud',
     latencyMs: 78,
@@ -60,8 +54,6 @@ export const NETWORK_PROFILES = {
     description: '后期自建云服务，由租户策略控制上传、日志、模型路由和工具权限。'
   },
   offline_pet: {
-    key: 'offline_pet',
-    label: '离线基础宠物模式',
     connection: 'offline',
     transport: 'On-device Preset Runtime',
     latencyMs: 0,
@@ -76,6 +68,23 @@ export const NETWORK_PROFILES = {
   }
 };
 
+export const NETWORK_PROFILES = Object.fromEntries(
+  CONNECTION_MODE_OPTIONS.map((option) => {
+    const base = NETWORK_BASE_PROFILES[option.key];
+    return [
+      option.key,
+      {
+        key: option.key,
+        label: option.networkLabel,
+        connectionMode: option.key,
+        productScenario: option.productScenario,
+        requiresNetwork: option.requiresNetwork,
+        ...base
+      }
+    ];
+  })
+);
+
 export const NETWORK_QUALITY_PRESETS = [
   {
     key: 'stable',
@@ -88,12 +97,12 @@ export const NETWORK_QUALITY_PRESETS = [
   },
   {
     key: 'busy',
-    label: '拥塞',
+    label: '拥挤',
     latencyDelta: 55,
     jitterDelta: 22,
     packetLossDelta: 1.2,
     signalDelta: -12,
-    note: '网络拥塞：保持原始音频优先，降低关键帧频率。'
+    note: '网络拥挤：保持原始音频优先，降低关键帧频率。'
   },
   {
     key: 'poor',
@@ -116,12 +125,13 @@ export const NETWORK_QUALITY_PRESETS = [
 ];
 
 export function getNetworkProfile(mode = 'local_dev') {
-  return NETWORK_PROFILES[mode] || NETWORK_PROFILES.local_dev;
+  const option = getConnectionModeOption(mode);
+  return NETWORK_PROFILES[option.key] || NETWORK_PROFILES.local_dev;
 }
 
 export function applyNetworkQuality(profile, qualityKey = 'stable') {
   const preset = NETWORK_QUALITY_PRESETS.find((item) => item.key === qualityKey) || NETWORK_QUALITY_PRESETS[0];
-  const offline = preset.key === 'offline' || profile.key === 'offline_pet';
+  const offline = preset.key === 'offline' || profile.key === 'offline_pet' || profile.requiresNetwork === false;
   return {
     ...profile,
     quality: preset.key,
@@ -142,7 +152,7 @@ export function buildConnectionSnapshot(mode, qualityKey = 'stable') {
     ...profile,
     status: profile.online ? (shouldDegrade ? 'degraded' : 'connected') : 'offline',
     degradeReason: shouldDegrade ? 'latency_or_packet_loss_high' : null,
-    recommendedMode: profile.online ? mode : 'offline_pet',
+    recommendedMode: profile.online ? profile.key : 'offline_pet',
     cloudRoute: profile.cloudUpload ? 'cloud_omni_realtime' : 'local_or_offline_runtime',
     audioRoute: profile.online ? profile.audioPriority : 'offline_presets_only'
   };

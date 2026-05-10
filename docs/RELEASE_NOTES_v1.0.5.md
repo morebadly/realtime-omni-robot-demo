@@ -18,5 +18,5 @@
 ## 默认 endpoint
 
 ```text
-ws://localhost:8000/omni/realtime
+ws://127.0.0.1:8000/omni/realtime
 ```

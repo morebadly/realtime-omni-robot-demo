@@ -1094,8 +1094,432 @@ li { color: rgba(237,250,255,.58); font-size: 12px; margin-bottom: 6px; }
 .connection-status-offline { border-color: rgba(255,125,153,.35); color: #ff7d99; }
 .camera-policy-note { color: rgba(237,250,255,.46); font-size: 12px; line-height: 1.5; margin: 10px 0 0; }
 
+/* v1.1.6 daily robot connection status */
+.robot-connection-panel {
+  border-color: rgba(88, 243, 255, .14);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(93,247,174,.075), transparent 34%),
+    linear-gradient(135deg, rgba(88,243,255,.055), rgba(124,102,255,.045));
+}
+.robot-connection-panel-good {
+  border-color: rgba(93,247,174,.22);
+}
+.robot-connection-panel-warning {
+  border-color: rgba(255,209,102,.24);
+}
+.robot-connection-panel-danger {
+  border-color: rgba(255,125,153,.26);
+}
+.robot-connection-tag-good {
+  border-color: rgba(93,247,174,.34);
+  color: #5df7ae;
+  background: rgba(93,247,174,.08);
+}
+.robot-connection-tag-warning {
+  border-color: rgba(255,209,102,.34);
+  color: #ffd166;
+  background: rgba(255,209,102,.08);
+}
+.robot-connection-tag-danger {
+  border-color: rgba(255,125,153,.36);
+  color: #ff7d99;
+  background: rgba(255,125,153,.08);
+}
+.robot-connection-tag-idle {
+  border-color: rgba(180,216,226,.22);
+  color: rgba(237,250,255,.72);
+  background: rgba(255,255,255,.05);
+}
+.robot-connection-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+.robot-connection-summary > div {
+  min-width: 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(0,0,0,.16);
+  border: 1px solid rgba(255,255,255,.075);
+}
+.robot-connection-summary small,
+.robot-connection-row small {
+  display: block;
+  color: rgba(180,216,226,.62);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.robot-connection-summary strong,
+.robot-connection-row strong {
+  display: block;
+  color: rgba(238,253,255,.94);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.robot-connection-summary span {
+  display: block;
+  margin-top: 5px;
+  color: rgba(237,250,255,.45);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.robot-connection-mode-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.robot-connection-mode-picker button {
+  min-width: 0;
+  min-height: 64px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(88,243,255,.13);
+  background: rgba(0,0,0,.14);
+  color: rgba(237,250,255,.72);
+  text-align: left;
+}
+.robot-connection-mode-picker button:hover {
+  border-color: rgba(88,243,255,.32);
+  background: rgba(88,243,255,.075);
+}
+.robot-connection-mode-picker button.active {
+  border-color: rgba(93,247,174,.34);
+  background: rgba(93,247,174,.09);
+  color: rgba(238,253,255,.96);
+}
+.robot-connection-mode-picker strong,
+.robot-connection-mode-picker small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.robot-connection-mode-picker strong {
+  font-size: 12px;
+  line-height: 1.25;
+}
+.robot-connection-mode-picker small {
+  margin-top: 5px;
+  color: rgba(190,215,226,.56);
+  font-size: 11px;
+  line-height: 1.35;
+}
+.robot-connection-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+.robot-connection-actions button {
+  min-width: 0;
+  border: 1px solid rgba(93,247,174,.24);
+  border-radius: 14px;
+  background: rgba(93,247,174,.08);
+  color: rgba(238,253,255,.92);
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 12px;
+}
+.robot-connection-actions button:hover:not(:disabled) {
+  border-color: rgba(93,247,174,.42);
+  background: rgba(93,247,174,.13);
+}
+.robot-connection-actions button.secondary {
+  border-color: rgba(255,255,255,.12);
+  background: rgba(255,255,255,.045);
+  color: rgba(237,250,255,.72);
+}
+.robot-connection-actions button.secondary:hover:not(:disabled) {
+  border-color: rgba(255,125,153,.3);
+  background: rgba(255,125,153,.075);
+  color: rgba(255,210,220,.92);
+}
+.robot-connection-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+.robot-connection-actions span {
+  white-space: nowrap;
+  color: rgba(190,215,226,.6);
+  font-size: 12px;
+}
+.robot-next-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 11px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.15);
+}
+.robot-next-action-good {
+  border-color: rgba(93,247,174,.2);
+  background: rgba(93,247,174,.055);
+}
+.robot-next-action-warning {
+  border-color: rgba(255,209,102,.22);
+  background: rgba(255,209,102,.06);
+}
+.robot-next-action-danger {
+  border-color: rgba(255,125,153,.24);
+  background: rgba(255,125,153,.07);
+}
+.robot-next-action small {
+  display: block;
+  color: rgba(180,216,226,.62);
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+.robot-next-action strong {
+  display: block;
+  color: rgba(238,253,255,.95);
+  font-size: 13px;
+}
+.robot-next-action p {
+  margin: 5px 0 0;
+  color: rgba(190,215,226,.68);
+  font-size: 12px;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+.robot-next-action button {
+  border: 1px solid rgba(93,247,174,.28);
+  border-radius: 14px;
+  background: rgba(93,247,174,.1);
+  color: rgba(238,253,255,.94);
+  padding: 9px 11px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.robot-next-action button:hover:not(:disabled) {
+  border-color: rgba(93,247,174,.44);
+  background: rgba(93,247,174,.15);
+}
+.robot-next-action button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.robot-connection-health {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.robot-connection-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: rgba(0,0,0,.15);
+  border: 1px solid rgba(255,255,255,.075);
+}
+.robot-connection-row p {
+  margin: 4px 0 0;
+  color: rgba(190,215,226,.66);
+  font-size: 12px;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+.robot-connection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  margin-top: 5px;
+  background: rgba(180,216,226,.44);
+  box-shadow: 0 0 16px rgba(180,216,226,.18);
+}
+.robot-connection-dot-good {
+  background: #5df7ae;
+  box-shadow: 0 0 16px rgba(93,247,174,.34);
+}
+.robot-connection-dot-warning {
+  background: #ffd166;
+  box-shadow: 0 0 16px rgba(255,209,102,.3);
+}
+.robot-connection-dot-danger {
+  background: #ff7d99;
+  box-shadow: 0 0 16px rgba(255,125,153,.3);
+}
+.robot-connection-row-good {
+  border-color: rgba(93,247,174,.16);
+}
+.robot-connection-row-warning {
+  border-color: rgba(255,209,102,.18);
+}
+.robot-connection-row-danger {
+  border-color: rgba(255,125,153,.2);
+}
+.robot-call-checklist {
+  margin-top: 12px;
+  padding: 11px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(0,0,0,.13);
+}
+.robot-call-checklist-good {
+  border-color: rgba(93,247,174,.18);
+  background: rgba(93,247,174,.045);
+}
+.robot-call-checklist-warning {
+  border-color: rgba(255,209,102,.18);
+  background: rgba(255,209,102,.045);
+}
+.robot-call-checklist-danger {
+  border-color: rgba(255,125,153,.2);
+  background: rgba(255,125,153,.05);
+}
+.robot-call-checklist-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 9px;
+}
+.robot-call-checklist-header small {
+  display: block;
+  color: rgba(180,216,226,.58);
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+.robot-call-checklist-header strong {
+  display: block;
+  color: rgba(238,253,255,.95);
+  font-size: 13px;
+}
+.robot-call-checklist-header span {
+  flex-shrink: 0;
+  color: rgba(237,250,255,.55);
+  font-size: 11px;
+}
+.robot-call-checklist-grid {
+  display: grid;
+  gap: 7px;
+}
+.robot-call-check-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: rgba(0,0,0,.12);
+  border: 1px solid rgba(255,255,255,.055);
+}
+.robot-call-check-item-good {
+  border-color: rgba(93,247,174,.12);
+}
+.robot-call-check-item-warning {
+  border-color: rgba(255,209,102,.14);
+}
+.robot-call-check-item-danger {
+  border-color: rgba(255,125,153,.16);
+}
+.robot-call-check-item strong {
+  display: block;
+  color: rgba(238,253,255,.9);
+  font-size: 12px;
+}
+.robot-call-check-item small {
+  display: block;
+  margin-top: 3px;
+  color: rgba(190,215,226,.62);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.robot-connection-flow-alert {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border-radius: 14px;
+  background: rgba(255,209,102,.06);
+  border: 1px solid rgba(255,209,102,.18);
+}
+.robot-connection-flow-alert.danger {
+  background: rgba(255,125,153,.07);
+  border-color: rgba(255,125,153,.24);
+}
+.robot-connection-flow-alert strong {
+  display: block;
+  color: rgba(238,253,255,.94);
+  font-size: 12px;
+}
+.robot-connection-flow-alert p,
+.robot-connection-flow-alert span {
+  display: block;
+  margin: 5px 0 0;
+  color: rgba(237,250,255,.62);
+  font-size: 12px;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+.robot-connection-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+.robot-connection-foot span {
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(88,243,255,.13);
+  background: rgba(88,243,255,.055);
+  color: rgba(237,250,255,.62);
+  font-size: 11px;
+}
+.robot-realtime-policy,
+.robot-connection-diagnostics {
+  margin-top: 10px;
+  padding: 10px 11px;
+  border-radius: 14px;
+  border: 1px solid rgba(88,243,255,.12);
+  background: rgba(0,0,0,.14);
+}
+.robot-realtime-policy {
+  border-color: rgba(93,247,174,.16);
+  background: rgba(93,247,174,.045);
+}
+.robot-realtime-policy small,
+.robot-connection-diagnostics small {
+  display: block;
+  color: rgba(180,216,226,.58);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.robot-realtime-policy strong,
+.robot-connection-diagnostics strong {
+  display: block;
+  color: rgba(238,253,255,.88);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.robot-realtime-policy p,
+.robot-connection-diagnostics p {
+  margin: 5px 0 0;
+  color: rgba(190,215,226,.66);
+  font-size: 12px;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+.robot-connection-note {
+  margin: 10px 0 0;
+  color: rgba(237,250,255,.52);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 @media (max-width: 1300px) {
   .connection-grid { grid-template-columns: repeat(2, 1fr); }
+  .robot-connection-summary,
+  .robot-connection-mode-picker,
+  .robot-connection-actions,
+  .robot-next-action { grid-template-columns: 1fr; }
   .audio-route-box { grid-template-columns: 1fr; }
 }
 

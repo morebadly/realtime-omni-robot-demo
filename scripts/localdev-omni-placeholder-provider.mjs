@@ -48,7 +48,7 @@ export function createPlaceholderOmniProvider() {
         reply_audio: null,
         notes: [
           'LocalDev Adapter Skeleton placeholder output.',
-          'Replace createPlaceholderOmniProvider() with a real Qwen2.5-Omni provider later.',
+          'Replace createPlaceholderOmniProvider() with a real Qwen-Omni compatible provider later.',
           `Observed media before this turn: audio=${media.audioFrames}, camera=${media.cameraFrames}.`,
           'reply_text is subtitle/log/debug only; reply_audio_frame is the output media channel.',
           ...(simulated.notes || [])

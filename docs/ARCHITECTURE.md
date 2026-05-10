@@ -407,7 +407,7 @@ v1.0.5 开始实现本地调试 Adapter 发送层，但不改变 Omni-first 输�
 RuntimeCore
   → OmniSessionBridge / omni.input_packet.v1
   → LocalDevOmniClient
-  → ws://localhost:8000/omni/realtime
+  → ws://127.0.0.1:8000/omni/realtime
   → omni.output_turn.v1
   → Expression / ToolIntentRouter / Plugin / Permission / ToolEngine
 ```

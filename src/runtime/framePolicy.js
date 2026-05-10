@@ -29,7 +29,7 @@ export function getFramePolicy({ mode, state, cameraDemand, connection }) {
       jpegQuality: 0.95,
       upload: 'current_plus_recent',
       cloudAllowed: true,
-      rationale: '用户明确问“你看这个是什么”时，Frame Selector 选高清当前帧和最近缓存帧。'
+      rationale: '用户明确询问视觉内容时，Frame Selector 选择高清当前帧和最近缓存帧交给 Omni。'
     };
   }
 
@@ -43,7 +43,7 @@ export function getFramePolicy({ mode, state, cameraDemand, connection }) {
       jpegQuality: 0.86,
       upload: cellular ? 'low_rate_if_allowed' : 'adaptive_if_allowed',
       cloudAllowed: true,
-      rationale: '触摸/NFC/明显交互只作为事实事件，同时短时间提高关键帧采样。'
+      rationale: '触摸/NFC/明显交互只作为事实事件，同时短时间提高关键帧采样，不推断用户情绪。'
     };
   }
 
@@ -57,7 +57,7 @@ export function getFramePolicy({ mode, state, cameraDemand, connection }) {
       jpegQuality: 0.8,
       upload: 'low_rate_or_on_demand',
       cloudAllowed: true,
-      rationale: '移动网络下节省流量和延迟预算，实时音频优先。'
+      rationale: '移动网络下节省流量和延迟预算，实时音频优先，视觉关键帧按策略降频。'
     };
   }
 
@@ -71,7 +71,7 @@ export function getFramePolicy({ mode, state, cameraDemand, connection }) {
       jpegQuality: 0.86,
       upload: 'adaptive_if_allowed',
       cloudAllowed: mode !== 'local_dev',
-      rationale: '实时对话中使用较高关键帧频率，但不在前端生成情绪摘要。'
+      rationale: '实时对话中使用较高关键帧频率，但不在前端生成视觉情绪摘要。'
     };
   }
 

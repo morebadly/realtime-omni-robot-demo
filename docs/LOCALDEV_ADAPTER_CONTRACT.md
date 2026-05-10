@@ -2,14 +2,14 @@
 
 This document defines the minimum WebSocket contract that a real `LocalDevOmniAdapter` service should implement before replacing `scripts/localdev-omni-mock-server.mjs`.
 
-The goal is to connect a local Omni model service, such as a Qwen2.5-Omni debug service, without changing the Web Runtime into a text chat app. The Web Runtime remains Omni-first: raw audio frames, selected camera frames, context packets, explicit interrupt controls, and normalized Omni output events.
+The goal is to connect a local Omni model service, such as a Qwen-Omni compatible debug service, without changing the Web Runtime into a text chat app. The Web Runtime remains Omni-first: raw audio frames, selected camera frames, context packets, explicit interrupt controls, and normalized Omni output events.
 
 ## Endpoint
 
 Default endpoint:
 
 ```text
-ws://localhost:8000/omni/realtime
+ws://127.0.0.1:8000/omni/realtime
 ```
 
 The endpoint is configured by the active robot's `LocalDevOmniAdapter` profile.
@@ -43,11 +43,44 @@ Run the adapter skeleton with:
 npm run adapter:localdev:skeleton
 ```
 
-Run the Qwen provider stub with:
+Run the Qwen-Omni compatible provider boundary with:
 
 ```bash
-npm run adapter:localdev:qwen-stub
+npm run adapter:localdev:qwen-omni
 ```
+
+The older `adapter:localdev:qwen-stub` command is kept as a compatibility alias.
+
+Run the reusable local Qwen WebSocket service template:
+
+```bash
+npm run service:localdev:qwen-template
+```
+
+In another terminal, run the LocalDev adapter against that template:
+
+```bash
+npm run adapter:localdev:qwen-websocket-template
+```
+
+The template listens on `ws://127.0.0.1:8010/qwen/realtime`, acknowledges realtime input messages, emits one native `omni.reply_audio_frame.v1`, and then emits one structured `omni.output_turn.v1`. It is meant as a replacement point for real local Qwen-Omni compatible inference code.
+
+Check already-running LocalDev services without starting new child processes:
+
+```bash
+npm run health:localdev
+```
+
+Targeted checks:
+
+```bash
+npm run health:localdev:adapter
+npm run health:localdev:qwen
+```
+
+These health checks only open and close WebSocket connections. They do not start adapter, template, model, or browser processes.
+
+Runtime rule: normal development should use long-lived service processes and a reused realtime session. The `test:localdev-*` scripts may start temporary child processes, but they are test-only and must not be called from Web UI or Runtime code.
 
 Run the one-shot contract smoke test:
 
@@ -63,7 +96,31 @@ Run the Qwen loopback contract smoke test:
 npm run test:localdev-adapter-contract:qwen-loopback
 ```
 
-This uses `qwen_stub` plus the local `loopback` realtime transport. It verifies that audio frames, camera frames, input packets, and explicit interrupts reach the same realtime session boundary. It still does not perform real model inference and should not emit fake reply audio.
+This uses the Qwen-Omni compatible provider plus the local `loopback` realtime transport. It verifies that audio frames, camera frames, input packets, and explicit interrupts reach the same realtime session boundary. It still does not perform real model inference and should not emit fake reply audio.
+
+Run the Qwen WebSocket adapter contract smoke test:
+
+```bash
+npm run test:localdev-adapter-contract:qwen-websocket
+```
+
+This starts a fake local model WebSocket server, starts one adapter skeleton process with `qwen_omni + websocket_json`, sends one audio frame, one camera frame, one input packet, and one explicit interrupt through the adapter, then verifies that the fake model service sees the realtime messages in one session. The fake service returns a structured `omni.output_turn.v1` and one native `omni.reply_audio_frame.v1`; no real model inference is implemented, and the audio frame is not generated from `reply_text`.
+
+Run the template service adapter contract smoke test:
+
+```bash
+npm run test:localdev-adapter-contract:qwen-template
+```
+
+This starts `scripts/localdev-qwen-service-template.mjs` as a child process, starts one adapter skeleton process against it, and verifies the same native audio-before-output-turn behavior. Use this test when editing the reusable template service.
+
+Run the Qwen WebSocket JSON transport smoke test:
+
+```bash
+npm run test:localdev-qwen-transport
+```
+
+This starts a fake local model WebSocket server, connects `scripts/localdev-qwen-realtime-client.mjs` through the `websocket_json` transport, and verifies that `session.start`, `audio_frame`, `camera_frame`, `input_packet`, `interrupt`, and `session.close` share one session id. It also verifies that inbound structured `omni.output_turn.v1` and native `omni.reply_audio_frame.v1` messages can be observed by the realtime client. It is transport validation only; it does not define the final Qwen service API.
 
 The skeleton keeps WebSocket/session handling separate from model inference. Replace the placeholder provider with a real provider that exposes the same small surface:
 
@@ -83,16 +140,30 @@ Provider selection is controlled by `LOCALDEV_OMNI_PROVIDER`:
 
 ```text
 placeholder  # default mock inference and mock reply_audio_frame stream
-qwen_stub    # real-provider boundary without real model inference
+qwen_omni    # Qwen-Omni compatible provider boundary without real model inference
+qwen_stub    # compatibility alias for qwen_omni
 ```
 
 Qwen provider configuration:
 
 ```text
-LOCALDEV_QWEN_ENDPOINT      # future local Qwen2.5-Omni service endpoint
+LOCALDEV_QWEN_ENDPOINT      # future local Qwen-Omni compatible service endpoint
 LOCALDEV_QWEN_TRANSPORT     # default: http_json
 LOCALDEV_QWEN_TIMEOUT_MS    # default: 15000
 LOCALDEV_QWEN_DRY_RUN       # default: enabled; set 0 only after a real client is implemented
+```
+
+The shared configuration checklist lives in:
+
+```text
+scripts/localdev-qwen-config.mjs
+docs/LOCALDEV_QWEN_SETUP.md
+```
+
+Validate it with:
+
+```bash
+npm run test:localdev-qwen-config
 ```
 
 `scripts/localdev-qwen-realtime-client.mjs` defines the realtime provider session boundary. `scripts/localdev-qwen-realtime-transport.mjs` owns the transport slot. Current transports:
@@ -100,10 +171,70 @@ LOCALDEV_QWEN_DRY_RUN       # default: enabled; set 0 only after a real client i
 ```text
 dry_run      # default; never opens a model connection
 loopback     # local boundary test only; not real model inference
+websocket_json# generic local WebSocket JSON carrier for realtime message testing
 unimplemented# returned for unknown transports
 ```
 
 `scripts/localdev-qwen-http-client.mjs` remains only a normalization/config helper until a real transport is chosen.
+
+The generic `websocket_json` transport sends messages shaped as:
+
+```json
+{
+  "schema": "localdev.qwen.realtime_message.v1",
+  "type": "audio_frame",
+  "sessionId": "qwen_rt_xxx",
+  "requestId": "localdev_req_xxx",
+  "frame": { "schema": "omni.audio_frame.v1" }
+}
+```
+
+Allowed transport message types:
+
+```text
+session.start
+audio_frame
+camera_frame
+input_packet
+interrupt
+session.close
+```
+
+The real provider may replace or extend this carrier after the actual local Qwen service contract is known. Until then, this transport must remain a session boundary test and must not synthesize audio from `reply_text`.
+
+The generic transport can also receive a structured output turn:
+
+```json
+{
+  "schema": "localdev.qwen.output_turn.v1",
+  "type": "output_turn",
+  "sessionId": "qwen_rt_xxx",
+  "requestId": "localdev_req_xxx",
+  "turn": { "schema": "omni.output_turn.v1" }
+}
+```
+
+The Qwen-Omni compatible provider may normalize this structured turn into the standard LocalDev adapter output chain. Native model audio output is still a separate future step and should map to `omni.reply_audio_frame.v1`, not to TTS generated from `reply_text`.
+
+The generic transport can receive native reply audio frames too:
+
+```json
+{
+  "schema": "omni.reply_audio_frame.v1",
+  "type": "omni.reply_audio_frame",
+  "requestId": "localdev_req_xxx",
+  "audio": {
+    "kind": "reply_audio",
+    "payloadIncluded": true
+  }
+}
+```
+
+The provider may forward these native frames through the adapter skeleton output path. This is still a contract test path; a final production adapter should stream native audio frames as they arrive rather than waiting on a text turn.
+
+The adapter skeleton now supports that early-output behavior for providers that expose `onReplyAudioFrame(listener)`: native `omni.reply_audio_frame.v1` messages can be forwarded to the Web Runtime while the provider is still waiting for a structured `omni.output_turn.v1`. The structured turn remains useful for subtitles, expression updates, tool intents, logs, and traceability; it must not become the source of speech synthesis.
+
+The WebSocket contract tests assert this ordering explicitly: in the `qwen_websocket` scenario, `omni.reply_audio_frame.v1` must reach the adapter client before the structured `omni.output_turn` envelope. This prevents the demo path from regressing into a text-turn-first playback pipeline.
 
 Provider failures must be normalized instead of crashing the WebSocket session:
 

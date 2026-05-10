@@ -25,12 +25,12 @@ LocalDev Adapter skeleton:
 npm run adapter:localdev:skeleton
 ```
 
-This uses the same WebSocket contract as the mock server, but it is still placeholder inference, not real Qwen2.5-Omni.
+This uses the same WebSocket contract as the mock server, but it is still placeholder inference, not a real Qwen-Omni compatible model.
 
-To test the future Qwen provider boundary without real inference:
+To test the future Qwen-Omni compatible provider boundary without real inference:
 
 ```bash
-npm run adapter:localdev:qwen-stub
+npm run adapter:localdev:qwen-omni
 ```
 
 To test the realtime transport slot without a model:
@@ -45,10 +45,116 @@ To run the one-shot LocalDev adapter contract smoke test:
 npm run test:localdev-adapter-contract
 ```
 
+To verify that audio and camera `media_ack` counts are tracked separately:
+
+```bash
+npm run test:media-channel-ack
+```
+
+To verify the Runtime realtime-call readiness checklist and non-blocking ack wording:
+
+```bash
+npm run test:realtime-readiness
+```
+
+To verify the Runtime connection mode list used by the daily connection panel:
+
+```bash
+npm run test:connection-modes
+```
+
+To verify the Runtime network profile snapshots used by the connection manager:
+
+```bash
+npm run test:network-manager
+```
+
+To verify the Runtime view model used by the robot connection status panel:
+
+```bash
+npm run test:connection-status-view-model
+```
+
+To verify the Runtime view model used by the network connection manager:
+
+```bash
+npm run test:connection-manager-view-model
+```
+
+To verify the LocalDev Adapter first-check preflight policy:
+
+```bash
+npm run test:localdev-preflight
+```
+
+To verify the LocalDev Qwen configuration checklist:
+
+```bash
+npm run test:localdev-qwen-config
+```
+
+To verify the Qwen-Omni cloud realtime configuration checklist:
+
+```bash
+npm run test:dashscope-omni-config
+```
+
+To verify the LocalDev provider registry and Qwen-Omni compatibility alias:
+
+```bash
+npm run test:localdev-provider-registry
+```
+
+To verify realtime output queue dedupe, overflow, and interrupt cleanup:
+
+```bash
+npm run test:realtime-output-queue
+```
+
 To verify the Qwen realtime session slot without a model:
 
 ```bash
 npm run test:localdev-adapter-contract:qwen-loopback
+```
+
+To verify the generic WebSocket JSON realtime transport slot:
+
+```bash
+npm run test:localdev-qwen-transport
+```
+
+To verify the full adapter-to-fake-Qwen WebSocket path:
+
+```bash
+npm run test:localdev-adapter-contract:qwen-websocket
+```
+
+To run the reusable local Qwen service template, open two terminals:
+
+```bash
+npm run service:localdev:qwen-template
+```
+
+```bash
+npm run adapter:localdev:qwen-websocket-template
+```
+
+To verify the template service integration automatically:
+
+```bash
+npm run test:localdev-adapter-contract:qwen-template
+```
+
+To check already-running LocalDev services without starting new processes:
+
+```bash
+npm run health:localdev
+```
+
+To check DashScope Qwen-Omni realtime WebSocket after setting `DASHSCOPE_API_KEY`:
+
+```bash
+npm run health:dashscope-omni
 ```
 
 浏览器打开终端输出的地址，通常是：
@@ -131,6 +237,9 @@ realtime-omni-robot-demo/
 │   ├── ARCHITECTURE.md
 │   ├── IMPLEMENTATION_PLAN.md
 │   ├── LOCALDEV_ADAPTER_CONTRACT.md
+│   ├── LOCALDEV_QWEN_SETUP.md
+│   ├── QWEN_OMNI_CLOUD_API_SETUP.md
+│   ├── HARDWARE_INTEGRATION_GUIDE.md
 │   ├── INVESTOR_NOTES.md
 │   ├── RELEASE_NOTES_v1.1.0.md
 │   ├── UPDATE_GUIDE_v1.1.0.md
@@ -254,10 +363,11 @@ Client Layer
 
 ## 后续接入方向
 
-1. 接入真实 `LocalDevOmniAdapter`，把本地 Qwen2.5-Omni 作为开发调试模型。
+1. 接入真实 `LocalDevOmniAdapter`，把本地 Qwen-Omni 兼容服务作为开发调试模型。
 2. 将 `OmniSessionBridge` 的 Mock 发送层替换为 WebSocket/WebRTC/HTTP Adapter Client。
 3. 将浏览器麦克风模拟替换为 RobotMicAdapter，原始音频直接进入 Omni。
 4. 将浏览器摄像头模拟替换为 RobotCameraAdapter，并由真正的 Visual Frame Buffer / Frame Selector 控制 payload 上传。
+5. 按 `docs/HARDWARE_INTEGRATION_GUIDE.md` 增加 Robot Gateway / Device Runtime，确保 Web 仍只是控制台，不直接访问硬件。
 5. 接入第三方云端 Omni API。
 6. 将代码插件沙箱从 Demo Worker 升级为真正的设备端/服务端隔离沙箱。
 7. 接入真实触摸/NFC 硬件。
@@ -339,7 +449,7 @@ packet_schema=omni.input_packet.v1 packet_id=omni_xxx robot=robot_local_dev disp
 - 发布包不再包含 `node_modules/` 和 `dist/`。
 - 新增 `AGENTS.md`，作为 Codex 的项目级开发规则。
 - 新增 `npm run mock:localdev`，启动本地 WebSocket Mock 服务。
-- Mock 服务监听 `ws://localhost:8000/omni/realtime`，接收统一输入包并返回统一输出回合。
+- Mock 服务监听 `ws://127.0.0.1:8000/omni/realtime`，接收统一输入包并返回统一输出回合。
 - 当前 Mock Server 只验证 Runtime 协议和回包链路；真实 PCM chunk 已在 v1.0.9 接入，真实 JPEG 关键帧 payload 已在 v1.1.0 接入，但仍不执行真实模型推理。
 
 本地验证方式：
@@ -371,7 +481,7 @@ npm run dev
 默认 endpoint：
 
 ```text
-ws://localhost:8000/omni/realtime
+ws://127.0.0.1:8000/omni/realtime
 ```
 
 ## v1.0.4：Per-Robot Runtime 配置

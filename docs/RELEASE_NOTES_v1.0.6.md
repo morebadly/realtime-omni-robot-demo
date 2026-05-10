@@ -13,7 +13,7 @@ v1.0.6 是 Codex 迁移准备版，重点是清理项目包、补充代理说明
 ```text
 Web / OmniSessionPanel
   → LocalDevOmniClient
-  → ws://localhost:8000/omni/realtime
+  → ws://127.0.0.1:8000/omni/realtime
   → LocalDev Mock Server
   → omni.output_turn.v1
   → Runtime 输出处理链

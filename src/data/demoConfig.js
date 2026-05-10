@@ -89,7 +89,7 @@ export const DEFAULT_PLUGINS = [
 ];
 
 export const RUNTIME_MODES = [
-  { key: 'local_dev', label: '本地调试', description: '本地 Qwen2.5-Omni / LocalDevOmniAdapter，用于 Demo 调试。' },
+  { key: 'local_dev', label: '本地调试', description: '本地 Qwen-Omni 兼容服务 / LocalDevOmniAdapter，用于 Demo 调试。' },
   { key: 'wifi_cloud', label: 'Wi‑Fi 云端', description: '成熟产品主体验：Wi‑Fi 连接第三方云端 Omni。' },
   { key: 'cellular_cloud', label: 'eSIM/实体卡云端', description: '出门场景：蜂窝网络连接云端 Omni，音频优先。' },
   { key: 'self_hosted_cloud', label: '自建云 Omni', description: '后期自建 SelfHostedCloudOmniAdapter 服务。' },

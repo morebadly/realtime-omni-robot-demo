@@ -1,21 +1,53 @@
 import { callQwenOmniService, createQwenProviderConfig, createQwenProviderErrorTurn, normalizeQwenProviderResult } from './localdev-qwen-http-client.mjs';
 import { createQwenRealtimeClient } from './localdev-qwen-realtime-client.mjs';
 
-export function createQwenOmniProviderStub() {
+function canReceiveRealtimeOutput(config) {
+  return config?.transport === 'websocket_json' || config?.transport === 'ws_json';
+}
+
+export function createQwenOmniCompatibleProvider() {
   const config = createQwenProviderConfig();
-  const realtimeClient = createQwenRealtimeClient(config);
+  const replyAudioListeners = new Set();
   const media = {
     audioFrames: 0,
     cameraFrames: 0,
     lastAudioFrame: null,
     lastCameraFrame: null
   };
+  let lastReplyAudioFrames = [];
+  let replyAudioWasStreamed = false;
+
+  function handleReplyAudioFrame(frame) {
+    lastReplyAudioFrames.push(frame);
+    for (const listener of replyAudioListeners) {
+      replyAudioWasStreamed = true;
+      listener(frame);
+    }
+  }
+
+  const realtimeClient = createQwenRealtimeClient({
+    ...config,
+    onReplyAudioFrame: handleReplyAudioFrame
+  });
+
+  function refreshReplyAudioFrames(requestId = null) {
+    lastReplyAudioFrames = typeof realtimeClient.getReplyAudioFrames === 'function'
+      ? realtimeClient.getReplyAudioFrames({ requestId })
+      : [];
+    return lastReplyAudioFrames;
+  }
 
   return {
-    name: 'qwen2_5_omni_provider_stub',
-    kind: 'qwen_stub',
+    name: 'qwen_omni_compatible_provider',
+    kind: 'qwen_omni',
     config,
     realtimeClient,
+
+    onReplyAudioFrame(listener) {
+      if (typeof listener !== 'function') return () => {};
+      replyAudioListeners.add(listener);
+      return () => replyAudioListeners.delete(listener);
+    },
 
     async observeMediaFrame(frame, requestId = null) {
       if (frame?.schema === 'omni.camera_frame.v1') {
@@ -34,6 +66,8 @@ export function createQwenOmniProviderStub() {
     },
 
     async runInference({ packet, requestId }) {
+      lastReplyAudioFrames = [];
+      replyAudioWasStreamed = false;
       const realtimeResult = await realtimeClient.sendInputPacket(packet, requestId);
       if (!realtimeResult.ok) {
         return createQwenProviderErrorTurn({
@@ -44,6 +78,22 @@ export function createQwenOmniProviderStub() {
           realtimeStatus: realtimeClient.getStatus(),
           code: realtimeResult.code,
           error: realtimeResult.error
+        });
+      }
+      if (canReceiveRealtimeOutput(config)) {
+        const outputResult = await realtimeClient.waitForOutputTurn({ requestId, timeoutMs: config.timeoutMs });
+        if (outputResult.ok) {
+          refreshReplyAudioFrames(requestId);
+          return normalizeQwenProviderResult(outputResult.output, { packet, requestId, config, mediaSnapshot: media, realtimeStatus: realtimeClient.getStatus() });
+        }
+        return createQwenProviderErrorTurn({
+          packet,
+          requestId,
+          config,
+          mediaSnapshot: media,
+          realtimeStatus: realtimeClient.getStatus(),
+          code: outputResult.code,
+          error: outputResult.error
         });
       }
       const result = await callQwenOmniService({ packet, mediaSnapshot: media, requestId, config });
@@ -61,8 +111,19 @@ export function createQwenOmniProviderStub() {
       });
     },
 
-    createReplyAudioPlan() {
-      return [];
+    createReplyAudioPlan({ requestId } = {}) {
+      if (replyAudioWasStreamed) return [];
+      const frames = lastReplyAudioFrames.length ? lastReplyAudioFrames : refreshReplyAudioFrames(requestId);
+      return frames.map((frame, index) => ({
+        sequence: frame.sequence ?? index + 1,
+        isFinal: Boolean(frame.isFinal),
+        payloadBase64: frame.audio?.payload || null,
+        byteLength: frame.audio?.byteLength || 0,
+        sampleRate: frame.audio?.sampleRate || 24000,
+        channels: frame.audio?.channels || 1,
+        durationMs: frame.audio?.durationMs || 120,
+        delayMs: Math.max(0, index * 30)
+      }));
     },
 
     async sendInterrupt(interrupt) {
@@ -70,3 +131,5 @@ export function createQwenOmniProviderStub() {
     }
   };
 }
+
+export const createQwenOmniProviderStub = createQwenOmniCompatibleProvider;

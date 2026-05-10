@@ -74,7 +74,7 @@
 1. 删除发布包中的 `node_modules/` 和 `dist/`，避免把 Windows 本地依赖和构建产物迁移到 GitHub / Codex。
 2. 补充 `.gitignore`，明确忽略依赖、构建产物、环境变量和日志。
 3. 新增 `AGENTS.md`，作为 Codex / 代码代理的项目说明和开发边界。
-4. 新增 `scripts/localdev-omni-mock-server.mjs`，监听 `ws://localhost:8000/omni/realtime`。
+4. 新增 `scripts/localdev-omni-mock-server.mjs`，监听 `ws://127.0.0.1:8000/omni/realtime`。
 5. 新增 `npm run mock:localdev`，可端到端验证 Web → LocalDev Adapter → Web。
 6. 统一 README、架构文档和路线图到 v1.0.6。
 
@@ -284,7 +284,7 @@ App 需要支持：
 
 1. 新增 `src/runtime/localDevOmniClient.js`，提供 WebSocket 发送层。
 2. Omni Session 面板新增“发送到 LocalDev Adapter”按钮。
-3. Runtime 可将当前 `omni.input_packet.v1` 发往 `ws://localhost:8000/omni/realtime`。
+3. Runtime 可将当前 `omni.input_packet.v1` 发往 `ws://127.0.0.1:8000/omni/realtime`。
 4. LocalDev 返回会被归一化为 `omni.output_turn.v1`，继续走现有表情、回复、ToolIntentRouter、插件和权限链路。
 5. 本地服务未启动、endpoint 非 WebSocket 或返回内容无法解析时，会写入 Action Log 和 Runtime Trace。
 

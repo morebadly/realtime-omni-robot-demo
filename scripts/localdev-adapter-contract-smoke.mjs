@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import WebSocket from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import {
   createLocalDevControlEnvelope,
   createLocalDevInputEnvelope,
@@ -14,11 +14,17 @@ import { createOmniInterrupt } from '../src/runtime/omniOutputFrames.js';
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = resolve(SCRIPT_DIR, '..');
 const ADAPTER_SCRIPT = resolve(SCRIPT_DIR, 'localdev-omni-adapter-skeleton.mjs');
+const QWEN_TEMPLATE_SCRIPT = resolve(SCRIPT_DIR, 'localdev-qwen-service-template.mjs');
 const PATH = process.env.LOCALDEV_OMNI_PATH || '/omni/realtime';
 const HOST = '127.0.0.1';
 const PROVIDER = process.env.LOCALDEV_CONTRACT_PROVIDER || 'placeholder';
 const SCENARIO = process.env.LOCALDEV_CONTRACT_SCENARIO || 'placeholder_audio';
 const REQUEST_ID = `contract_req_${Date.now().toString(36)}`;
+
+if (process.env.LOCALDEV_RUNTIME_CALL === '1') {
+  console.error('Refusing to run contract smoke from runtime context. This script starts temporary child processes and is test-only.');
+  process.exit(1);
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -37,6 +43,139 @@ function getFreePort() {
       server.close(() => resolvePort(address.port));
     });
   });
+}
+
+async function startFakeQwenRealtimeServer() {
+  const port = await getFreePort();
+  const messages = [];
+  const server = new WebSocketServer({ host: HOST, port, path: '/qwen/realtime' });
+
+  function createFakeOutputTurn(message) {
+    return {
+      schema: 'localdev.qwen.output_turn.v1',
+      type: 'output_turn',
+      sessionId: message.sessionId,
+      requestId: message.requestId || null,
+      turn: {
+        schema: 'omni.output_turn.v1',
+        turnId: createId('qwen_ws_turn'),
+        requestId: message.requestId || null,
+        createdAt: nowIso(),
+        adapter: 'FakeLocalQwenWebSocketService',
+        route: message.packet?.routing?.route || 'local_dev_omni',
+        reply_text: 'Fake local Qwen websocket service returned a structured output turn for contract testing.',
+        reply_audio: null,
+        expression: { type: 'expression.update', expression: 'thinking', source: 'fake_local_qwen_websocket_service' },
+        tool_intents: [],
+        transcript: { partial_asr: '', usage: 'subtitles_logs_debug_only' },
+        providerStatus: { ok: true, code: 'fake_qwen_ws_output_turn', error: null },
+        notes: [
+          'Contract smoke output only.',
+          'No real Qwen inference was performed.',
+          'No fake reply audio was emitted.'
+        ]
+      }
+    };
+  }
+
+  function createFakeReplyAudioFrame(message) {
+    const payload = Buffer.from(new Float32Array([0.02, 0.01, -0.01, -0.02]).buffer).toString('base64');
+    return {
+      schema: 'omni.reply_audio_frame.v1',
+      type: 'omni.reply_audio_frame',
+      frameId: createId('fake_qwen_reply_aud'),
+      turnId: createId('fake_qwen_turn_audio'),
+      requestId: message.requestId || null,
+      robotId: message.packet?.identity?.robotId || null,
+      displayName: message.packet?.identity?.displayName || null,
+      sequence: 1,
+      isFinal: true,
+      createdAt: nowIso(),
+      source: 'fake_local_qwen_websocket_service',
+      audio: {
+        kind: 'reply_audio',
+        codec: 'pcm_float32',
+        sampleRate: 24000,
+        channels: 1,
+        durationMs: 20,
+        payloadEncoding: 'base64',
+        payloadIncluded: true,
+        byteLength: Buffer.byteLength(payload, 'base64'),
+        payload,
+        note: 'Fake native model audio for contract testing; not generated from reply_text.'
+      },
+      guardrails: {
+        realtimeOutputFirst: true,
+        notTtsPipeline: true,
+        replyTextIsSubtitleOnly: true
+      }
+    };
+  }
+
+  server.on('connection', (qwenSocket) => {
+    qwenSocket.on('message', (raw) => {
+      const message = JSON.parse(raw.toString());
+      messages.push(message);
+      qwenSocket.send(JSON.stringify({
+        schema: 'localdev.qwen.realtime_ack.v1',
+        type: `${message.type}.ack`,
+        sessionId: message.sessionId,
+        requestId: message.requestId || null,
+        receivedAt: nowIso()
+      }));
+      if (message.type === 'input_packet') {
+        qwenSocket.send(JSON.stringify(createFakeReplyAudioFrame(message)));
+        qwenSocket.send(JSON.stringify(createFakeOutputTurn(message)));
+      }
+    });
+  });
+  return {
+    endpoint: `ws://${HOST}:${port}/qwen/realtime`,
+    messages,
+    close: () => new Promise((resolveClose) => server.close(resolveClose))
+  };
+}
+
+async function startQwenTemplateService() {
+  const port = await getFreePort();
+  const path = '/qwen/realtime';
+  const logs = [];
+  const child = spawn(process.execPath, [QWEN_TEMPLATE_SCRIPT], {
+    cwd: ROOT_DIR,
+    env: {
+      ...process.env,
+      LOCALDEV_QWEN_SERVICE_HOST: HOST,
+      LOCALDEV_QWEN_SERVICE_PORT: String(port),
+      LOCALDEV_QWEN_SERVICE_PATH: path
+    },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  child.stdout.on('data', (chunk) => logs.push(chunk.toString()));
+  child.stderr.on('data', (chunk) => logs.push(chunk.toString()));
+
+  const endpoint = `ws://${HOST}:${port}${path}`;
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) {
+      throw new Error(`Qwen template service exited early: ${logs.join('').trim()}`);
+    }
+    try {
+      const probe = await openWebSocket(endpoint, 300);
+      probe.close();
+      return {
+        endpoint,
+        messages: null,
+        close: async () => {
+          if (child.exitCode === null) child.kill();
+          await delay(100);
+        }
+      };
+    } catch {
+      await delay(100);
+    }
+  }
+  if (child.exitCode === null) child.kill();
+  throw new Error(`Timed out starting Qwen template service: ${logs.join('').trim()}`);
 }
 
 function delay(ms) {
@@ -247,6 +386,12 @@ function formatSummary(messages) {
     .join(', ');
 }
 
+function findIndexOrThrow(messages, label, predicate) {
+  const index = messages.findIndex(predicate);
+  if (index < 0) throw new Error(`Missing ${label}.`);
+  return index;
+}
+
 async function assertPlaceholderAudioScenario({ socket, messages, packet }) {
   const thinking = await waitFor(messages, 'output_state thinking', (message) => (
     message.schema === 'omni.output_state.v1' && message.state === 'thinking'
@@ -318,9 +463,85 @@ async function assertQwenLoopbackScenario({ socket, messages, packet }) {
   ));
 }
 
+async function assertQwenWebsocketScenario({ socket, messages, packet, qwenMessages }) {
+  const thinking = await waitFor(messages, 'qwen websocket output_state thinking', (message) => (
+    message.schema === 'omni.output_state.v1'
+    && message.state === 'thinking'
+  ));
+  const outputTurn = await waitFor(messages, 'qwen websocket output_turn envelope', (message) => (
+    message.schema === 'cloudgenie.local_dev.envelope.v1'
+    && message.type === 'omni.output_turn'
+    && message.turn?.schema === 'omni.output_turn.v1'
+    && message.turn?.providerStatus?.ok !== false
+  ));
+  const realtimeStatus = outputTurn.turn?.providerResult?.realtimeStatus;
+  if (!realtimeStatus?.connected || !realtimeStatus.sessionId) {
+    throw new Error('Qwen websocket transport did not open a realtime session.');
+  }
+  if (realtimeStatus.inputPackets < 1 || realtimeStatus.audioFrames < 1 || realtimeStatus.cameraFrames < 1) {
+    throw new Error(`Qwen websocket transport missed realtime inputs: ${JSON.stringify(realtimeStatus)}`);
+  }
+
+  if (Array.isArray(qwenMessages)) {
+    await waitFor(qwenMessages, 'fake qwen session.start', (message) => message.type === 'session.start');
+    await waitFor(qwenMessages, 'fake qwen audio_frame', (message) => message.type === 'audio_frame' && message.frame?.schema === 'omni.audio_frame.v1');
+    await waitFor(qwenMessages, 'fake qwen camera_frame', (message) => message.type === 'camera_frame' && message.frame?.schema === 'omni.camera_frame.v1');
+    await waitFor(qwenMessages, 'fake qwen input_packet', (message) => message.type === 'input_packet' && message.packet?.schema === 'omni.input_packet.v1');
+
+    const sessionIds = [...new Set(qwenMessages.map((message) => message.sessionId).filter(Boolean))];
+    if (sessionIds.length !== 1) {
+      throw new Error(`Expected fake Qwen service to see one sessionId, got ${sessionIds.join(', ') || 'none'}`);
+    }
+  }
+  await waitFor(messages, 'qwen websocket output_state speaking', (message) => (
+    message.schema === 'omni.output_state.v1' && message.state === 'speaking'
+  ));
+  await waitFor(messages, 'qwen websocket native reply_audio_frame', (message) => (
+    message.schema === 'omni.reply_audio_frame.v1'
+    && message.audio?.kind === 'reply_audio'
+    && message.guardrails?.notTtsPipeline === true
+  ));
+  await waitFor(messages, 'qwen websocket output_state finished', (message) => (
+    message.schema === 'omni.output_state.v1' && message.state === 'finished'
+  ));
+  const errorState = messages.find((message) => message.schema === 'omni.output_state.v1' && message.state === 'error');
+  if (errorState) {
+    throw new Error(`Qwen websocket scenario returned unexpected error state: ${errorState.reason || 'unknown error'}`);
+  }
+  const replyAudioIndex = findIndexOrThrow(messages, 'qwen websocket native reply_audio_frame', (message) => message.schema === 'omni.reply_audio_frame.v1');
+  const outputTurnIndex = findIndexOrThrow(messages, 'qwen websocket output_turn envelope', (message) => (
+    message.schema === 'cloudgenie.local_dev.envelope.v1' && message.type === 'omni.output_turn'
+  ));
+  if (replyAudioIndex > outputTurnIndex) {
+    throw new Error('Expected native reply_audio_frame to be forwarded before the structured output_turn envelope.');
+  }
+
+  const interrupt = createOmniInterrupt({
+    turnId: thinking.turnId || outputTurn.turn?.turnId,
+    robotId: packet.identity.robotId,
+    displayName: packet.identity.displayName,
+    requestId: REQUEST_ID,
+    reason: 'contract_smoke_barge_in_after_error'
+  });
+  sendJson(socket, createLocalDevControlEnvelope({ requestId: REQUEST_ID, interrupt, sentAt: nowIso() }));
+  await waitFor(messages, 'qwen websocket interrupt output_state', (message) => (
+    message.schema === 'omni.output_state.v1'
+    && message.state === 'interrupted'
+    && String(message.reason || '').includes('no output turn was active')
+  ));
+  if (Array.isArray(qwenMessages)) {
+    await waitFor(qwenMessages, 'fake qwen interrupt', (message) => message.type === 'interrupt' && message.interrupt?.schema === 'omni.interrupt.v1');
+  }
+}
+
 async function main() {
   const port = Number(process.env.LOCALDEV_CONTRACT_TEST_PORT || await getFreePort());
   const url = `ws://${HOST}:${port}${PATH}`;
+  const qwenService = SCENARIO === 'qwen_websocket'
+    ? await startFakeQwenRealtimeServer()
+    : SCENARIO === 'qwen_template_service'
+      ? await startQwenTemplateService()
+      : null;
   const child = spawn(process.execPath, [ADAPTER_SCRIPT], {
     cwd: ROOT_DIR,
     env: {
@@ -328,7 +549,12 @@ async function main() {
       LOCALDEV_OMNI_HOST: HOST,
       LOCALDEV_OMNI_PORT: String(port),
       LOCALDEV_OMNI_PATH: PATH,
-      LOCALDEV_OMNI_PROVIDER: PROVIDER
+      LOCALDEV_OMNI_PROVIDER: PROVIDER,
+      ...(qwenService ? {
+        LOCALDEV_QWEN_DRY_RUN: '0',
+        LOCALDEV_QWEN_TRANSPORT: 'websocket_json',
+        LOCALDEV_QWEN_ENDPOINT: qwenService.endpoint
+      } : {})
     },
     stdio: ['ignore', 'pipe', 'pipe']
   });
@@ -368,16 +594,20 @@ async function main() {
     sendJson(socket, createLocalDevInputEnvelope({ requestId: REQUEST_ID, packet, sentAt: nowIso() }));
     if (SCENARIO === 'qwen_loopback') {
       await assertQwenLoopbackScenario({ socket, messages, packet });
+    } else if (SCENARIO === 'qwen_websocket' || SCENARIO === 'qwen_template_service') {
+      await assertQwenWebsocketScenario({ socket, messages, packet, qwenMessages: qwenService.messages });
     } else {
       await assertPlaceholderAudioScenario({ socket, messages, packet });
     }
 
-    console.log(`LocalDev adapter contract smoke passed (${SCENARIO}/${PROVIDER}): ${formatSummary(messages)}`);
+    const qwenSummary = Array.isArray(qwenService?.messages) ? ` qwen_messages=${qwenService.messages.length}` : '';
+    console.log(`LocalDev adapter contract smoke passed (${SCENARIO}/${PROVIDER}): ${formatSummary(messages)}${qwenSummary}`);
   } finally {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.close();
     }
     child.kill();
+    if (qwenService) await qwenService.close();
     await delay(100);
     if (child.exitCode === 1) {
       console.error(logs.join('').trim());

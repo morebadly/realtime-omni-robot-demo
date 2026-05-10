@@ -17,6 +17,17 @@ import { applyRealtimeOutputError, applyRealtimeOutputInterrupt, applyRealtimeOu
 import { simulateOmniTurn } from './omniTurnSimulator';
 import { routeToolIntents } from './toolIntentRouter';
 import { createLocalDevOmniBridge } from './localDevOmniClient';
+import { buildRealtimeReadiness } from './realtimeReadiness';
+import { getConnectionModeOption } from './connectionModes';
+import {
+  createLocalDevPreflightState as createLocalDevPreflightSeed,
+  getLocalDevEndpointLabel,
+  markLocalDevPreflightChecking,
+  markLocalDevPreflightConnected,
+  markLocalDevPreflightFailed,
+  markLocalDevPreflightSkipped,
+  shouldRunLocalDevFirstCheck
+} from './localDevPreflight';
 import { createRobotRegistryItem, findRobotSummary, readActiveRobotId, readRobotRegistry, removeRegistryItem, saveActiveRobotId, saveRobotRegistry, updateRegistryItem } from './robotRegistry';
 import { deleteRobotRuntimeConfig, readRobotRuntimeConfig, resetRobotAdapterProfiles, saveRobotAdapterProfiles, saveRobotPermissions, saveRobotPlugins } from './robotRuntimeConfig';
 
@@ -72,15 +83,7 @@ function createTrace(layer, event, detail) {
 }
 
 function createLocalDevPreflightState(robotId, endpoint) {
-  return {
-    robotId,
-    endpoint: endpoint || '未配置',
-    status: 'pending',
-    checked: false,
-    checkedAt: null,
-    error: null,
-    detail: '首次发送到 LocalDev Adapter 时检查一次连接状态。'
-  };
+  return createLocalDevPreflightSeed(robotId, endpoint);
 }
 
 export function useRuntimeCore() {
@@ -88,6 +91,7 @@ export function useRuntimeCore() {
   const omniBusyRef = useRef(false);
   const omniSessionIdRef = useRef(0);
   const localDevBridgeRef = useRef(null);
+  const mediaSendInFlightRef = useRef({ audio: false, camera: false });
   const initialSeed = useMemo(() => createInitialRuntimeSeed(), []);
   const [robotRegistry, setRobotRegistry] = useState(initialSeed.registry);
   const [activeRobotId, setActiveRobotId] = useState(initialSeed.activeRobotId);
@@ -161,6 +165,28 @@ export function useRuntimeCore() {
       voiceCloudAllowed: voiceCloudGuard.allowed
     });
   }, [permissions, robot.mode, robot.adapterDetail, connectionSnapshot]);
+
+  const realtimeReadiness = useMemo(() => buildRealtimeReadiness({
+    robot,
+    connection: connectionSnapshot,
+    route: realtimeRoute,
+    realtimeSession,
+    realtimeSessionState,
+    localDevPreflight,
+    localDevBridge,
+    mediaChannels,
+    realtimeOutput
+  }), [
+    robot,
+    connectionSnapshot,
+    realtimeRoute,
+    realtimeSession,
+    realtimeSessionState,
+    localDevPreflight,
+    localDevBridge,
+    mediaChannels,
+    realtimeOutput
+  ]);
 
   function pushLog(level, message, detail) {
     setLogs((prev) => [createLog(level, message, detail), ...prev].slice(0, 100));
@@ -342,6 +368,37 @@ export function useRuntimeCore() {
     }
   }
 
+  async function handleLocalDevAdapterTest() {
+    const endpoint = robot.adapterDetail?.endpoint;
+    const endpointLabel = getLocalDevEndpointLabel(endpoint);
+    if (robot.mode !== 'local_dev') {
+      setLocalDevPreflight(markLocalDevPreflightSkipped(activeRobotId, endpoint, robot.mode));
+      pushLog('warn', 'LocalDev Adapter 测试被跳过', `当前 robot_id=${activeRobotId} 的模式是 ${robot.mode}，请先切换到本地调试。`);
+      pushTrace('LocalDevOmniAdapter', 'test.skipped', `${activeRobotId}; mode=${robot.mode}`);
+      return;
+    }
+
+    setLocalDevPreflight(markLocalDevPreflightChecking(activeRobotId, endpoint));
+    pushLog('info', '测试 LocalDev Adapter 连接', `${endpointLabel}；只做 WebSocket 握手，不发送音频、关键帧或输入包。`);
+    pushTrace('LocalDevOmniAdapter', 'test.start', `${activeRobotId}; ${endpointLabel}`);
+
+    if (!localDevBridgeRef.current) {
+      localDevBridgeRef.current = createLocalDevOmniBridge(handleLocalDevBridgeStatus);
+    }
+
+    const result = await localDevBridgeRef.current.connect(endpoint, 5000);
+    if (!result.ok) {
+      setLocalDevPreflight(markLocalDevPreflightFailed(activeRobotId, endpoint, result.error));
+      pushLog('warn', 'LocalDev Adapter 测试失败', result.error);
+      pushTrace('LocalDevOmniAdapter', 'test.failed', result.error);
+      return;
+    }
+
+    setLocalDevPreflight(markLocalDevPreflightConnected(activeRobotId, endpoint, result));
+    pushLog('success', 'LocalDev Adapter 测试通过', `${endpointLabel}；${result.reused ? '复用已有连接' : 'WebSocket 握手成功'}。`);
+    pushTrace('LocalDevOmniAdapter', result.reused ? 'test.reused' : 'test.connected', `${activeRobotId}; ${endpointLabel}`);
+  }
+
   async function handleLocalDevOmniSend() {
     const sessionId = beginOmniSession('local_dev_send', '发送到 LocalDev Adapter');
     if (!sessionId) return;
@@ -352,29 +409,19 @@ export function useRuntimeCore() {
       if (robot.mode !== 'local_dev') {
         pushLog('warn', 'LocalDev Adapter 发送被阻止', `当前 robot_id=${activeRobotId} 的模式是 ${robot.mode}，请先切换到本地调试模式。`);
         pushTrace('LocalDevOmniAdapter', 'send.blocked', `${activeRobotId}; mode=${robot.mode}`);
-        setLocalDevPreflight({
-          ...createLocalDevPreflightState(activeRobotId, robot.adapterDetail?.endpoint),
-          status: 'skipped',
-          detail: '当前机器人不在 local_dev 模式，未执行 LocalDev 连接检查。'
-        });
+        setLocalDevPreflight(markLocalDevPreflightSkipped(activeRobotId, robot.adapterDetail?.endpoint, robot.mode));
         return;
       }
 
       const endpoint = robot.adapterDetail?.endpoint;
-      const endpointLabel = endpoint || '未配置';
-      const needsFirstCheck = !localDevPreflight.checked
-        || localDevPreflight.robotId !== activeRobotId
-        || localDevPreflight.endpoint !== endpointLabel;
+      const endpointLabel = getLocalDevEndpointLabel(endpoint);
+      const needsFirstCheck = shouldRunLocalDevFirstCheck(localDevPreflight, { robotId: activeRobotId, endpoint });
       if (needsFirstCheck) {
-        setLocalDevPreflight({
-          robotId: activeRobotId,
-          endpoint: endpointLabel,
-          status: 'checking',
-          checked: false,
-          checkedAt: null,
-          error: null,
-          detail: '首次对话正在用真实输入包检查 LocalDev Adapter 连接。'
-        });
+        setLocalDevPreflight(markLocalDevPreflightChecking(
+          activeRobotId,
+          endpoint,
+          '首次对话正在用真实输入包检查 LocalDev Adapter 连接。'
+        ));
       }
       pushLog('info', '发送 Omni 输入包到 LocalDev Adapter', `${packet.packetId} → ${endpoint}`);
       pushTrace('LocalDevOmniAdapter', 'packet.send', `${packet.packetId} → ${endpoint}`);
@@ -389,29 +436,23 @@ export function useRuntimeCore() {
       if (!isActiveOmniSession(sessionId)) return;
 
       if (!result.ok) {
-        setLocalDevPreflight({
-          robotId: activeRobotId,
-          endpoint: endpointLabel,
-          status: 'failed',
-          checked: true,
-          checkedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-          error: result.error,
-          detail: '首次连接检查未通过；后续发送不会额外预检，但真实发送失败仍会更新此状态。'
-        });
-        pushLog('warn', 'LocalDev Adapter 未连接', `${result.error}。请确认本地 Qwen2.5-Omni 服务正在监听该 WebSocket。`);
+        setLocalDevPreflight(markLocalDevPreflightFailed(
+          activeRobotId,
+          endpoint,
+          result.error,
+          '首次连接检查未通过；后续发送不会额外预检，但真实发送失败仍会更新此状态。'
+        ));
+        pushLog('warn', 'LocalDev Adapter 未连接', `${result.error}。请确认本地 Qwen-Omni 兼容服务正在监听该 WebSocket。`);
         pushTrace('LocalDevOmniAdapter', 'send.failed', result.error);
         return;
       }
 
-      setLocalDevPreflight({
-        robotId: activeRobotId,
-        endpoint: endpointLabel,
-        status: 'connected',
-        checked: true,
-        checkedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
-        error: null,
-        detail: result.reused ? '已复用保持中的 LocalDev WebSocket 会话。' : '首次连接检查已通过；本次输出来自 LocalDev Adapter。'
-      });
+      setLocalDevPreflight(markLocalDevPreflightConnected(
+        activeRobotId,
+        endpoint,
+        result,
+        result.reused ? '已复用保持中的 LocalDev WebSocket 会话。' : '首次连接检查已通过；本次输出来自 LocalDev Adapter。'
+      ));
       pushTrace('LocalDevOmniAdapter', result.reused ? 'socket.reused' : 'socket.connected', `${result.requestId || 'no_request_id'}; packet=${packet.packetId}`);
       await applyOmniOutputTurn(result.turn, packet, 'local_dev_omni_adapter');
     } finally {
@@ -562,22 +603,26 @@ export function useRuntimeCore() {
   }
 
   function handleMode(mode, label) {
-    const adapter = getAdapterForMode(mode, adapterProfiles);
+    const option = getConnectionModeOption(mode);
+    const nextMode = option.adapterMode || option.key;
+    const nextLabel = label || option.label;
+    const online = option.requiresNetwork !== false;
+    const adapter = getAdapterForMode(nextMode, adapterProfiles);
     setRobot((prev) => ({
       ...prev,
-      mode,
-      network: getNetworkLabel(mode),
-      online: mode !== 'offline_pet',
+      mode: nextMode,
+      network: getNetworkLabel(nextMode),
+      online,
       adapter: adapter.name,
       adapterDetail: adapter,
-      cameraDemand: mode === 'offline_pet' ? 'local_only' : prev.cameraDemand
+      cameraDemand: nextMode === 'offline_pet' ? 'local_only' : prev.cameraDemand
     }));
     resetLocalDevPreflightForRobot({ adapterDetail: adapter }, activeRobotId);
-    syncActiveRobotSummary({ mode, network: getNetworkLabel(mode), adapterName: adapter.name, online: mode !== 'offline_pet', lastSeen: '刚刚' });
-    pushLog('warn', `运行模式切换：${label}`, `${adapter.name} · ${adapter.providerLabel} · ${adapter.endpoint}`);
-    pushTrace('RuntimeModeManager', 'mode.change', `${mode} → ${adapter.name}`);
-    pushTrace('ConnectionManager', 'profile.selected', `${getNetworkLabel(mode)} · ${mode}`);
-    bus.emit({ type: 'mode.change', mode, adapter: adapter.name });
+    syncActiveRobotSummary({ mode: nextMode, network: getNetworkLabel(nextMode), adapterName: adapter.name, online, lastSeen: '刚刚' });
+    pushLog('warn', `运行模式切换：${nextLabel}`, `${adapter.name} · ${adapter.providerLabel} · ${adapter.endpoint}`);
+    pushTrace('RuntimeModeManager', 'mode.change', `${nextMode} → ${adapter.name}`);
+    pushTrace('ConnectionManager', 'profile.selected', `${getNetworkLabel(nextMode)} · ${nextMode} · ${option.productScenario}`);
+    bus.emit({ type: 'mode.change', mode: nextMode, adapter: adapter.name, connectionMode: option.key });
   }
 
 
@@ -743,16 +788,26 @@ export function useRuntimeCore() {
     const endpoint = robot.adapterDetail?.endpoint;
     const canSend = robot.mode === 'local_dev' && endpoint && localDevBridgeRef.current && localDevBridgeRef.current.getStatus().connected;
     if (!canSend) return { sent: false, reason: 'local_dev_not_connected' };
-    const result = await localDevBridgeRef.current.sendMediaFrame(frame, endpoint, 5000);
-    if (!result.ok) {
-      setMediaChannels((prev) => applyMediaError(prev, result.error));
-      setLocalDevBridge((prev) => ({ ...prev, status: 'failed', detail: '媒体帧发送失败。', error: result.error, updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }) }));
-      pushTrace('LocalDevMediaChannel', 'frame.send.failed', `${frame.schema}; ${result.error}`);
-      setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'ERROR', { reason: result.error }));
-      return { sent: false, reason: result.error };
+    const mediaKind = frame.schema === 'omni.camera_frame.v1' ? 'camera' : 'audio';
+    if (mediaSendInFlightRef.current[mediaKind]) {
+      pushTrace('LocalDevMediaChannel', 'frame.send.skipped', `${frame.schema} / ${frame.frameId}; previous_${mediaKind}_send_in_flight`);
+      return { sent: false, reason: 'media_send_in_flight', skipped: true };
     }
-    pushTrace('LocalDevMediaChannel', 'frame.send', `${frame.schema} / ${frame.frameId}`);
-    return { sent: true, result };
+    mediaSendInFlightRef.current[mediaKind] = true;
+    try {
+      const result = await localDevBridgeRef.current.sendMediaFrame(frame, endpoint, 1500);
+      if (!result.ok) {
+        setMediaChannels((prev) => applyMediaError(prev, result.error));
+        setLocalDevBridge((prev) => ({ ...prev, status: 'failed', detail: '媒体帧发送失败。', error: result.error, updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }) }));
+        pushTrace('LocalDevMediaChannel', 'frame.send.failed', `${frame.schema}; ${result.error}`);
+        setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'ERROR', { reason: result.error }));
+        return { sent: false, reason: result.error };
+      }
+      pushTrace('LocalDevMediaChannel', 'frame.send', `${frame.schema} / ${frame.frameId}`);
+      return { sent: true, result };
+    } finally {
+      mediaSendInFlightRef.current[mediaKind] = false;
+    }
   }
 
   async function handleAudioFrame(frameSeed) {
@@ -791,6 +846,10 @@ export function useRuntimeCore() {
 
   function handleRealtimeSessionStatus(status) {
     setRealtimeSession((prev) => ({ ...prev, ...status }));
+    if (status.guardReason) {
+      pushLog('warn', '实时音频启动被阻止', status.guardDetail || status.guardReason);
+      pushTrace('RealtimeSession', `audio.guard.${status.guardReason}`, status.guardDetail || activeRobotId);
+    }
     setRobot((prev) => {
       const nextState = status.active && status.micActive ? 'listening' : prev.state === 'listening' ? 'idle' : prev.state;
       const nextExpression = status.active && status.micActive ? 'listening' : prev.state === 'listening' ? 'idle' : prev.expression;
@@ -977,6 +1036,7 @@ export function useRuntimeCore() {
     realtimeSession,
     realtimeSessionState,
     realtimeRoute,
+    realtimeReadiness,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,
@@ -1002,6 +1062,7 @@ export function useRuntimeCore() {
       handleCameraFrame,
       handleOmniPacketBuild,
       handleOmniTurnSimulate,
+      handleLocalDevAdapterTest,
       handleLocalDevOmniSend,
       handleLocalDevOmniDisconnect,
       handleOmniTurnClear,

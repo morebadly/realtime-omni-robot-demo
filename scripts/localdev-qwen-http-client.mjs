@@ -1,16 +1,6 @@
-function numberFromEnv(name, fallback) {
-  const value = Number(process.env[name]);
-  return Number.isFinite(value) && value > 0 ? value : fallback;
-}
+import { createQwenProviderConfig, validateQwenProviderConfig } from './localdev-qwen-config.mjs';
 
-export function createQwenProviderConfig() {
-  return {
-    endpoint: process.env.LOCALDEV_QWEN_ENDPOINT || '',
-    transport: process.env.LOCALDEV_QWEN_TRANSPORT || 'http_json',
-    timeoutMs: numberFromEnv('LOCALDEV_QWEN_TIMEOUT_MS', 15000),
-    dryRun: process.env.LOCALDEV_QWEN_DRY_RUN !== '0'
-  };
-}
+export { createQwenProviderConfig, validateQwenProviderConfig };
 
 export function createQwenProviderRequest({ packet, mediaSnapshot, requestId }) {
   return {

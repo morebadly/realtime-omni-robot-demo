@@ -1,4 +1,5 @@
 const MAX_RECENT_FRAMES = 24;
+const MAX_QUEUED_AUDIO_FRAMES = 48;
 
 function nowLabel() {
   return new Date().toLocaleTimeString('zh-CN', { hour12: false });
@@ -32,6 +33,9 @@ export function createDefaultRealtimeOutputChannel() {
     interruptToken: null,
     lastInterrupt: null,
     lastError: null,
+    droppedAudioFrames: 0,
+    duplicateAudioFrames: 0,
+    lastDropReason: null,
     guardrail: 'reply_audio_frame 是 Omni 输出媒体帧；reply_text 只作为字幕/日志/调试；audio_frame 不会自动触发 interrupt。'
   };
 }
@@ -71,13 +75,27 @@ export function applyReplyAudioFrame(prev, frame) {
   if (current.state === 'interrupted' && frame?.turnId === current.turnId) {
     return current;
   }
+  const frameId = frame?.frameId;
+  const duplicate = frameId && [
+    ...(current.queuedAudioFrames || []),
+    ...(current.recentAudioFrames || [])
+  ].some((item) => item.frameId === frameId);
+  if (duplicate) {
+    return {
+      ...current,
+      duplicateAudioFrames: (current.duplicateAudioFrames || 0) + 1,
+      lastDropReason: `duplicate_reply_audio_frame:${frameId}`
+    };
+  }
   const normalizedFrame = {
     ...frame,
     receivedAt: nowLabel(),
     played: false
   };
-  const nextQueue = [...(current.queuedAudioFrames || []), normalizedFrame]
+  const sortedQueue = [...(current.queuedAudioFrames || []), normalizedFrame]
     .sort((a, b) => Number(a.sequence || 0) - Number(b.sequence || 0));
+  const overflow = Math.max(0, sortedQueue.length - MAX_QUEUED_AUDIO_FRAMES);
+  const nextQueue = overflow ? sortedQueue.slice(overflow) : sortedQueue;
   const recent = [normalizedFrame, ...(current.recentAudioFrames || [])].slice(0, MAX_RECENT_FRAMES);
   return {
     ...current,
@@ -94,7 +112,9 @@ export function applyReplyAudioFrame(prev, frame) {
     lastFrameAt: nowLabel(),
     playbackActive: true,
     finalFrameReceived: Boolean(frame?.isFinal) || current.finalFrameReceived,
-    lastError: null
+    lastError: null,
+    droppedAudioFrames: (current.droppedAudioFrames || 0) + overflow,
+    lastDropReason: overflow ? `reply_audio_queue_overflow:${overflow}` : current.lastDropReason
   };
 }
 
@@ -169,5 +189,6 @@ export function clearRealtimeOutputChannel() {
 export function summarizeRealtimeOutputChannel(output) {
   if (!output) return '输出通道尚未初始化';
   const interruptText = output.interruptCount ? ` · interrupted ${output.interruptCount}` : '';
-  return `${output.state || 'idle'} · received ${output.receivedAudioFrames || 0} · played ${output.playedAudioFrames || 0} · queued ${output.queuedAudioFrames?.length || 0}${interruptText}`;
+  const dropText = output.droppedAudioFrames ? ` · dropped ${output.droppedAudioFrames}` : '';
+  return `${output.state || 'idle'} · received ${output.receivedAudioFrames || 0} · played ${output.playedAudioFrames || 0} · queued ${output.queuedAudioFrames?.length || 0}${interruptText}${dropText}`;
 }

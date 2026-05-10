@@ -24,7 +24,9 @@ function calculateRms(samples) {
   return Math.min(1, Math.sqrt(sum / samples.length) * 3.2);
 }
 
-export default function RealtimeAudioPanel({ robot, session, route, onStatus, onAudioFrame }) {
+const LOCALDEV_READY_STATES = new Set(['connected', 'received', 'media_ack', 'output_state', 'reply_audio_frame', 'interrupt_sent']);
+
+export default function RealtimeAudioPanel({ robot, session, route, localDevBridge, localDevPreflight, onStatus, onAudioFrame, onAdapterTest }) {
   const streamRef = useRef(null);
   const audioContextRef = useRef(null);
   const sourceRef = useRef(null);
@@ -39,6 +41,9 @@ export default function RealtimeAudioPanel({ robot, session, route, onStatus, on
   const [error, setError] = useState('');
   const active = Boolean(session?.active);
   const canStream = Boolean(route?.canStream);
+  const localDevMode = robot?.mode === 'local_dev';
+  const localDevReady = LOCALDEV_READY_STATES.has(localDevBridge?.status) || localDevPreflight?.status === 'connected';
+  const needsLocalDevAdapter = localDevMode && !localDevReady;
 
   const meterWidth = useMemo(() => `${Math.round(level * 100)}%`, [level]);
 
@@ -122,6 +127,17 @@ export default function RealtimeAudioPanel({ robot, session, route, onStatus, on
     if (!canStream) {
       setError(route?.detail || '当前模式或权限不允许打开实时音频流。');
       report({ active: false, micActive: false });
+      return;
+    }
+    if (needsLocalDevAdapter) {
+      const detail = `本地调试模式需要先连接 LocalDev Adapter：${robot?.adapterDetail?.endpoint || '未配置 endpoint'}`;
+      setError(detail);
+      report({
+        active: false,
+        micActive: false,
+        guardReason: 'local_dev_adapter_not_connected',
+        guardDetail: detail
+      });
       return;
     }
     try {
@@ -236,6 +252,7 @@ export default function RealtimeAudioPanel({ robot, session, route, onStatus, on
 
       <div className="camera-actions">
         {active ? <button onClick={() => stopMic(true)}>停止实时音频</button> : <button onClick={startMic}>开启实时音频</button>}
+        {needsLocalDevAdapter && <button className="secondary-provider-button" onClick={onAdapterTest}>先测试 Adapter</button>}
         <button onClick={() => report({ active: false, micActive: false, level: 0 })}>仅记录会话状态</button>
       </div>
 
@@ -249,6 +266,7 @@ export default function RealtimeAudioPanel({ robot, session, route, onStatus, on
         <div><small>模式</small><strong>{robot.mode}</strong></div>
         <div><small>Sample Rate</small><strong>{session?.sampleRate || '未启动'}</strong></div>
         <div><small>权限</small><strong>{canStream ? '允许打开链路' : '已阻止'}</strong></div>
+        <div><small>LocalDev Adapter</small><strong>{localDevMode ? (localDevReady ? '已连接' : '未连接') : '不需要'}</strong></div>
       </div>
       {error && <p className="camera-error">{error}</p>}
     </section>
