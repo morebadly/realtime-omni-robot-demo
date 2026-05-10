@@ -20,16 +20,27 @@ const DEFAULT_SCRIPTS = [
 
 const requested = process.argv.slice(2);
 const scripts = requested.length ? requested : DEFAULT_SCRIPTS;
+const npmCli = process.env.npm_execpath;
+
+function runNpmScript(script) {
+  if (npmCli) {
+    return spawnSync(process.execPath, [npmCli, 'run', '-s', script], { stdio: 'inherit' });
+  }
+  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  return spawnSync(npmCmd, ['run', '-s', script], { stdio: 'inherit' });
+}
 
 const startedAt = Date.now();
 console.log(`Running smoke suite (${scripts.length} checks)...`);
 
 for (const script of scripts) {
   console.log(`\n=== ${script} ===`);
-  const result = spawnSync('npm', ['run', '-s', script], {
-    stdio: 'inherit',
-    shell: process.platform === 'win32'
-  });
+  const result = runNpmScript(script);
+
+  if (result.error) {
+    console.error(`\nSmoke suite failed to start ${script}: ${result.error.message}`);
+    process.exit(1);
+  }
 
   if (result.status !== 0) {
     console.error(`\nSmoke suite failed at ${script}.`);
