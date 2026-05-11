@@ -1,4 +1,15 @@
-# Realtime Omni Robot Demo v1.3.4
+# Realtime Omni Robot Demo v1.3.5
+
+## v1.3.5 Provider Adapter Contract / Real Provider Safety Boundary
+
+v1.3.5 stabilizes a higher-level Provider Adapter Contract surface (`omni.provider_adapter.v1`) and a real-provider secret boundary. The demo remains safe Mock-first against `localdev_mock`.
+
+- New `omni.provider_adapter.v1` descriptor exposes `providerId / providerKind / mode / status / safetyMode / capabilities / supportedSchemas / contractSurface / secretBoundary / gateLinks / guardrails`.
+- New synthetic-only `providerAdapters/syntheticProviderAdapter` rejects any real audio/camera payload and never opens a real socket; used for contract tests.
+- Capability map covers `localdev_mock`, `dashscope_qwen_omni`, `custom_realtime_omni`, `synthetic_test`, and `offline_pet_engine`. `mergeProviderCapability` is narrowing-only — it cannot widen capabilities or weaken safety requirements.
+- Real provider API keys / tokens must live in a server-side proxy, Robot Gateway, or Device Runtime. They must not enter the frontend bundle, `import.meta.env.*`, `localStorage`, runtime config snapshots, action logs, traces, or Visible Context.
+- `npm run verify` now includes `test:provider-adapter-contract`; the safe smoke suite is 23 checks.
+- No real audio upload, no real camera upload, no realtime billing, no real provider socket, no `reply_text -> TTS`. LocalDev Mock fallback remains required.
 
 ## v1.3.4 Realtime Mux / Backpressure / Session Correlation Guard
 

@@ -4,6 +4,7 @@ import { summarizeRealtimeOutputChannel } from '../runtime/realtimeOutputChannel
 import { summarizeRealtimeSessionState, getRealtimeSessionStateLabel } from '../runtime/realtimeSessionState';
 import { summarizeMuxState } from '../runtime/realtimeMediaMux';
 import { summarizeSessionCorrelation } from '../runtime/realtimeSessionCorrelation';
+import { summarizeProviderAdapterDescriptor } from '../runtime/providerAdapterContract';
 
 function prettyJson(value) {
   if (!value) return '暂无';
@@ -60,6 +61,7 @@ export default function OmniSessionPanel({
   providerHandshake,
   providerAudioGate,
   providerCameraGate,
+  providerAdapterDescriptor,
   onBuild,
   onSimulate,
   onSendLocalDev,
@@ -148,6 +150,7 @@ export default function OmniSessionPanel({
 
 
       <div className="realtime-output-grid">
+        <div><small>Provider Adapter Contract</small><strong>{providerAdapterDescriptor ? `${providerAdapterDescriptor.providerId}/${providerAdapterDescriptor.providerKind}/${providerAdapterDescriptor.safetyMode}` : 'not_initialized'}</strong><p>real_socket={providerAdapterDescriptor?.canOpenRealtimeSocket ? 'yes' : 'no'} · real_audio={providerAdapterDescriptor?.canSendAudio ? 'yes' : 'no'} · real_camera={providerAdapterDescriptor?.canSendCamera ? 'yes' : 'no'} · billing={providerAdapterDescriptor?.canStartBillingSession ? 'yes' : 'no'} · secret_server_side={providerAdapterDescriptor?.secretBoundary?.requiresServerSideSecret ? 'required' : 'not_required'} · synthetic_only={providerAdapterDescriptor?.providerKind === 'synthetic' ? 'yes' : 'available_for_test'}</p></div>
         <div><small>Realtime Mux</small><strong>{summarizeMuxState(realtimeMux)}</strong><p>Mock realtime: yes · Real cloud realtime: no · Audio: protected / non-blocking · Camera: selected / drop-old · Interrupt: highest · media_ack: diagnostics only</p></div>
         <div><small>WebSocket Backpressure</small><strong>{realtimeMux?.bufferedLevel || 'normal'}</strong><p>bufferedAmount={realtimeMux?.bufferedAmount || 0}B · last={realtimeMux?.lastDecision?.decision || 'none'} ({realtimeMux?.lastDecision?.reason || '—'})</p></div>
         <div><small>Session Correlation</small><strong>session correlation: enabled</strong><p>{summarizeSessionCorrelation(sessionCorrelation)}</p></div>

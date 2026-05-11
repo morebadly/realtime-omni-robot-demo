@@ -25,6 +25,7 @@ import { createProviderHealthCheck } from './providerHealthCheck';
 import { createProviderHandshake } from './providerHandshake';
 import { createProviderAudioGate } from './providerAudioGate';
 import { createProviderCameraGate } from './providerCameraGate';
+import { createProviderAdapterDescriptor } from './providerAdapterContract';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -187,6 +188,16 @@ export function useRuntimeCore() {
   const providerCameraGate = useMemo(() => createProviderCameraGate({
     providerGate
   }), [providerGate]);
+
+  const providerAdapterDescriptor = useMemo(() => createProviderAdapterDescriptor({
+    adapter: robot.adapterDetail,
+    providerConfig: robot.adapterDetail?.providerConfig,
+    providerGate,
+    providerHealth,
+    providerHandshake,
+    providerAudioGate,
+    providerCameraGate
+  }), [robot.adapterDetail, providerGate, providerHealth, providerHandshake, providerAudioGate, providerCameraGate]);
 
   const realtimeRoute = useMemo(() => {
     const permissionMap = createPermissionMap(permissions);
@@ -1181,6 +1192,7 @@ export function useRuntimeCore() {
     providerHandshake,
     providerAudioGate,
     providerCameraGate,
+    providerAdapterDescriptor,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,

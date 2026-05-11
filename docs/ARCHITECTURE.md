@@ -1,4 +1,27 @@
-# 架构说明 v1.3.4
+# 架构说明 v1.3.5
+
+## v1.3.5 Provider Adapter Contract / Real Provider Safety Boundary Architecture
+
+v1.3.5 adds a stable Provider Adapter Contract surface above the existing Provider Gate / Health Check / Handshake / Audio Dry-run / Camera Dry-run stack:
+
+- `src/runtime/providerCapabilities.js` defines a built-in capability map for `localdev_mock`, `dashscope_qwen_omni`, `custom_realtime_omni`, `synthetic_test`, and `offline_pet_engine`. Per-adapter overrides via `mergeProviderCapability` are narrowing-only.
+- `src/runtime/providerAdapterContract.js` exposes the `omni.provider_adapter.v1` descriptor, the 10 required surface methods, and `validateProviderAdapter`.
+- `src/runtime/providerAdapters/syntheticProviderAdapter.js` is a synthetic-only stub: it implements every contract method but rejects any real audio/camera payload and never opens a real socket.
+
+Every descriptor and adapter — real, synthetic, mock, or offline — hard-locks:
+
+```text
+canOpenRealtimeSocket = false
+canSendRealAudio = false
+canSendRealCamera = false
+canStartBillingSession = false
+replyTextToTts = false
+fallbackProviderId = 'localdev_mock'
+```
+
+The new descriptor lives next to `realtimeMediaMux` and `realtimeSessionCorrelation` in the Runtime layer. It does not change the LocalDev Adapter Contract on the wire; it only describes the safety surface above it.
+
+Secret boundary: real provider API keys are not allowed in the frontend bundle, in browser runtime config, in the descriptor, or in Visible Context. Server-side proxy / Robot Gateway / Device Runtime is required to hold real secrets when future real provider work begins.
 
 ## v1.3.4 Realtime Mux / Backpressure / Session Correlation Architecture
 

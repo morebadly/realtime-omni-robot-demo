@@ -1,4 +1,27 @@
-# 技术落地路线 v1.3.4
+# 技术落地路线 v1.3.5
+
+## v1.3.5 Provider Adapter Contract / Real Provider Safety Boundary
+
+Goal: stabilize the Provider Adapter Contract surface and secret boundary for future real-provider work, while keeping the demo safe Mock-first.
+
+Completed:
+
+1. Add `providerCapabilities` built-in map and narrowing-only `mergeProviderCapability`.
+2. Add `providerAdapterContract` with `omni.provider_adapter.v1` descriptor, 10 required surface methods, and `validateProviderAdapter`.
+3. Add `providerAdapters/syntheticProviderAdapter` that rejects real audio/camera payload and never opens a real socket.
+4. Memo `providerAdapterDescriptor` in `useRuntimeCore` and surface it in `OmniSessionPanel` as a small diagnostic card.
+5. Add `test:provider-adapter-contract` to the safe smoke suite (now 23 checks total).
+6. Add `docs/PROVIDER_ADAPTER_CONTRACT.md` and `docs/PROVIDER_SECRET_BOUNDARY.md`.
+
+Still out of scope:
+
+1. Real Qwen/DashScope realtime sessions.
+2. Real microphone PCM upload to a provider.
+3. Real camera JPEG upload to a provider.
+4. Real realtime billing calls.
+5. Real TTS or `reply_text -> playback`.
+6. Automatic VAD/AEC barge-in.
+7. Frontend storage of real provider API keys.
 
 ## v1.3.4 Realtime Mux / Backpressure / Session Correlation Guard
 

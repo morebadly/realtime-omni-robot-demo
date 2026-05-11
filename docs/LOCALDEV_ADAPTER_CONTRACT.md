@@ -1,4 +1,26 @@
-# LocalDev Adapter Contract v1.3.4
+# LocalDev Adapter Contract v1.3.5
+
+## v1.3.5 Provider Adapter Contract Addendum
+
+v1.3.5 introduces a higher-level Provider Adapter Contract (`omni.provider_adapter.v1`) above the LocalDev Adapter Contract. The LocalDev contract on the wire is unchanged. The Provider Adapter Contract describes what every future provider adapter (real cloud, self-hosted, synthetic, offline engine, or LocalDev Mock) must implement and what it is allowed to do:
+
+```text
+required methods:
+  createSession / closeSession
+  sendInputPacket / sendAudioFrame / sendCameraFrame / sendInterrupt
+  onOutputState / onOutputTurn / onReplyAudioFrame / onError
+
+required schemas:
+  omni.input_packet.v1
+  omni.audio_frame.v1
+  omni.camera_frame.v1
+  omni.interrupt.v1
+  omni.output_state.v1
+  omni.output_turn.v1
+  omni.reply_audio_frame.v1
+```
+
+Default safety locks for every adapter (real or synthetic): `canOpenRealtimeSocket=false`, `canSendRealAudio=false`, `canSendRealCamera=false`, `canStartBillingSession=false`, `replyTextToTts=false`. `localdev_mock` remains the required fallback. See `docs/PROVIDER_ADAPTER_CONTRACT.md` and `docs/PROVIDER_SECRET_BOUNDARY.md` for details.
 
 ## v1.3.4 Realtime Mux / Backpressure / Session Correlation Addendum
 

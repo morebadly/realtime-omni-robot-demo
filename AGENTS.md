@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.4.
+Current version: v1.3.5.
 
 Tech stack:
 - Vite
@@ -385,3 +385,14 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - All realtime envelopes/frames may carry optional `sessionId / streamId / sequence / timestampMs / source / priority` correlation fields, but the LocalDev contract stays backward compatible for consumers that ignore them.
 - Real audio upload, real camera upload, realtime billing, real provider sockets, and `reply_text -> TTS` remain blocked.
 - LocalDev Mock fallback remains required.
+
+## v1.3.5 Provider Adapter Contract / Real Provider Safety Boundary rule
+
+- v1.3.5 adds the Provider Adapter Contract (`omni.provider_adapter.v1`) and the synthetic-only `providerAdapters/syntheticProviderAdapter`.
+- Every provider adapter (real, synthetic, mock, offline) must implement the 10 required surface methods: `createSession`, `closeSession`, `sendInputPacket`, `sendAudioFrame`, `sendCameraFrame`, `sendInterrupt`, `onOutputState`, `onOutputTurn`, `onReplyAudioFrame`, `onError`.
+- Every adapter must hard-lock `canOpenRealtimeSocket=false`, `canSendRealAudio=false`, `canSendRealCamera=false`, `canStartBillingSession=false`, `replyTextToTts=false`, `fallbackProviderId='localdev_mock'`.
+- `mergeProviderCapability` is narrowing-only; it cannot widen capabilities or weaken safety requirements.
+- Synthetic adapter must reject any real audio or camera payload and must never report `sentToProvider=true`.
+- Real provider API keys / tokens must never enter the frontend bundle, `import.meta.env.*`, `localStorage`, runtime config snapshots, action logs, traces, descriptor JSON, or Visible Context. Real secrets must live in a server-side proxy / Robot Gateway / Device Runtime.
+- The Provider Adapter Contract is descriptive and safety-locking only. It does not start sessions or upload media in v1.3.5.
+- LocalDev Mock fallback remains required and the LocalDev Adapter Contract on the wire is unchanged.
