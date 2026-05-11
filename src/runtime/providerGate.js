@@ -9,6 +9,7 @@ export const PROVIDER_MODES = [
   'health_check_only',
   'handshake_only',
   'audio_dry_run',
+  'camera_dry_run',
   'realtime_experimental'
 ];
 

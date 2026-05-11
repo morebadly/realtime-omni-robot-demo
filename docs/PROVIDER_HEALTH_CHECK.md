@@ -1,4 +1,10 @@
-# Provider Health Check v1.3.2
+# Provider Health Check v1.3.3
+
+## v1.3.3 Relationship To Camera Dry-run
+
+Provider Health Check remains read-only preflight. Provider Camera Dry-run builds on Provider Gate and may validate a local `omni.camera_frame.v1` JPEG payload shape, but it does not upload or send camera media to a real provider.
+
+Health check, handshake, audio dry-run, and camera dry-run all keep realtime socket creation, real audio upload, real camera upload, billing, and TTS disabled.
 
 ## v1.3.2 Relationship To Audio Dry-run
 

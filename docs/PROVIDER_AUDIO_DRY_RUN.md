@@ -1,6 +1,8 @@
-# Provider Audio Dry-run v1.3.2
+# Provider Audio Dry-run v1.3.3
 
 v1.3.2 adds an audio upload experiment gate and local dry-run validator. It is not real provider media upload.
+
+v1.3.3 adds a separate Provider Camera Dry-run gate. Audio dry-run and camera dry-run are independent local validation paths; neither path uploads media to a real provider.
 
 ## Result Shape
 

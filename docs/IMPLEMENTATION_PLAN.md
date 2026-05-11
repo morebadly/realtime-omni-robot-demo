@@ -1,4 +1,23 @@
-# 技术落地路线 v1.3.2
+# 技术落地路线 v1.3.3
+
+## v1.3.3 Provider Camera Dry-run Gate
+
+Goal: add a real-provider camera upload experiment gate without sending real camera frames.
+
+Completed:
+
+1. Add Runtime `providerCameraGate` result schema and summary.
+2. Add local-only dry-run validation for `omni.camera_frame.v1` JPEG payload shape.
+3. Add `test:provider-camera-gate` and include it in the safe smoke suite.
+4. Display camera dry-run gate status in small Model Provider, Visible Context, and Omni Session surfaces.
+
+Still out of scope:
+
+1. Real camera upload to a provider.
+2. Real audio upload.
+3. Real realtime calls or billing.
+4. Real TTS or `reply_text -> playback`.
+5. Automatic VAD/AEC barge-in.
 
 ## v1.3.2 Provider Audio Dry-run Gate
 

@@ -22,6 +22,7 @@ import { evaluateProviderGate } from './providerGate';
 import { createProviderHealthCheck } from './providerHealthCheck';
 import { createProviderHandshake } from './providerHandshake';
 import { createProviderAudioGate } from './providerAudioGate';
+import { createProviderCameraGate } from './providerCameraGate';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -173,6 +174,10 @@ export function useRuntimeCore() {
   }), [providerHealth]);
 
   const providerAudioGate = useMemo(() => createProviderAudioGate({
+    providerGate
+  }), [providerGate]);
+
+  const providerCameraGate = useMemo(() => createProviderCameraGate({
     providerGate
   }), [providerGate]);
 
@@ -1087,6 +1092,7 @@ export function useRuntimeCore() {
     providerHealth,
     providerHandshake,
     providerAudioGate,
+    providerCameraGate,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,

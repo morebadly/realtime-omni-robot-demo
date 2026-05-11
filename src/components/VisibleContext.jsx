@@ -10,7 +10,7 @@ function StatusTile({ label, value, detail }) {
   );
 }
 
-export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState, providerGate, providerHealth, providerHandshake, providerAudioGate }) {
+export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState, providerGate, providerHealth, providerHandshake, providerAudioGate, providerCameraGate }) {
   const cloudMode = robot.mode === 'wifi_cloud' || robot.mode === 'cellular_cloud' || robot.mode === 'self_hosted_cloud';
   const audioObserved = mediaChannels?.audio?.observed || 0;
   const audioSent = mediaChannels?.audio?.sent || 0;
@@ -69,6 +69,11 @@ export default function VisibleContext({ robot, recentEvents, cameraStatus, fram
           label="Audio Dry-run"
           value={providerAudioGate?.status || 'blocked'}
           detail={`real_audio=${providerAudioGate?.canSendRealAudio ? 'yes' : 'no'} / dry_run=${providerAudioGate?.canSendDryRunAudioPayload ? 'yes' : 'no'}`}
+        />
+        <StatusTile
+          label="Camera Dry-run"
+          value={providerCameraGate?.status || 'blocked'}
+          detail={`real_camera=${providerCameraGate?.canSendRealCamera ? 'yes' : 'no'} / dry_run=${providerCameraGate?.canSendDryRunCameraPayload ? 'yes' : 'no'}`}
         />
       </div>
 

@@ -1,4 +1,10 @@
-# Provider Handshake v1.3.2
+# Provider Handshake v1.3.3
+
+## v1.3.3 Relationship To Camera Dry-run
+
+Provider Handshake remains dry-run only. Provider Camera Dry-run is a separate local validation gate and does not open a realtime socket after handshake readiness.
+
+Handshake, audio dry-run, and camera dry-run keep real camera upload, real audio upload, realtime billing, and TTS disabled.
 
 ## v1.3.2 Relationship To Audio Dry-run
 

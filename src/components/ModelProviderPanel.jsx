@@ -4,6 +4,7 @@ import { evaluateProviderGate, summarizeProviderGate } from '../runtime/provider
 import { createProviderHealthCheck, summarizeProviderHealthCheck } from '../runtime/providerHealthCheck';
 import { createProviderHandshake, summarizeProviderHandshake } from '../runtime/providerHandshake';
 import { createProviderAudioGate, summarizeProviderAudioGate } from '../runtime/providerAudioGate';
+import { createProviderCameraGate, summarizeProviderCameraGate } from '../runtime/providerCameraGate';
 
 const CAPABILITY_OPTIONS = [
   { key: 'audio_in', label: '原始音频输入' },
@@ -19,7 +20,7 @@ const CAPABILITY_OPTIONS = [
   { key: 'preset_motion', label: '预设动作' }
 ];
 
-export default function ModelProviderPanel({ activeMode, profiles, providerGate, providerHealth, providerHandshake, providerAudioGate, onUpdate, onReset, onTest }) {
+export default function ModelProviderPanel({ activeMode, profiles, providerGate, providerHealth, providerHandshake, providerAudioGate, providerCameraGate, onUpdate, onReset, onTest }) {
   const [selectedKey, setSelectedKey] = useState(activeMode || 'local_dev');
   const selectedProfile = useMemo(() => profiles?.[selectedKey] || MODEL_ADAPTERS.find((item) => item.key === selectedKey), [profiles, selectedKey]);
   const [draft, setDraft] = useState(selectedProfile);
@@ -50,6 +51,11 @@ export default function ModelProviderPanel({ activeMode, profiles, providerGate,
       ? providerAudioGate
       : createProviderAudioGate({ providerGate: selectedGate })
   ), [activeMode, providerAudioGate, selectedGate, selectedKey]);
+  const selectedCameraGate = useMemo(() => (
+    selectedKey === activeMode && providerCameraGate
+      ? providerCameraGate
+      : createProviderCameraGate({ providerGate: selectedGate })
+  ), [activeMode, providerCameraGate, selectedGate, selectedKey]);
 
   useEffect(() => {
     setSelectedKey(activeMode || 'local_dev');
@@ -147,6 +153,7 @@ export default function ModelProviderPanel({ activeMode, profiles, providerGate,
         <p>Health: {summarizeProviderHealthCheck(selectedHealth)}</p>
         <p>Handshake: {summarizeProviderHandshake(selectedHandshake)}</p>
         <p>Audio dry-run: {summarizeProviderAudioGate(selectedAudioGate)}</p>
+        <p>Camera dry-run: {summarizeProviderCameraGate(selectedCameraGate)}</p>
       </div>
 
       <div className="provider-actions">

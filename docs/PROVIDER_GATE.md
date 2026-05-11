@@ -1,4 +1,13 @@
-# Provider Gate v1.3.2
+# Provider Gate v1.3.3
+
+## v1.3.3 Camera Dry-run Boundary
+
+Provider Gate now recognizes `camera_dry_run` as a preparation mode. This mode is still local-only:
+
+- `allowCameraUpload=true` is required before dry-run payload validation can be ready.
+- `canSendRealCamera` remains false.
+- audio upload, realtime socket creation, and billing remain false.
+- validation results must report `persisted=false`, `uploaded=false`, and `sentToProvider=false`.
 
 ## v1.3.2 Audio Dry-run Boundary
 

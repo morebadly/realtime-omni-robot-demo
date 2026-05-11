@@ -1,4 +1,14 @@
-# Realtime Omni Robot Demo v1.3.2
+# Realtime Omni Robot Demo v1.3.3
+
+## v1.3.3 Provider Camera Dry-run Gate
+
+v1.3.3 adds a camera upload experiment gate and dry-run JPEG payload validator. It is not real provider camera upload.
+
+- Real provider camera upload remains disabled: `canSendRealCamera=false`.
+- Dry-run validation can inspect a local `omni.camera_frame.v1` JPEG payload shape without saving, uploading, or sending it.
+- Real audio upload, realtime sessions, billing, and TTS remain blocked.
+- `camera_dry_run` is a configuration/readiness mode only, not realtime media streaming.
+- `npm run verify` includes `test:provider-camera-gate`; no real API key is required.
 
 ## v1.3.2 Provider Audio Dry-run Gate
 

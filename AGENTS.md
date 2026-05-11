@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.2.
+Current version: v1.3.3.
 
 Tech stack:
 - Vite
@@ -364,4 +364,12 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - Audio gate must return `canSendRealAudio=false`, `canSendCamera=false`, `canStartRealtime=false`, and `canStartBillingSession=false`.
 - `audio_dry_run` may validate an `omni.audio_frame.v1` payload shape locally, but must not persist, upload, or send it to a real provider.
 - Camera upload, realtime billing, real realtime sockets, and TTS remain blocked.
+- `reply_text` remains subtitles/log/debug only and must not become speech synthesis input.
+
+## v1.3.3 Provider Camera Dry-run rule
+
+- v1.3.3 adds a camera upload experiment gate and local dry-run JPEG payload validator only.
+- Camera gate must return `canSendRealCamera=false`, `canSendAudio=false`, `canStartRealtime=false`, and `canStartBillingSession=false`.
+- `camera_dry_run` may validate an `omni.camera_frame.v1` JPEG payload shape locally, but must not persist, upload, or send it to a real provider.
+- Audio upload, realtime billing, real realtime sockets, and TTS remain blocked.
 - `reply_text` remains subtitles/log/debug only and must not become speech synthesis input.

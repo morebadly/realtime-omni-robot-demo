@@ -1,6 +1,6 @@
 {
   "name": "realtime-omni-robot-demo",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "private": true,
   "type": "module",
   "scripts": {
@@ -44,6 +44,7 @@
     "test:provider-health-check": "node scripts/provider-health-check-smoke.mjs",
     "test:provider-handshake": "node scripts/provider-handshake-smoke.mjs",
     "test:provider-audio-gate": "node scripts/provider-audio-gate-smoke.mjs",
+    "test:provider-camera-gate": "node scripts/provider-camera-gate-smoke.mjs",
     "test:realtime-output-queue": "node scripts/realtime-output-queue-smoke.mjs",
     "test:dashscope-omni-config": "node scripts/dashscope-omni-realtime-config-smoke.mjs",
     "test:localdev-provider-registry": "node scripts/localdev-provider-registry-smoke.mjs",

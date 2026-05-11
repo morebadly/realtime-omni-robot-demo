@@ -1,4 +1,15 @@
-# 架构说明 v1.3.2
+# 架构说明 v1.3.3
+
+## v1.3.3 Provider Camera Dry-run Architecture
+
+v1.3.3 adds `providerCameraGate` above Provider Gate as a local-only camera experiment guard:
+
+- `camera_dry_run` can become `ready_for_camera_dry_run` or `camera_dry_run_ok`.
+- `canSendRealCamera`, `canSendAudio`, `canStartRealtime`, and `canStartBillingSession` are always false.
+- dry-run validation checks `omni.camera_frame.v1` JPEG payload shape locally and reports validation only.
+- no payload is persisted, uploaded, or sent to a real provider.
+
+The Runtime remains Omni-first and Mock-safe. This release does not add real realtime calls, audio upload, billing, TTS, or ASR-to-LLM-to-TTS behavior.
 
 ## v1.3.2 Provider Audio Dry-run Architecture
 

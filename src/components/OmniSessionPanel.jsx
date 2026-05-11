@@ -55,6 +55,7 @@ export default function OmniSessionPanel({
   providerHealth,
   providerHandshake,
   providerAudioGate,
+  providerCameraGate,
   onBuild,
   onSimulate,
   onSendLocalDev,
@@ -145,6 +146,7 @@ export default function OmniSessionPanel({
       <div className="realtime-output-grid">
         <div><small>Provider Handshake</small><strong>{providerHandshake?.status || providerHealth?.status || providerGate?.status || 'blocked'}</strong><p>provider={providerHandshake?.providerId || providerHealth?.providerId || providerGate?.providerId || 'localdev_mock'} / mode={providerHandshake?.mode || providerHealth?.mode || providerGate?.mode || 'mock'} / socket={providerHandshake?.canOpenRealtimeSocket ? 'yes' : 'no'} / media_upload=no</p></div>
         <div><small>Audio Dry-run Gate</small><strong>{providerAudioGate?.status || 'blocked'}</strong><p>real_audio={providerAudioGate?.canSendRealAudio ? 'yes' : 'no'} / dry_run={providerAudioGate?.canSendDryRunAudioPayload ? 'yes' : 'no'} / camera=no / billing=no</p></div>
+        <div><small>Camera Dry-run Gate</small><strong>{providerCameraGate?.status || 'blocked'}</strong><p>real_camera={providerCameraGate?.canSendRealCamera ? 'yes' : 'no'} / dry_run={providerCameraGate?.canSendDryRunCameraPayload ? 'yes' : 'no'} / audio=no / billing=no</p></div>
         <div><small>Session State Machine</small><strong>{summarizeRealtimeSessionState(realtimeSessionState)}</strong><p>session={realtimeSessionState?.sessionId || '暂无'} · last={realtimeSessionState?.lastTransition || 'none'}</p></div>
         <div><small>Current Lifecycle</small><strong>{getRealtimeSessionStateLabel(realtimeSessionState?.state)}</strong><p>turn={realtimeSessionState?.currentTurnId || '暂无'} · request={realtimeSessionState?.currentRequestId || '暂无'}</p></div>
         <div><small>Input Channels</small><strong>A {realtimeSessionState?.inputAudioFramesSent || 0}/{realtimeSessionState?.inputAudioFramesObserved || 0} · C {realtimeSessionState?.inputCameraFramesSent || 0}/{realtimeSessionState?.inputCameraFramesObserved || 0}</strong><p>model_speaking 时仍可监听；audio_frame 不会自动变成 interrupt。</p></div>

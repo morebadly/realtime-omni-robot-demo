@@ -46,6 +46,7 @@ export default function App() {
     providerHealth,
     providerHandshake,
     providerAudioGate,
+    providerCameraGate,
     omniPacket,
     lastOmniTurn,
     omniSessionStatus,
@@ -141,7 +142,7 @@ export default function App() {
             onAdapterDisconnect={actions.handleLocalDevOmniDisconnect}
           />
           <RobotRegistryPanel robots={robotRegistry} activeRobotId={activeRobotId} onSelect={actions.handleRobotSelect} onAdd={actions.handleRobotAdd} onDelete={actions.handleRobotDelete} />
-          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} providerGate={providerGate} providerHealth={providerHealth} providerHandshake={providerHandshake} providerAudioGate={providerAudioGate} />
+          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} providerGate={providerGate} providerHealth={providerHealth} providerHandshake={providerHandshake} providerAudioGate={providerAudioGate} providerCameraGate={providerCameraGate} />
         </aside>
       </main>
     );
@@ -173,6 +174,7 @@ export default function App() {
             providerHealth={providerHealth}
             providerHandshake={providerHandshake}
             providerAudioGate={providerAudioGate}
+            providerCameraGate={providerCameraGate}
             onBuild={actions.handleOmniPacketBuild}
             onSimulate={actions.handleOmniTurnSimulate}
             onSendLocalDev={actions.handleLocalDevOmniSend}
@@ -187,6 +189,7 @@ export default function App() {
             providerHealth={providerHealth}
             providerHandshake={providerHandshake}
             providerAudioGate={providerAudioGate}
+            providerCameraGate={providerCameraGate}
             onUpdate={actions.handleModelProviderUpdate}
             onReset={actions.handleModelProviderReset}
             onTest={actions.handleModelProviderTest}
@@ -238,7 +241,7 @@ export default function App() {
       <main className="dashboard dashboard-split">
         <section className="center-stage">
           {workspaceBanner}
-          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} providerGate={providerGate} providerHealth={providerHealth} providerHandshake={providerHandshake} providerAudioGate={providerAudioGate} />
+          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} providerGate={providerGate} providerHealth={providerHealth} providerHandshake={providerHandshake} providerAudioGate={providerAudioGate} providerCameraGate={providerCameraGate} />
         </section>
         <aside className="right-column">
           <RobotConnectionStatusPanel
