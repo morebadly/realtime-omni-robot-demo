@@ -19,6 +19,7 @@ const DEFAULT_SCRIPTS = [
   'test:provider-audio-gate',
   'test:provider-camera-gate',
   'test:provider-adapter-contract',
+  'test:provider-socket-sandbox',
   'test:realtime-mux-backpressure',
   'test:dashscope-omni-config',
   'test:localdev-provider-registry',

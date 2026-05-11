@@ -1,4 +1,20 @@
-# 架构说明 v1.3.5
+# 架构说明 v1.3.6
+
+## v1.3.6 Real Socket Sandbox / Synthetic-only Provider Session Architecture
+
+v1.3.6 adds a synthetic-only socket sandbox lifecycle (`omni.provider_socket_sandbox.v1`) on top of the Provider Adapter Contract stack. It is a Runtime-only state machine: it does not open a real WebSocket, does not upload real microphone PCM or real camera JPEG, does not start realtime billing, and does not connect `reply_text` to any TTS provider.
+
+```text
+Runtime
+├── providerCapabilities (v1.3.5)
+├── providerAdapterContract (v1.3.5, extended in v1.3.6 with socketSandbox block)
+├── providerSocketSandbox (v1.3.6, state machine)
+└── providerAdapters/syntheticProviderAdapter (v1.3.5, extended in v1.3.6 with lifecycle methods)
+```
+
+Realtime voice output is still `omni.reply_audio_frame.v1` native audio frames. `reply_text` inside `omni.output_turn.v1` remains subtitle / log / debug only and is forbidden as a TTS input. ASR → LLM → TTS regression is explicitly blocked by `guardrails.asrLlmTtsRegressionForbidden = true` in every descriptor.
+
+Real provider kinds (`real_cloud`, `self_hosted`) are routed to `blocked` regardless of which sandbox event arrives. Synthetic / localdev_mock kinds can progress through `requested → synthetic_opening → synthetic_open → synthetic_ready → synthetic_closed`, with hard-locked safety fields on every state: `opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`, `billingStarted=false`, `syntheticOnly=true`.
 
 ## v1.3.5 Provider Adapter Contract / Real Provider Safety Boundary Architecture
 

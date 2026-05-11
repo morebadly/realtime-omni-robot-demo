@@ -9,6 +9,12 @@
 // frames marked `{ synthetic: true }` are accepted.
 
 import { BUILTIN_PROVIDER_CAPABILITIES } from '../providerCapabilities.js';
+import {
+  createDefaultSocketSandboxState,
+  transitionSocketSandbox,
+  requestSocketSandbox,
+  getSocketSandboxCapability
+} from '../providerSocketSandbox.js';
 
 function nowMs() { return Date.now(); }
 function nowIso() { return new Date().toISOString(); }
@@ -41,7 +47,10 @@ export function createSyntheticProviderAdapter(options = {}) {
     outputState: new Set(),
     outputTurn: new Set(),
     replyAudioFrame: new Set(),
-    error: new Set()
+    error: new Set(),
+    socketLifecycle: new Set(),
+    ready: new Set(),
+    fallback: new Set()
   };
 
   const stats = {
@@ -57,10 +66,23 @@ export function createSyntheticProviderAdapter(options = {}) {
     syntheticOutputStatesEmitted: 0,
     syntheticReplyAudioFramesEmitted: 0,
     syntheticOutputTurnsEmitted: 0,
+    socketRequested: 0,
+    socketOpened: 0,
+    socketReady: 0,
+    socketError: 0,
+    socketClosed: 0,
+    socketFallback: 0,
     errorsEmitted: 0
   };
 
   let activeSession = null;
+  let socketSandbox = createDefaultSocketSandboxState({ providerId, providerKind });
+
+  function broadcastSocketLifecycle(event, detail) {
+    for (const cb of listeners.socketLifecycle) {
+      try { cb({ event, detail, socketSandbox: { ...socketSandbox } }); } catch { /* ignore listener error */ }
+    }
+  }
 
   function emitError(reason, detail = null) {
     stats.errorsEmitted += 1;
@@ -105,9 +127,11 @@ export function createSyntheticProviderAdapter(options = {}) {
         robotId: robotId || correlation?.robotId || null,
         displayName: displayName || correlation?.displayName || null,
         openedAt: nowIso(),
-        correlation
+        correlation,
+        opensRealSocket: false,
+        syntheticOnly: true
       };
-      return { ok: true, session: { ...activeSession }, opensRealSocket: false };
+      return { ok: true, session: { ...activeSession }, opensRealSocket: false, syntheticOnly: true };
     },
 
     closeSession(reason = 'manual_close') {
@@ -115,7 +139,71 @@ export function createSyntheticProviderAdapter(options = {}) {
       stats.sessionsClosed += 1;
       const closed = activeSession;
       activeSession = null;
-      return { ok: true, sessionId: closed.sessionId, reason, closedAt: nowIso() };
+      return { ok: true, sessionId: closed.sessionId, reason, closedAt: nowIso(), opensRealSocket: false, syntheticOnly: true };
+    },
+
+    // v1.3.6 explicit synthetic socket lifecycle. None of these open a real
+    // provider socket. They drive the synthetic state machine only.
+    createSyntheticSession({ correlation = null, robotId = null, displayName = null } = {}) {
+      const result = this.createSession({ correlation, robotId, displayName });
+      socketSandbox = requestSocketSandbox(socketSandbox, { providerId, providerKind });
+      stats.socketRequested += 1;
+      broadcastSocketLifecycle('provider.socket.requested', { providerId, providerKind, reason: 'synthetic_only_socket_sandbox_requested' });
+      return { ...result, socketSandbox: { ...socketSandbox } };
+    },
+
+    openSyntheticSocket() {
+      socketSandbox = transitionSocketSandbox(socketSandbox, 'provider.socket.synthetic_opening', { reason: 'synthetic_open_requested' });
+      socketSandbox = transitionSocketSandbox(socketSandbox, 'provider.socket.synthetic_opened', { reason: 'synthetic_open_acknowledged' });
+      stats.socketOpened += 1;
+      broadcastSocketLifecycle('provider.socket.synthetic_opened', { providerId, providerKind, reason: 'synthetic_open_acknowledged' });
+      return { ok: true, opensRealSocket: false, syntheticOnly: true, socketSandbox: { ...socketSandbox } };
+    },
+
+    closeSyntheticSocket(reason = 'synthetic_close_requested') {
+      socketSandbox = transitionSocketSandbox(socketSandbox, 'provider.socket.synthetic_closed', { reason });
+      stats.socketClosed += 1;
+      broadcastSocketLifecycle('provider.socket.synthetic_closed', { providerId, providerKind, reason });
+      return { ok: true, opensRealSocket: false, syntheticOnly: true, socketSandbox: { ...socketSandbox } };
+    },
+
+    emitSyntheticReady(detail = {}) {
+      socketSandbox = transitionSocketSandbox(socketSandbox, 'provider.socket.synthetic_ready', { reason: detail.reason || 'synthetic_ready' });
+      stats.socketReady += 1;
+      for (const cb of listeners.ready) {
+        try { cb({ event: 'provider.socket.synthetic_ready', detail, socketSandbox: { ...socketSandbox } }); } catch { /* ignore listener error */ }
+      }
+      broadcastSocketLifecycle('provider.socket.synthetic_ready', { providerId, providerKind, ...detail });
+      return { ok: true, opensRealSocket: false, syntheticOnly: true, socketSandbox: { ...socketSandbox } };
+    },
+
+    emitSyntheticError(error) {
+      const reason = typeof error === 'string' ? error : (error?.message || 'synthetic_error');
+      socketSandbox = transitionSocketSandbox(socketSandbox, 'provider.socket.synthetic_error', { error: reason, reason });
+      stats.socketError += 1;
+      for (const cb of listeners.error) {
+        try { cb({ schema: 'omni.provider_adapter_error.v1', reason, kind: 'synthetic_socket_error', at: nowMs() }); } catch { /* ignore listener error */ }
+      }
+      broadcastSocketLifecycle('provider.socket.synthetic_error', { providerId, providerKind, reason });
+      return { ok: true, opensRealSocket: false, syntheticOnly: true, socketSandbox: { ...socketSandbox } };
+    },
+
+    emitSyntheticFallback(reason = 'fallback_to_localdev_mock') {
+      socketSandbox = transitionSocketSandbox(socketSandbox, 'provider.socket.fallback', { reason });
+      stats.socketFallback += 1;
+      for (const cb of listeners.fallback) {
+        try { cb({ event: 'provider.socket.fallback', reason, fallbackProviderId: 'localdev_mock', socketSandbox: { ...socketSandbox } }); } catch { /* ignore listener error */ }
+      }
+      broadcastSocketLifecycle('provider.socket.fallback', { providerId, providerKind, reason, fallbackProviderId: 'localdev_mock' });
+      return { ok: true, opensRealSocket: false, syntheticOnly: true, fallbackProviderId: 'localdev_mock', socketSandbox: { ...socketSandbox } };
+    },
+
+    getSocketSandboxState() {
+      return { ...socketSandbox };
+    },
+
+    getSocketSandboxCapability() {
+      return getSocketSandboxCapability();
     },
 
     sendInputPacket(packet) {
@@ -186,6 +274,21 @@ export function createSyntheticProviderAdapter(options = {}) {
       if (typeof listener !== 'function') return () => {};
       listeners.error.add(listener);
       return () => listeners.error.delete(listener);
+    },
+    onSocketLifecycle(listener) {
+      if (typeof listener !== 'function') return () => {};
+      listeners.socketLifecycle.add(listener);
+      return () => listeners.socketLifecycle.delete(listener);
+    },
+    onReady(listener) {
+      if (typeof listener !== 'function') return () => {};
+      listeners.ready.add(listener);
+      return () => listeners.ready.delete(listener);
+    },
+    onFallback(listener) {
+      if (typeof listener !== 'function') return () => {};
+      listeners.fallback.add(listener);
+      return () => listeners.fallback.delete(listener);
     },
 
     // Synthetic-only emitters: tests can drive deterministic state/turn/reply

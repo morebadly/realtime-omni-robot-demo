@@ -1,4 +1,10 @@
-# Provider Secret Boundary (v1.3.5)
+# Provider Secret Boundary (v1.3.6)
+
+## v1.3.6 Socket Sandbox Reminder
+
+v1.3.6 adds a synthetic-only socket sandbox. It does not change the secret boundary: real provider API keys / tokens still must NOT enter the frontend bundle, browser runtime config, descriptor JSON, sandbox state JSON, logs, traces, or Visible Context. The synthetic adapter and socket sandbox never carry a real secret because they never open a real socket.
+
+
 
 ## Goal
 

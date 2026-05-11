@@ -48,6 +48,7 @@ export default function App() {
     providerAudioGate,
     providerCameraGate,
     providerAdapterDescriptor,
+    providerSocketSandbox,
     omniPacket,
     lastOmniTurn,
     omniSessionStatus,
@@ -181,6 +182,7 @@ export default function App() {
             providerAudioGate={providerAudioGate}
             providerCameraGate={providerCameraGate}
             providerAdapterDescriptor={providerAdapterDescriptor}
+            providerSocketSandbox={providerSocketSandbox}
             onBuild={actions.handleOmniPacketBuild}
             onSimulate={actions.handleOmniTurnSimulate}
             onSendLocalDev={actions.handleLocalDevOmniSend}

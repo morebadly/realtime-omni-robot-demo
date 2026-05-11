@@ -26,6 +26,7 @@ import { createProviderHandshake } from './providerHandshake';
 import { createProviderAudioGate } from './providerAudioGate';
 import { createProviderCameraGate } from './providerCameraGate';
 import { createProviderAdapterDescriptor } from './providerAdapterContract';
+import { createDefaultSocketSandboxState, requestSocketSandbox, runSyntheticSocketSession, summarizeSocketSandbox, transitionSocketSandbox } from './providerSocketSandbox';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -140,6 +141,9 @@ export function useRuntimeCore() {
   const [sessionCorrelation, setSessionCorrelation] = useState(() => createDefaultSessionCorrelation({
     robotId: initialSeed.activeRobotId,
     displayName: initialSeed.robot?.name
+  }));
+  const [providerSocketSandbox, setProviderSocketSandbox] = useState(() => createDefaultSocketSandboxState({
+    providerId: initialSeed.robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock'
   }));
   const [localDevBridge, setLocalDevBridge] = useState({
     status: 'idle',
@@ -304,6 +308,9 @@ export function useRuntimeCore() {
     setMediaChannels(createDefaultMediaChannels());
     setRealtimeMux(createDefaultMuxState());
     setSessionCorrelation((prev) => resetSessionCorrelation(prev, { robotId: activeRobotId }));
+    setProviderSocketSandbox(createDefaultSocketSandboxState({
+      providerId: robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock'
+    }));
     setCameraStatus({
       cameraActive: false,
       cameraPolicy: '摄像头未开启',
@@ -685,6 +692,58 @@ export function useRuntimeCore() {
     bus.emit({ type: 'mode.change', mode: nextMode, adapter: adapter.name, connectionMode: option.key });
   }
 
+
+  function handleProviderSocketSandboxRequest() {
+    const providerId = robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock';
+    const capability = providerAdapterDescriptor?.capabilities;
+    const providerKind = providerAdapterDescriptor?.providerKind || (capability?.experimentalOnly ? 'real_cloud' : 'localdev_mock');
+    setProviderSocketSandbox((prev) => {
+      const next = requestSocketSandbox(prev, { providerId, providerKind });
+      pushLog(next.state === 'blocked' ? 'warn' : 'info', 'Provider socket sandbox requested', summarizeSocketSandbox(next));
+      pushTrace('ProviderSocketSandbox', next.lastEvent || 'request', `${providerId} → ${next.state}; opensRealSocket=false`);
+      return next;
+    });
+  }
+
+  function handleProviderSocketSandboxSyntheticOpen() {
+    setProviderSocketSandbox((prev) => {
+      let next = transitionSocketSandbox(prev, 'provider.socket.synthetic_opening', { reason: 'synthetic_open_requested' });
+      next = transitionSocketSandbox(next, 'provider.socket.synthetic_opened', { reason: 'synthetic_open_acknowledged' });
+      next = transitionSocketSandbox(next, 'provider.socket.synthetic_ready', { reason: 'synthetic_ready' });
+      pushLog('info', 'Synthetic socket sandbox opened', `${next.providerId} · synthetic only · no real socket · no real upload`);
+      pushTrace('ProviderSocketSandbox', 'synthetic_ready', `${next.providerId} · syntheticOnly=true`);
+      return next;
+    });
+  }
+
+  function handleProviderSocketSandboxClose() {
+    setProviderSocketSandbox((prev) => {
+      const next = transitionSocketSandbox(prev, 'provider.socket.synthetic_closed', { reason: 'manual_close' });
+      pushLog('info', 'Synthetic socket sandbox closed', summarizeSocketSandbox(next));
+      pushTrace('ProviderSocketSandbox', 'synthetic_closed', `${next.providerId}`);
+      return next;
+    });
+  }
+
+  function handleProviderSocketSandboxFallback() {
+    setProviderSocketSandbox((prev) => {
+      const next = transitionSocketSandbox(prev, 'provider.socket.fallback', { reason: 'fallback_to_localdev_mock' });
+      pushLog('warn', 'Provider socket sandbox fallback', `${next.providerId} → localdev_mock`);
+      pushTrace('ProviderSocketSandbox', 'fallback', `${next.providerId} → localdev_mock`);
+      return next;
+    });
+  }
+
+  function handleProviderSocketSandboxRunSyntheticSession() {
+    setProviderSocketSandbox((prev) => {
+      const providerId = robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock';
+      const providerKind = providerAdapterDescriptor?.providerKind || 'localdev_mock';
+      const next = runSyntheticSocketSession(prev, { providerId, providerKind });
+      pushLog(next.state === 'blocked' ? 'warn' : 'success', 'Synthetic socket sandbox session done', summarizeSocketSandbox(next));
+      pushTrace('ProviderSocketSandbox', 'synthetic_session', `${providerId} · ${next.state}`);
+      return next;
+    });
+  }
 
   function handleNetworkQualityChange(qualityKey) {
     setNetworkQuality(qualityKey);
@@ -1193,6 +1252,7 @@ export function useRuntimeCore() {
     providerAudioGate,
     providerCameraGate,
     providerAdapterDescriptor,
+    providerSocketSandbox,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,
@@ -1233,7 +1293,12 @@ export function useRuntimeCore() {
       handlePluginDelete,
       handlePluginRun,
       handlePluginAdd,
-      handleEvent
+      handleEvent,
+      handleProviderSocketSandboxRequest,
+      handleProviderSocketSandboxSyntheticOpen,
+      handleProviderSocketSandboxClose,
+      handleProviderSocketSandboxFallback,
+      handleProviderSocketSandboxRunSyntheticSession
     }
   };
 }

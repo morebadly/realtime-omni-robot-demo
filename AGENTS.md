@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.5.
+Current version: v1.3.6.
 
 Tech stack:
 - Vite
@@ -395,4 +395,16 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - Synthetic adapter must reject any real audio or camera payload and must never report `sentToProvider=true`.
 - Real provider API keys / tokens must never enter the frontend bundle, `import.meta.env.*`, `localStorage`, runtime config snapshots, action logs, traces, descriptor JSON, or Visible Context. Real secrets must live in a server-side proxy / Robot Gateway / Device Runtime.
 - The Provider Adapter Contract is descriptive and safety-locking only. It does not start sessions or upload media in v1.3.5.
+- LocalDev Mock fallback remains required and the LocalDev Adapter Contract on the wire is unchanged.
+
+## v1.3.6 Real Socket Sandbox / Synthetic-only Provider Session rule
+
+- v1.3.6 adds `omni.provider_socket_sandbox.v1`: a Runtime-only synthetic socket sandbox state machine with 9 states and 8 events.
+- Real provider kinds (`real_cloud`, `self_hosted`) MUST be routed to `blocked` regardless of which sandbox event arrives.
+- Synthetic / localdev_mock kinds may drive the full lifecycle: `requested → synthetic_opening → synthetic_open → synthetic_ready → synthetic_closed`, with a separate `provider.socket.fallback` event landing in `fallback_to_localdev_mock`.
+- Every sandbox state and every adapter lifecycle method MUST report `opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`, `billingStarted=false`, `syntheticOnly=true`.
+- The realtime voice output is `omni.reply_audio_frame.v1` native audio frames. `reply_text` is subtitle / log / debug / Visible Context only and MUST NOT be sent to `speechSynthesis`, MiniMax TTS, DashScope TTS, browser TTS, or any other TTS provider as part of the main realtime path.
+- ASR → LLM → TTS regression is explicitly forbidden by `guardrails.asrLlmTtsRegressionForbidden = true` in every descriptor.
+- If a future provider can only return text and TTS (no native `omni.reply_audio_frame.v1`), it MUST be registered as a non-omni provider capability and MUST NOT become the main realtime Omni provider.
+- Real provider API keys / tokens never enter the sandbox state, descriptor, logs, or Visible Context. The synthetic adapter and sandbox never carry a real secret.
 - LocalDev Mock fallback remains required and the LocalDev Adapter Contract on the wire is unchanged.

@@ -1,4 +1,30 @@
-# Provider Adapter Contract (v1.3.5)
+# Provider Adapter Contract (v1.3.6)
+
+## v1.3.6 Socket Sandbox Addendum
+
+v1.3.6 extends the descriptor with an additional `socketSandbox` block and two new guardrails:
+
+```js
+descriptor.socketSandbox = {
+  socketSandboxAvailable: true,
+  socketSandboxMode: 'blocked' | 'synthetic_only' | 'mock_realtime_or_synthetic_only' | 'offline_only',
+  canOpenSyntheticSocket: <bool>,
+  canOpenRealtimeSocket: false,
+  opensRealSocket: false,
+  syntheticOnly: <bool>,
+  realMediaBlocked: true,
+  billingStarted: false,
+  replyAudioFrameNative: true,
+  replyTextSubtitleOnly: true,
+  replyTextToTts: false,
+  fallbackProviderId: 'localdev_mock'
+};
+
+descriptor.guardrails.replyAudioFrameIsRealtimeVoiceOutput = true;
+descriptor.guardrails.asrLlmTtsRegressionForbidden = true;
+```
+
+These fields document that the only safe socket lifecycle in v1.3.6 is synthetic-only, that the realtime voice output is `omni.reply_audio_frame.v1` native audio frames, and that `reply_text -> TTS` regression is forbidden. See `docs/PROVIDER_SOCKET_SANDBOX.md` for the state machine and lifecycle methods.
 
 ## Scope
 

@@ -1,4 +1,28 @@
-# 技术落地路线 v1.3.5
+# 技术落地路线 v1.3.6
+
+## v1.3.6 Real Socket Sandbox / Synthetic-only Provider Session
+
+Goal: design and lock the synthetic-only socket sandbox surface for future real-provider work, while keeping the demo safe Mock-first and explicitly forbidding ASR → LLM → TTS regression.
+
+Completed:
+
+1. Add `providerSocketSandbox` Runtime module (`omni.provider_socket_sandbox.v1`): 9 states, 8 events, hard-locked safety fields.
+2. Extend `providerAdapters/syntheticProviderAdapter` with explicit socket lifecycle methods: `createSyntheticSession`, `openSyntheticSocket`, `closeSyntheticSocket`, `emitSyntheticReady`, `emitSyntheticError`, `emitSyntheticFallback`, plus listener registration helpers.
+3. Extend `providerAdapterContract` descriptor with a `socketSandbox` block and add `replyAudioFrameIsRealtimeVoiceOutput` and `asrLlmTtsRegressionForbidden` guardrails.
+4. Wire `providerSocketSandbox` state and synthetic lifecycle actions into `useRuntimeCore`.
+5. Add a small Provider Socket Sandbox diagnostic card in `OmniSessionPanel`.
+6. Add `test:provider-socket-sandbox` to the safe smoke suite (now 24 checks total).
+7. Add `docs/PROVIDER_SOCKET_SANDBOX.md` and update existing provider docs.
+
+Still out of scope:
+
+1. Real Qwen / DashScope realtime sessions.
+2. Real microphone PCM upload to a provider.
+3. Real camera JPEG upload to a provider.
+4. Real realtime billing calls.
+5. Real TTS or `reply_text -> playback` path.
+6. Automatic VAD / AEC barge-in.
+7. Storing real provider API keys in the frontend.
 
 ## v1.3.5 Provider Adapter Contract / Real Provider Safety Boundary
 

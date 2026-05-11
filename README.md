@@ -1,4 +1,16 @@
-# Realtime Omni Robot Demo v1.3.5
+# Realtime Omni Robot Demo v1.3.6
+
+## v1.3.6 Real Socket Sandbox / Synthetic-only Provider Session
+
+v1.3.6 adds a Runtime-only synthetic socket sandbox lifecycle (`omni.provider_socket_sandbox.v1`). It is a safety-locked state machine that exercises "how a real provider socket would be opened safely later" without ever opening one. The demo remains safe Mock-first against `localdev_mock`.
+
+- 9-state state machine, 8 events, hard-locked `opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`, `billingStarted=false`, `syntheticOnly=true` on every state.
+- Real provider kinds (`real_cloud`, `self_hosted`) are always routed to `blocked`; synthetic / localdev_mock / offline kinds drive the full `requested → synthetic_opening → synthetic_open → synthetic_ready → synthetic_closed` lifecycle.
+- `providerAdapterDescriptor.socketSandbox` exposes the sandbox state to UI / debug.
+- Synthetic provider adapter extended with `createSyntheticSession`, `openSyntheticSocket`, `closeSyntheticSocket`, `emitSyntheticReady`, `emitSyntheticError`, `emitSyntheticFallback`, plus `onSocketLifecycle / onReady / onFallback` listeners.
+- New guardrails `replyAudioFrameIsRealtimeVoiceOutput=true` and `asrLlmTtsRegressionForbidden=true` make the realtime voice path explicit.
+- `npm run verify` now includes `test:provider-socket-sandbox`; the safe smoke suite is 24 checks.
+- No real audio upload, no real camera upload, no realtime billing, no real provider socket, no `reply_text → TTS`. LocalDev Mock fallback remains required.
 
 ## v1.3.5 Provider Adapter Contract / Real Provider Safety Boundary
 

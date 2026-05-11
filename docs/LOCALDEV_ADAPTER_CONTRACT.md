@@ -1,4 +1,12 @@
-# LocalDev Adapter Contract v1.3.5
+# LocalDev Adapter Contract v1.3.6
+
+## v1.3.6 Real Socket Sandbox / Synthetic-only Session Addendum
+
+v1.3.6 adds a Provider Socket Sandbox layer (`omni.provider_socket_sandbox.v1`) above the existing Provider Adapter Contract. The LocalDev contract on the wire is unchanged. The sandbox is a Runtime-only state machine: it does not open a real WebSocket, does not upload real audio or camera, does not start billing, and does not connect `reply_text` to TTS.
+
+Real provider kinds (`real_cloud`, `self_hosted`) are always routed to `blocked` in the sandbox. Synthetic / localdev_mock kinds can drive `requested → synthetic_opening → synthetic_open → synthetic_ready → synthetic_closed`. Every state carries hard-locked safety fields: `opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`, `billingStarted=false`, `syntheticOnly=true`, plus `replyAudioFrameNative=true`, `replyTextSubtitleOnly=true`, `replyTextToTts=false`.
+
+ASR → LLM → TTS regression is explicitly forbidden by `guardrails.asrLlmTtsRegressionForbidden = true` in the descriptor. `omni.reply_audio_frame.v1` remains the realtime voice output; `reply_text` remains subtitles / log / debug only.
 
 ## v1.3.5 Provider Adapter Contract Addendum
 

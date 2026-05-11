@@ -14,6 +14,7 @@ import { createProviderHealthCheck } from './providerHealthCheck.js';
 import { createProviderHandshake } from './providerHandshake.js';
 import { createProviderAudioGate } from './providerAudioGate.js';
 import { createProviderCameraGate } from './providerCameraGate.js';
+import { getSocketSandboxCapability } from './providerSocketSandbox.js';
 
 export const PROVIDER_ADAPTER_SCHEMA = 'omni.provider_adapter.v1';
 
@@ -105,6 +106,15 @@ export function createProviderAdapterDescriptor(input = {}) {
     reasons.push('mock_fallback_required');
   }
 
+  const socketSandboxCapability = getSocketSandboxCapability();
+  const socketSandboxMode = capability.providerKind === 'real_cloud' || capability.providerKind === 'self_hosted'
+    ? 'blocked'
+    : capability.providerKind === 'offline_engine'
+      ? 'offline_only'
+      : capability.providerKind === 'localdev_mock'
+        ? 'mock_realtime_or_synthetic_only'
+        : 'synthetic_only';
+
   return {
     schema: PROVIDER_ADAPTER_SCHEMA,
     providerId: capability.providerId,
@@ -133,6 +143,20 @@ export function createProviderAdapterDescriptor(input = {}) {
     fallbackProviderId: capability.fallbackProviderId || 'localdev_mock',
     contractSurface: PROVIDER_ADAPTER_CONTRACT_METHODS.reduce((acc, method) => ({ ...acc, [method]: 'required' }), {}),
     secretBoundary: describeSecretBoundary(capability, providerGate),
+    socketSandbox: {
+      socketSandboxAvailable: socketSandboxCapability.socketSandboxAvailable,
+      socketSandboxMode,
+      canOpenSyntheticSocket: capability.providerKind !== 'real_cloud' && capability.providerKind !== 'self_hosted',
+      canOpenRealtimeSocket: false,
+      opensRealSocket: false,
+      syntheticOnly: capability.providerKind === 'synthetic' || socketSandboxMode === 'synthetic_only',
+      realMediaBlocked: true,
+      billingStarted: false,
+      replyAudioFrameNative: true,
+      replyTextSubtitleOnly: true,
+      replyTextToTts: false,
+      fallbackProviderId: 'localdev_mock'
+    },
     gateLinks: {
       providerGate: providerGate?.status || 'unknown',
       providerHealth: providerHealth?.status || 'unknown',
@@ -151,7 +175,9 @@ export function createProviderAdapterDescriptor(input = {}) {
       replyTextNotTtsInput: true,
       localdevMockFallbackRequired: true,
       apiKeyMustNotEnterFrontend: true,
-      syntheticOnlyTestPathAvailable: true
+      syntheticOnlyTestPathAvailable: true,
+      replyAudioFrameIsRealtimeVoiceOutput: true,
+      asrLlmTtsRegressionForbidden: true
     }
   };
 }
