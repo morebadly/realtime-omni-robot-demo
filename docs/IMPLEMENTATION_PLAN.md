@@ -1,4 +1,22 @@
-# 技术落地路线 v1.2.3
+# 技术落地路线 v1.2.4
+
+## v1.2.4 Provider Configuration Gate
+
+Goal: prepare real provider configuration gates while keeping the demo safe Mock-only.
+
+Completed:
+
+1. Add a Runtime provider gate schema for `localdev_mock`, `dashscope_qwen_omni`, and `custom_realtime_omni`.
+2. Keep real providers disabled by default and require explicit endpoint, API key, upload flags, billing flag, visible context, permission gate, and LocalDev Mock fallback.
+3. Add `.env.example` placeholders without real secrets.
+4. Add `test:provider-config-gate` and include it in the safe smoke suite.
+
+Still out of scope:
+
+1. Real Qwen/DashScope realtime sessions.
+2. Real microphone PCM or camera JPEG upload.
+3. Real realtime billing calls.
+4. Real TTS or `reply_text -> playback`.
 
 ## v1.2.3 Adapter Contract Test Completion
 

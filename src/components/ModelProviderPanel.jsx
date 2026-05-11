@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MODEL_ADAPTERS } from '../runtime/modelAdapters';
+import { evaluateProviderGate, summarizeProviderGate } from '../runtime/providerGate';
 
 const CAPABILITY_OPTIONS = [
   { key: 'audio_in', label: '原始音频输入' },
@@ -15,10 +16,22 @@ const CAPABILITY_OPTIONS = [
   { key: 'preset_motion', label: '预设动作' }
 ];
 
-export default function ModelProviderPanel({ activeMode, profiles, onUpdate, onReset, onTest }) {
+export default function ModelProviderPanel({ activeMode, profiles, providerGate, onUpdate, onReset, onTest }) {
   const [selectedKey, setSelectedKey] = useState(activeMode || 'local_dev');
   const selectedProfile = useMemo(() => profiles?.[selectedKey] || MODEL_ADAPTERS.find((item) => item.key === selectedKey), [profiles, selectedKey]);
   const [draft, setDraft] = useState(selectedProfile);
+  const selectedGate = useMemo(() => (
+    selectedKey === activeMode && providerGate
+      ? providerGate
+      : evaluateProviderGate({
+        adapter: { ...draft, key: selectedKey },
+        providerConfig: {
+          ...(draft?.providerConfig || {}),
+          endpointConfigured: Boolean(draft?.endpoint),
+          apiKeyConfigured: Boolean(draft?.apiKey) || Boolean(draft?.providerConfig?.apiKeyConfigured)
+        }
+      })
+  ), [activeMode, draft, providerGate, selectedKey]);
 
   useEffect(() => {
     setSelectedKey(activeMode || 'local_dev');
@@ -107,6 +120,12 @@ export default function ModelProviderPanel({ activeMode, profiles, onUpdate, onR
       <div className="provider-note">
         <strong>当前输入策略：</strong>{draft?.input}
         <p>{draft?.upload}</p>
+      </div>
+
+      <div className="provider-note">
+        <strong>Provider Gate</strong>
+        <p>{summarizeProviderGate(selectedGate)}</p>
+        <p>Real provider media upload and realtime billing stay blocked unless endpoint, API key, feature flags, permission gate, visible context, and LocalDev Mock fallback are explicit.</p>
       </div>
 
       <div className="provider-actions">

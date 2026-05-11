@@ -1,4 +1,14 @@
-# Realtime Omni Robot Demo v1.2.3
+# Realtime Omni Robot Demo v1.2.4
+
+## v1.2.4 Provider Configuration Gates
+
+v1.2.4 prepares real Provider configuration gates without opening real Omni calls. The default provider remains LocalDev Mock, real providers stay disabled, and `npm run verify` now includes `test:provider-config-gate`.
+
+- Real microphone PCM upload is disabled by default.
+- Real camera JPEG upload is disabled by default.
+- Real realtime billing/session creation is disabled by default.
+- `.env.example` contains placeholders only; real secrets must not be exposed to the frontend bundle.
+- Mock fallback remains required, `reply_text` remains subtitles/log/debug only, and `omni.reply_audio_frame.v1` remains the output audio frame path.
 
 ## v1.2.3 Adapter Contract Test Matrix
 

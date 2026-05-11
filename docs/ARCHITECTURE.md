@@ -1,4 +1,16 @@
-# 架构说明 v1.2.3
+# 架构说明 v1.2.4
+
+## v1.2.4 Provider Gate Architecture
+
+v1.2.4 adds a Runtime-level Provider Gate before any real provider work. The gate is a configuration/readiness layer only:
+
+- `localdev_mock` remains the default provider and fallback.
+- `dashscope_qwen_omni` and `custom_realtime_omni` remain disabled unless explicit flags are present.
+- `health_check_only` may describe readiness, but it must not send media frames or open realtime billing sessions.
+- `allowAudioUpload`, `allowCameraUpload`, and `allowRealtimeBilling` default to false.
+- Visible Context and Model Provider UI can show why real provider traffic is blocked.
+
+This release does not establish a real DashScope/Qwen realtime WebSocket session, does not upload microphone PCM or camera JPEG frames, and does not add real TTS.
 
 ## v1.2.3 Contract Test Matrix Architecture
 

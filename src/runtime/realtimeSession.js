@@ -12,7 +12,7 @@ export function createDefaultRealtimeSession() {
   };
 }
 
-export function buildRealtimeRoute({ mode, adapter, connection, voiceCloudAllowed }) {
+export function buildRealtimeRoute({ mode, adapter, connection, voiceCloudAllowed, providerGate }) {
   if (mode === 'offline_pet' || connection?.status === 'offline') {
     return {
       route: 'offline_pet_engine',
@@ -37,6 +37,15 @@ export function buildRealtimeRoute({ mode, adapter, connection, voiceCloudAllowe
       canStream: false,
       label: '云端语音上传已关闭',
       detail: '权限中心关闭 voice.cloud_upload，Runtime 不应把原始音频流发给云端。'
+    };
+  }
+
+  if (providerGate?.isRealProvider && !providerGate.canRealtime) {
+    return {
+      route: 'blocked_by_provider_gate',
+      canStream: false,
+      label: `${adapter?.name || 'CloudOmniAdapter'} gated`,
+      detail: `Provider gate blocked realtime media: ${(providerGate.blockReasons || []).join(', ') || 'real provider disabled'}.`
     };
   }
 

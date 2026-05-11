@@ -27,7 +27,14 @@ function clonePlugins(plugins = defaultPlugins()) {
 function stripSecretsFromProfiles(profiles = {}) {
   return Object.fromEntries(Object.entries(profiles).map(([key, profile]) => [
     key,
-    { ...profile, apiKey: '' }
+    {
+      ...profile,
+      apiKey: '',
+      providerConfig: {
+        ...(profile.providerConfig || {}),
+        apiKeyConfigured: false
+      }
+    }
   ]));
 }
 
@@ -39,7 +46,11 @@ function mergeAdapterProfiles(storedProfiles = null) {
     {
       ...profile,
       ...(storedProfiles[key] || {}),
-      capabilities: storedProfiles[key]?.capabilities || profile.capabilities
+      capabilities: storedProfiles[key]?.capabilities || profile.capabilities,
+      providerConfig: {
+        ...(profile.providerConfig || {}),
+        ...(storedProfiles[key]?.providerConfig || {})
+      }
     }
   ]));
 }

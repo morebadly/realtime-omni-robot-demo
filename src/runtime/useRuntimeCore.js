@@ -18,6 +18,7 @@ import { simulateOmniTurn } from './omniTurnSimulator';
 import { routeToolIntents } from './toolIntentRouter';
 import { createLocalDevOmniBridge } from './localDevOmniClient';
 import { buildRealtimeReadiness } from './realtimeReadiness';
+import { evaluateProviderGate } from './providerGate';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -155,6 +156,11 @@ export function useRuntimeCore() {
     connection: connectionSnapshot
   }), [robot.mode, robot.state, robot.cameraDemand, connectionSnapshot]);
 
+  const providerGate = useMemo(() => evaluateProviderGate({
+    adapter: robot.adapterDetail,
+    providerConfig: robot.adapterDetail?.providerConfig
+  }), [robot.adapterDetail]);
+
   const realtimeRoute = useMemo(() => {
     const permissionMap = createPermissionMap(permissions);
     const voiceCloudGuard = checkPermission(permissionMap, 'voice.cloud_upload');
@@ -162,9 +168,10 @@ export function useRuntimeCore() {
       mode: robot.mode,
       adapter: robot.adapterDetail,
       connection: connectionSnapshot,
-      voiceCloudAllowed: voiceCloudGuard.allowed
+      voiceCloudAllowed: voiceCloudGuard.allowed,
+      providerGate
     });
-  }, [permissions, robot.mode, robot.adapterDetail, connectionSnapshot]);
+  }, [permissions, robot.mode, robot.adapterDetail, connectionSnapshot, providerGate]);
 
   const realtimeReadiness = useMemo(() => buildRealtimeReadiness({
     robot,
@@ -1061,6 +1068,7 @@ export function useRuntimeCore() {
     realtimeSessionState,
     realtimeRoute,
     realtimeReadiness,
+    providerGate,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,

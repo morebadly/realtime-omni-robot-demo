@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.2.3.
+Current version: v1.2.4.
 
 Tech stack:
 - Vite
@@ -332,3 +332,12 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - v1.2.3 expands LocalDev Adapter Contract smoke coverage. It does not change realtime protocol semantics or add real provider traffic.
 - Contract matrix tests should cover input packets, audio frames, camera frames, output states, output turns, reply audio frames, explicit interrupts, malformed messages, and unsupported schemas.
 - Mock server compliance remains safe and local only; no real cloud API, model, hardware, TTS, email, or AC access is allowed.
+
+## v1.2.4 Provider Gate rule
+
+- v1.2.4 only adds provider configuration gates, feature flags, visible safety state, and readiness placeholders. It must not open a real Omni provider session.
+- The default provider remains `localdev_mock`; real providers are disabled unless explicit configuration and feature flags are present.
+- `allowAudioUpload`, `allowCameraUpload`, and `allowRealtimeBilling` default to false and must stay false for the safe Mock demo.
+- Real secrets must not be placed in frontend-readable Vite variables or committed files.
+- Mock fallback, permission gate, and visible context are required before any future real provider experiment.
+- `reply_text` remains subtitles/log/debug only and must not become TTS input.

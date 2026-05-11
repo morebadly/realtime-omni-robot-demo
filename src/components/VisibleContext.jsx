@@ -10,7 +10,7 @@ function StatusTile({ label, value, detail }) {
   );
 }
 
-export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState }) {
+export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState, providerGate }) {
   const cloudMode = robot.mode === 'wifi_cloud' || robot.mode === 'cellular_cloud' || robot.mode === 'self_hosted_cloud';
   const audioObserved = mediaChannels?.audio?.observed || 0;
   const audioSent = mediaChannels?.audio?.sent || 0;
@@ -49,6 +49,11 @@ export default function VisibleContext({ robot, recentEvents, cameraStatus, fram
           label="状态机"
           value={realtimeSessionState?.state || 'idle'}
           detail={summarizeRealtimeSessionState(realtimeSessionState)}
+        />
+        <StatusTile
+          label="Provider Gate"
+          value={providerGate?.status || 'mock_ready'}
+          detail={`${providerGate?.providerId || 'localdev_mock'} / ${providerGate?.mode || 'mock'}`}
         />
       </div>
 

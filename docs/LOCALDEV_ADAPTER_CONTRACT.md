@@ -1,4 +1,16 @@
-# LocalDev Adapter Contract v1.2.3
+# LocalDev Adapter Contract v1.2.4
+
+## v1.2.4 Provider Gate Boundary
+
+The LocalDev Adapter Contract remains the safe baseline and fallback for future real providers. v1.2.4 adds configuration gates only:
+
+- `localdev_mock` is the default provider and required fallback.
+- Real providers are hidden/blocked unless explicit feature flags and configuration are present.
+- `health_check_only` must not send `omni.audio_frame.v1` or `omni.camera_frame.v1`.
+- `allowAudioUpload`, `allowCameraUpload`, and `allowRealtimeBilling` default to false.
+- `reply_text` remains subtitles/log/debug context only and is not TTS input.
+
+No real Provider traffic is introduced in this contract version.
 
 ## v1.2.3 Compliance Matrix
 

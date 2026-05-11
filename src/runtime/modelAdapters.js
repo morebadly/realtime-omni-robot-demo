@@ -1,4 +1,5 @@
 import { getConnectionNetworkLabel } from './connectionModes';
+import { createDefaultProviderConfig, normalizeProviderConfig } from './providerGate';
 
 export const MODEL_ADAPTERS = [
   {
@@ -74,14 +75,30 @@ export const MODEL_ADAPTERS = [
 ];
 
 export function createDefaultAdapterProfiles() {
-  return Object.fromEntries(MODEL_ADAPTERS.map((adapter) => [adapter.key, { ...adapter, capabilities: [...adapter.capabilities] }]));
+  return Object.fromEntries(MODEL_ADAPTERS.map((adapter) => [adapter.key, {
+    ...adapter,
+    capabilities: [...adapter.capabilities],
+    providerConfig: createDefaultProviderConfig(adapter.key, adapter)
+  }]));
 }
 
 export function getAdapterForMode(mode, profiles) {
   const defaultAdapter = MODEL_ADAPTERS.find((adapter) => adapter.key === mode) || MODEL_ADAPTERS[0];
   const profile = profiles?.[mode];
-  if (!profile) return defaultAdapter;
-  return { ...defaultAdapter, ...profile, capabilities: profile.capabilities || defaultAdapter.capabilities };
+  if (!profile) {
+    return {
+      ...defaultAdapter,
+      providerConfig: createDefaultProviderConfig(defaultAdapter.key, defaultAdapter)
+    };
+  }
+  const merged = { ...defaultAdapter, ...profile, capabilities: profile.capabilities || defaultAdapter.capabilities };
+  return {
+    ...merged,
+    providerConfig: normalizeProviderConfig({
+      ...createDefaultProviderConfig(merged.key, merged),
+      ...(profile.providerConfig || {})
+    }, merged)
+  };
 }
 
 export function getNetworkLabel(mode) {

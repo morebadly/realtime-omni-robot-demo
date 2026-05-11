@@ -13,6 +13,7 @@ const DEFAULT_SCRIPTS = [
   'test:localdev-qwen-config',
   'test:localdev-reconnect-recovery',
   'test:localdev-contract-matrix',
+  'test:provider-config-gate',
   'test:dashscope-omni-config',
   'test:localdev-provider-registry',
   'test:realtime-output-queue',
