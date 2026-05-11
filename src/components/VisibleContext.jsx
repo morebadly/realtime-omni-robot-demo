@@ -10,7 +10,7 @@ function StatusTile({ label, value, detail }) {
   );
 }
 
-export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState, providerGate, providerHealth, providerHandshake }) {
+export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState, providerGate, providerHealth, providerHandshake, providerAudioGate }) {
   const cloudMode = robot.mode === 'wifi_cloud' || robot.mode === 'cellular_cloud' || robot.mode === 'self_hosted_cloud';
   const audioObserved = mediaChannels?.audio?.observed || 0;
   const audioSent = mediaChannels?.audio?.sent || 0;
@@ -64,6 +64,11 @@ export default function VisibleContext({ robot, recentEvents, cameraStatus, fram
           label="Handshake"
           value={providerHandshake?.status || 'blocked'}
           detail={`socket=${providerHandshake?.canOpenRealtimeSocket ? 'yes' : 'no'} / fallback=${providerHandshake?.fallbackProviderId || 'localdev_mock'}`}
+        />
+        <StatusTile
+          label="Audio Dry-run"
+          value={providerAudioGate?.status || 'blocked'}
+          detail={`real_audio=${providerAudioGate?.canSendRealAudio ? 'yes' : 'no'} / dry_run=${providerAudioGate?.canSendDryRunAudioPayload ? 'yes' : 'no'}`}
         />
       </div>
 

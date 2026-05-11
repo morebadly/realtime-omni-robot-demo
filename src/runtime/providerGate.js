@@ -8,6 +8,7 @@ export const PROVIDER_MODES = [
   'mock',
   'health_check_only',
   'handshake_only',
+  'audio_dry_run',
   'realtime_experimental'
 ];
 

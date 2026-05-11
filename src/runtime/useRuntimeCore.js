@@ -21,6 +21,7 @@ import { buildRealtimeReadiness } from './realtimeReadiness';
 import { evaluateProviderGate } from './providerGate';
 import { createProviderHealthCheck } from './providerHealthCheck';
 import { createProviderHandshake } from './providerHandshake';
+import { createProviderAudioGate } from './providerAudioGate';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -170,6 +171,10 @@ export function useRuntimeCore() {
   const providerHandshake = useMemo(() => createProviderHandshake({
     providerHealth
   }), [providerHealth]);
+
+  const providerAudioGate = useMemo(() => createProviderAudioGate({
+    providerGate
+  }), [providerGate]);
 
   const realtimeRoute = useMemo(() => {
     const permissionMap = createPermissionMap(permissions);
@@ -1081,6 +1086,7 @@ export function useRuntimeCore() {
     providerGate,
     providerHealth,
     providerHandshake,
+    providerAudioGate,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,

@@ -1,4 +1,15 @@
-# 架构说明 v1.3.1
+# 架构说明 v1.3.2
+
+## v1.3.2 Provider Audio Dry-run Architecture
+
+v1.3.2 adds `providerAudioGate` above Provider Gate as a local-only audio experiment guard:
+
+- `audio_dry_run` can become `ready_for_audio_dry_run` or `audio_dry_run_ok`.
+- `canSendRealAudio`, `canSendCamera`, `canStartRealtime`, and `canStartBillingSession` are always false.
+- dry-run validation checks `omni.audio_frame.v1` payload shape locally and reports validation only.
+- no payload is persisted, uploaded, or sent to a real provider.
+
+The Runtime remains Omni-first and Mock-safe. This release does not add real realtime calls, camera upload, billing, TTS, or ASR-to-LLM-to-TTS behavior.
 
 ## v1.3.1 Provider Handshake Architecture
 

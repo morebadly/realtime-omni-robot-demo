@@ -1,4 +1,14 @@
-# Realtime Omni Robot Demo v1.3.1
+# Realtime Omni Robot Demo v1.3.2
+
+## v1.3.2 Provider Audio Dry-run Gate
+
+v1.3.2 adds an audio upload experiment gate and dry-run payload validator. It is not real provider media upload.
+
+- Real provider audio upload remains disabled: `canSendRealAudio=false`.
+- Dry-run validation can inspect a local `omni.audio_frame.v1` payload shape without saving, uploading, or sending it.
+- Camera upload, realtime sessions, billing, and TTS remain blocked.
+- `audio_dry_run` is a configuration/readiness mode only, not realtime media streaming.
+- `npm run verify` includes `test:provider-audio-gate`; no real API key is required.
 
 ## v1.3.1 Provider Handshake Dry-run
 

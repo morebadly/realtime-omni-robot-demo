@@ -1,4 +1,10 @@
-# Provider Handshake v1.3.1
+# Provider Handshake v1.3.2
+
+## v1.3.2 Relationship To Audio Dry-run
+
+Provider Handshake remains dry-run only. Provider Audio Dry-run is a separate local validation gate and does not open a realtime socket after handshake readiness.
+
+Both layers keep real audio upload, camera upload, realtime billing, and TTS disabled.
 
 v1.3.1 adds a provider handshake dry-run model. It is a Runtime/UI contract only and is not a real provider connection.
 

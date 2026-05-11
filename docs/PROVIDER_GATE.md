@@ -1,4 +1,13 @@
-# Provider Gate v1.3.1
+# Provider Gate v1.3.2
+
+## v1.3.2 Audio Dry-run Boundary
+
+Provider Gate now recognizes `audio_dry_run` as a preparation mode. This mode is still local-only:
+
+- `allowAudioUpload=true` is required before dry-run payload validation can be ready.
+- `canSendRealAudio` remains false.
+- camera upload, realtime socket creation, and billing remain false.
+- validation results must report `persisted=false`, `uploaded=false`, and `sentToProvider=false`.
 
 ## v1.3.1 Handshake Dry-run Boundary
 

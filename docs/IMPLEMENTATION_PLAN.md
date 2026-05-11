@@ -1,4 +1,23 @@
-# 技术落地路线 v1.3.1
+# 技术落地路线 v1.3.2
+
+## v1.3.2 Provider Audio Dry-run Gate
+
+Goal: add a real-provider audio upload experiment gate without sending real audio.
+
+Completed:
+
+1. Add Runtime `providerAudioGate` result schema and summary.
+2. Add local-only dry-run validation for `omni.audio_frame.v1` payload shape.
+3. Add `test:provider-audio-gate` and include it in the safe smoke suite.
+4. Display audio dry-run gate status in small Model Provider, Visible Context, and Omni Session surfaces.
+
+Still out of scope:
+
+1. Real audio upload to a provider.
+2. Real camera upload.
+3. Real realtime calls or billing.
+4. Real TTS or `reply_text -> playback`.
+5. Automatic VAD/AEC barge-in.
 
 ## v1.3.1 Provider Handshake Dry-run
 

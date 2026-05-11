@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.1.
+Current version: v1.3.2.
 
 Tech stack:
 - Vite
@@ -357,3 +357,11 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - `handshake_only` may become `ready_for_handshake` or `handshake_dry_run_ok`, but it must not open a real socket or send media.
 - `realtime_experimental` remains blocked in v1.3.1.
 - Handshake events are diagnostics only and must not trigger `omni.audio_frame.v1`, `omni.camera_frame.v1`, billing, or TTS.
+
+## v1.3.2 Provider Audio Dry-run rule
+
+- v1.3.2 adds an audio upload experiment gate and local dry-run payload validator only.
+- Audio gate must return `canSendRealAudio=false`, `canSendCamera=false`, `canStartRealtime=false`, and `canStartBillingSession=false`.
+- `audio_dry_run` may validate an `omni.audio_frame.v1` payload shape locally, but must not persist, upload, or send it to a real provider.
+- Camera upload, realtime billing, real realtime sockets, and TTS remain blocked.
+- `reply_text` remains subtitles/log/debug only and must not become speech synthesis input.

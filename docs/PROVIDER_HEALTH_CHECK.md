@@ -1,4 +1,10 @@
-# Provider Health Check v1.3.1
+# Provider Health Check v1.3.2
+
+## v1.3.2 Relationship To Audio Dry-run
+
+Provider Health Check remains read-only preflight. Provider Audio Dry-run builds on Provider Gate and may validate a local `omni.audio_frame.v1` payload shape, but it does not upload or send audio to a real provider.
+
+Health check, handshake, and audio dry-run all keep realtime socket creation, camera upload, billing, and TTS disabled.
 
 ## v1.3.1 Relationship To Handshake
 

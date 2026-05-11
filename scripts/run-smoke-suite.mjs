@@ -16,6 +16,7 @@ const DEFAULT_SCRIPTS = [
   'test:provider-config-gate',
   'test:provider-health-check',
   'test:provider-handshake',
+  'test:provider-audio-gate',
   'test:dashscope-omni-config',
   'test:localdev-provider-registry',
   'test:realtime-output-queue',
