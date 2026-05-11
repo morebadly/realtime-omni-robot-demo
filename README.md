@@ -1,4 +1,17 @@
-# Realtime Omni Robot Demo v1.3.3
+# Realtime Omni Robot Demo v1.3.4
+
+## v1.3.4 Realtime Mux / Backpressure / Session Correlation Guard
+
+v1.3.4 adds a Runtime-level mux/backpressure guard and session correlation tags across the realtime contract while staying safe Mock-first.
+
+- `omni.interrupt.v1` is always highest priority and is never blocked.
+- `omni.audio_frame.v1` is protected: best-effort send even under WebSocket backpressure.
+- `omni.camera_frame.v1` drops old frames and keeps the latest keyframe under elevated/high/overflow buffer.
+- `omni.input_packet.v1` may coalesce as a low-frequency context update.
+- `cloudgenie.local_dev.media_ack.v1` remains diagnostics-only; it is never a per-frame send gate.
+- All realtime envelopes/frames now carry optional `sessionId / streamId / sequence / timestampMs / source / priority` correlation fields. The existing protocol stays backward compatible.
+- `npm run verify` now includes `test:realtime-mux-backpressure`; the safe smoke suite is 22 checks.
+- No real audio upload, no real camera upload, no realtime billing, no real provider socket, no `reply_text -> TTS`. LocalDev Mock fallback remains required.
 
 ## v1.3.3 Provider Camera Dry-run Gate
 

@@ -54,6 +54,8 @@ export default function App() {
     localDevBridge,
     mediaChannels,
     realtimeOutput,
+    realtimeMux,
+    sessionCorrelation,
     adapterProfiles,
     setCameraStatus,
     actions
@@ -170,6 +172,8 @@ export default function App() {
             mediaChannels={mediaChannels}
             realtimeOutput={realtimeOutput}
             realtimeSessionState={realtimeSessionState}
+            realtimeMux={realtimeMux}
+            sessionCorrelation={sessionCorrelation}
             providerGate={providerGate}
             providerHealth={providerHealth}
             providerHandshake={providerHandshake}

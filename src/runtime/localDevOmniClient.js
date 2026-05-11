@@ -470,6 +470,9 @@ export function createLocalDevOmniBridge(onStatus = () => {}) {
         pending: pending.size,
         lastDisconnectReason
       };
+    },
+    getBufferedAmount() {
+      return Number(socket?.bufferedAmount || 0);
     }
   };
 }

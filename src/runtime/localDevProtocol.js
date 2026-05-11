@@ -31,7 +31,18 @@ export function isLocalDevMediaEnvelope(message) {
     && (message?.frame?.schema === 'omni.audio_frame.v1' || message?.frame?.schema === 'omni.camera_frame.v1');
 }
 
+function pickCorrelationFields(value = {}) {
+  const sessionId = value.sessionId || value.correlation?.sessionId || null;
+  const streamId = value.streamId || value.correlation?.streamId || null;
+  const streamKind = value.streamKind || value.correlation?.streamKind || null;
+  const sequence = typeof value.sequence === 'number' ? value.sequence : (value.correlation?.sequence ?? null);
+  const priority = value.priority || value.correlation?.priority || null;
+  const timestampMs = value.timestampMs || value.correlation?.timestampMs || null;
+  return { sessionId, streamId, streamKind, sequence, priority, timestampMs };
+}
+
 export function createLocalDevInputEnvelope({ requestId, packet, sentAt }) {
+  const correlation = pickCorrelationFields(packet || {});
   return {
     schema: LOCALDEV_PROTOCOL.inputEnvelopeSchema,
     type: LOCALDEV_PROTOCOL.inputPacketType,
@@ -40,11 +51,18 @@ export function createLocalDevInputEnvelope({ requestId, packet, sentAt }) {
     packetSchema: packet?.schema || 'unknown',
     packetId: packet?.packetId || 'unknown',
     robotId: packet?.identity?.robotId || null,
+    sessionId: correlation.sessionId,
+    streamId: correlation.streamId,
+    streamKind: correlation.streamKind,
+    sequence: correlation.sequence,
+    priority: correlation.priority,
+    timestampMs: correlation.timestampMs,
     packet
   };
 }
 
 export function createLocalDevMediaEnvelope({ requestId, frame, sentAt }) {
+  const correlation = pickCorrelationFields(frame || {});
   return {
     schema: LOCALDEV_PROTOCOL.mediaEnvelopeSchema,
     type: getMediaFrameType(frame),
@@ -53,11 +71,18 @@ export function createLocalDevMediaEnvelope({ requestId, frame, sentAt }) {
     frameSchema: frame?.schema || 'unknown',
     frameId: frame?.frameId || 'unknown',
     robotId: frame?.robotId || null,
+    sessionId: correlation.sessionId,
+    streamId: correlation.streamId,
+    streamKind: correlation.streamKind,
+    sequence: correlation.sequence,
+    priority: correlation.priority,
+    timestampMs: correlation.timestampMs,
     frame
   };
 }
 
 export function createLocalDevControlEnvelope({ requestId, interrupt, sentAt }) {
+  const correlation = pickCorrelationFields(interrupt || {});
   return {
     schema: LOCALDEV_PROTOCOL.controlEnvelopeSchema,
     type: LOCALDEV_PROTOCOL.interruptType,
@@ -67,6 +92,12 @@ export function createLocalDevControlEnvelope({ requestId, interrupt, sentAt }) 
     interruptId: interrupt?.interruptId || 'unknown',
     robotId: interrupt?.robotId || null,
     turnId: interrupt?.turnId || null,
+    sessionId: correlation.sessionId,
+    streamId: correlation.streamId,
+    streamKind: correlation.streamKind,
+    sequence: correlation.sequence,
+    priority: correlation.priority,
+    timestampMs: correlation.timestampMs,
     interrupt
   };
 }

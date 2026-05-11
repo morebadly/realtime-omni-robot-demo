@@ -14,6 +14,8 @@ import { createDefaultRealtimeSessionState, transitionRealtimeSessionState } fro
 import { buildOmniInputPacket, summarizeOmniPacket } from './omniPacket';
 import { applyMediaAck, applyMediaError, createAudioFrame, createCameraFrame, createDefaultMediaChannels, updateMediaChannelStats } from './omniMediaFrames';
 import { applyRealtimeOutputDisconnect, applyRealtimeOutputError, applyRealtimeOutputInterrupt, applyRealtimeOutputState, applyReplyAudioFrame, clearRealtimeOutputChannel, createDefaultRealtimeOutputChannel, markReplyAudioFramePlayed } from './realtimeOutputChannel';
+import { applyMuxDecision, classifyBufferedAmount, createDefaultMuxState, decideMuxAction, getMuxCapability, priorityForFrame, summarizeMuxState } from './realtimeMediaMux';
+import { bumpSequence, createDefaultSessionCorrelation, resetSessionCorrelation, summarizeSessionCorrelation, withCurrentTurn, withRobotIdentity } from './realtimeSessionCorrelation';
 import { simulateOmniTurn } from './omniTurnSimulator';
 import { routeToolIntents } from './toolIntentRouter';
 import { createLocalDevOmniBridge } from './localDevOmniClient';
@@ -133,6 +135,11 @@ export function useRuntimeCore() {
   ));
   const [mediaChannels, setMediaChannels] = useState(createDefaultMediaChannels);
   const [realtimeOutput, setRealtimeOutput] = useState(createDefaultRealtimeOutputChannel);
+  const [realtimeMux, setRealtimeMux] = useState(createDefaultMuxState);
+  const [sessionCorrelation, setSessionCorrelation] = useState(() => createDefaultSessionCorrelation({
+    robotId: initialSeed.activeRobotId,
+    displayName: initialSeed.robot?.name
+  }));
   const [localDevBridge, setLocalDevBridge] = useState({
     status: 'idle',
     endpoint: initialSeed.robot.adapterDetail?.endpoint || '未配置',
@@ -284,6 +291,8 @@ export function useRuntimeCore() {
     setLastOmniTurn(null);
     setRealtimeOutput(clearRealtimeOutputChannel());
     setMediaChannels(createDefaultMediaChannels());
+    setRealtimeMux(createDefaultMuxState());
+    setSessionCorrelation((prev) => resetSessionCorrelation(prev, { robotId: activeRobotId }));
     setCameraStatus({
       cameraActive: false,
       cameraPolicy: '摄像头未开启',
@@ -305,7 +314,7 @@ export function useRuntimeCore() {
   }
 
   function createCurrentOmniPacket() {
-    return buildOmniInputPacket({
+    const packet = buildOmniInputPacket({
       robot,
       robotProfile,
       realtimeSession,
@@ -316,8 +325,11 @@ export function useRuntimeCore() {
       connection: connectionSnapshot,
       mediaChannels,
       permissions,
-      plugins
+      plugins,
+      correlation: sessionCorrelation
     });
+    setSessionCorrelation((prev) => bumpSequence(prev, 'omni.input_packet.v1'));
+    return packet;
   }
 
   function handleOmniPacketBuild() {
@@ -459,6 +471,16 @@ export function useRuntimeCore() {
       if (!localDevBridgeRef.current) {
         localDevBridgeRef.current = createLocalDevOmniBridge(handleLocalDevBridgeStatus);
       }
+      const bufferedBefore = Number(localDevBridgeRef.current.getBufferedAmount?.() || 0);
+      const inputDecision = decideMuxAction({ priority: priorityForFrame(packet), bufferedLevel: classifyBufferedAmount(bufferedBefore) });
+      setRealtimeMux((prev) => applyMuxDecision(prev, {
+        priority: priorityForFrame(packet),
+        decision: inputDecision.action === 'send' ? 'send' : 'coalesce',
+        reason: inputDecision.reason,
+        schema: packet.schema,
+        frameId: packet.packetId,
+        bufferedAmount: bufferedBefore
+      }));
       const result = await localDevBridgeRef.current.send(packet, endpoint);
       if (!isActiveOmniSession(sessionId)) return;
 
@@ -771,17 +793,19 @@ export function useRuntimeCore() {
     if (!frameId) return;
     setRealtimeOutput((prev) => {
       const next = markReplyAudioFramePlayed(prev, frameId);
+      const outputDone = next.state === 'finished' || (!next.playbackActive && Boolean(next.finalFrameReceived));
       if (!next.playbackActive) {
         setRobot((current) => (current.state === 'speaking' ? { ...current, state: 'idle', expressionSource: 'reply_audio_frame.played' } : current));
         syncActiveRobotSummary({ state: 'idle', lastSeen: '刚刚' });
       }
+      setRealtimeSessionState((sessionPrev) => transitionRealtimeSessionState(sessionPrev, 'REPLY_AUDIO_FRAME_PLAYED', {
+        frameId,
+        outputDone,
+        finalFramePlayed: outputDone,
+        reason: 'reply_audio_frame 已由 Web Audio 播放器消费。'
+      }));
       return next;
     });
-    setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'REPLY_AUDIO_FRAME_PLAYED', {
-      frameId,
-      outputDone: !(realtimeOutput?.queuedAudioFrames || []).some((frame) => frame.frameId !== frameId) && Boolean(realtimeOutput?.finalFrameReceived),
-      reason: 'reply_audio_frame 已由 Web Audio 播放器消费。'
-    }));
     pushTrace('RealtimeOutputChannel', 'reply_audio_frame.played', frameId);
   }
 
@@ -794,8 +818,10 @@ export function useRuntimeCore() {
       displayName: robot.name,
       reason: 'user_barge_in',
       source: 'client_runtime_manual_button',
-      target: 'current_output'
+      target: 'current_output',
+      correlation: sessionCorrelation
     };
+    setSessionCorrelation((prev) => bumpSequence(prev, 'omni.interrupt.v1'));
 
     setRealtimeOutput((prev) => applyRealtimeOutputInterrupt(prev, interruptSeed));
     setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'INTERRUPT_LOCAL', {
@@ -815,6 +841,15 @@ export function useRuntimeCore() {
     const endpoint = robot.adapterDetail?.endpoint;
     const connected = localDevBridgeRef.current?.getStatus?.().connected;
     if (robot.mode === 'local_dev' && endpoint && connected) {
+      const bufferedBefore = Number(localDevBridgeRef.current.getBufferedAmount?.() || 0);
+      setRealtimeMux((prev) => applyMuxDecision(prev, {
+        priority: 'highest',
+        decision: 'send',
+        reason: 'interrupt_bypass_priority',
+        schema: 'omni.interrupt.v1',
+        frameId: null,
+        bufferedAmount: bufferedBefore
+      }));
       const result = await localDevBridgeRef.current.sendInterrupt(interruptSeed, endpoint, 5000);
       if (!result.ok) {
         setLocalDevBridge((prev) => ({ ...prev, status: 'failed', detail: 'interrupt 发送失败。', error: result.error, updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }) }));
@@ -837,23 +872,67 @@ export function useRuntimeCore() {
 
   async function maybeSendMediaFrameToLocalDev(frame) {
     const endpoint = robot.adapterDetail?.endpoint;
+    const priority = priorityForFrame(frame);
     const canSend = robot.mode === 'local_dev' && endpoint && localDevBridgeRef.current && localDevBridgeRef.current.getStatus().connected;
     if (!canSend) return { sent: false, reason: 'local_dev_not_connected' };
+
+    const bufferedAmount = Number(localDevBridgeRef.current.getBufferedAmount?.() || 0);
+    const bufferedLevel = classifyBufferedAmount(bufferedAmount);
+    const decision = decideMuxAction({ priority, bufferedLevel });
+
+    if (decision.action !== 'send') {
+      setRealtimeMux((prev) => applyMuxDecision(prev, {
+        priority,
+        decision: decision.action,
+        reason: decision.reason,
+        schema: frame.schema,
+        frameId: frame.frameId,
+        bufferedAmount
+      }));
+      pushTrace('LocalDevMediaChannel', `frame.${decision.action}`, `${frame.schema} / ${frame.frameId}; ${decision.reason}; buffered=${bufferedAmount}`);
+      return { sent: false, reason: decision.reason, decision: decision.action };
+    }
+
     const mediaKind = frame.schema === 'omni.camera_frame.v1' ? 'camera' : 'audio';
     if (mediaSendInFlightRef.current[mediaKind]) {
+      setRealtimeMux((prev) => applyMuxDecision(prev, {
+        priority,
+        decision: 'defer',
+        reason: `previous_${mediaKind}_send_in_flight`,
+        schema: frame.schema,
+        frameId: frame.frameId,
+        bufferedAmount
+      }));
       pushTrace('LocalDevMediaChannel', 'frame.send.skipped', `${frame.schema} / ${frame.frameId}; previous_${mediaKind}_send_in_flight`);
       return { sent: false, reason: 'media_send_in_flight', skipped: true };
     }
     mediaSendInFlightRef.current[mediaKind] = true;
     try {
       const result = await localDevBridgeRef.current.sendMediaFrame(frame, endpoint, 1500);
+      const bufferedAfter = Number(localDevBridgeRef.current.getBufferedAmount?.() || 0);
       if (!result.ok) {
         setMediaChannels((prev) => applyMediaError(prev, result.error));
         setLocalDevBridge((prev) => ({ ...prev, status: 'failed', detail: '媒体帧发送失败。', error: result.error, updatedAt: new Date().toLocaleTimeString('zh-CN', { hour12: false }) }));
         pushTrace('LocalDevMediaChannel', 'frame.send.failed', `${frame.schema}; ${result.error}`);
         setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'ERROR', { reason: result.error }));
+        setRealtimeMux((prev) => applyMuxDecision(prev, {
+          priority,
+          decision: 'defer',
+          reason: result.error,
+          schema: frame.schema,
+          frameId: frame.frameId,
+          bufferedAmount: bufferedAfter
+        }));
         return { sent: false, reason: result.error };
       }
+      setRealtimeMux((prev) => applyMuxDecision(prev, {
+        priority,
+        decision: 'send',
+        reason: decision.reason,
+        schema: frame.schema,
+        frameId: frame.frameId,
+        bufferedAmount: bufferedAfter
+      }));
       pushTrace('LocalDevMediaChannel', 'frame.send', `${frame.schema} / ${frame.frameId}`);
       return { sent: true, result };
     } finally {
@@ -873,8 +952,10 @@ export function useRuntimeCore() {
       sampleCount: frameSeed?.sampleCount || 0,
       durationMs: frameSeed?.durationMs || 250,
       codec: frameSeed?.codec || 'pcm_float32',
-      channels: frameSeed?.channels || 1
+      channels: frameSeed?.channels || 1,
+      correlation: sessionCorrelation
     });
+    setSessionCorrelation((prev) => bumpSequence(prev, 'omni.audio_frame.v1'));
     const sent = await maybeSendMediaFrameToLocalDev(frame);
     setMediaChannels((prev) => updateMediaChannelStats(prev, frame, sent.sent ? 'sent' : 'observed'));
     setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'INPUT_AUDIO_FRAME', {
@@ -885,7 +966,14 @@ export function useRuntimeCore() {
   }
 
   async function handleCameraFrame(frameSeed) {
-    const frame = createCameraFrame({ robot, frame: frameSeed, framePolicy, sequence: frameSeed?.sequence || 0 });
+    const frame = createCameraFrame({
+      robot,
+      frame: frameSeed,
+      framePolicy,
+      sequence: frameSeed?.sequence || 0,
+      correlation: sessionCorrelation
+    });
+    setSessionCorrelation((prev) => bumpSequence(prev, 'omni.camera_frame.v1'));
     const sent = await maybeSendMediaFrameToLocalDev(frame);
     setMediaChannels((prev) => updateMediaChannelStats(prev, frame, sent.sent ? 'sent' : 'observed'));
     setRealtimeSessionState((prev) => transitionRealtimeSessionState(prev, 'INPUT_CAMERA_FRAME', {
@@ -1101,6 +1189,8 @@ export function useRuntimeCore() {
     localDevBridge,
     mediaChannels,
     realtimeOutput,
+    realtimeMux,
+    sessionCorrelation,
     setCameraStatus,
     actions: {
       handleRobotSelect,

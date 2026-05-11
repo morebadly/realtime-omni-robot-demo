@@ -1,4 +1,32 @@
-# LocalDev Adapter Contract v1.2.4
+# LocalDev Adapter Contract v1.3.4
+
+## v1.3.4 Realtime Mux / Backpressure / Session Correlation Addendum
+
+v1.3.4 extends the LocalDev Adapter Contract with optional, backward-compatible correlation fields:
+
+```text
+sessionId    stable per Runtime session
+streamId     per kind (audio_input / camera_input / context_input / control / audio_output)
+streamKind   audio_input | camera_input | context_input | control | audio_output | state | output_turn
+sequence     per stream
+timestampMs  client-side timestamp
+source       client_runtime_audio | client_runtime_camera | client_runtime_context | client_runtime | local_dev_mock_server
+priority     highest | high | realtime | medium | low
+```
+
+These fields are added at the top level of `omni.input_packet.v1`, `omni.audio_frame.v1`, `omni.camera_frame.v1`, `omni.interrupt.v1`, `omni.output_state.v1`, and `omni.reply_audio_frame.v1` when produced through Runtime. They are also propagated through `cloudgenie.local_dev.envelope.v1`, `cloudgenie.local_dev.media_envelope.v1`, and `cloudgenie.local_dev.control_envelope.v1`. Consumers that only read existing fields keep working unchanged.
+
+Mux rules (Runtime-side decision; LocalDev contract is unchanged):
+
+```text
+omni.interrupt.v1        priority=highest  always send
+omni.output_state.v1     priority=high     always send
+omni.audio_frame.v1      priority=realtime always send (protected)
+omni.camera_frame.v1     priority=medium   drop_old / keep latest under backpressure
+omni.input_packet.v1     priority=low      coalesce / replace under backpressure
+```
+
+`cloudgenie.local_dev.media_ack.v1` remains diagnostics-only. It is never a per-frame send gate. `reply_text` remains subtitles/log/debug only and is never a TTS input.
 
 ## v1.2.4 Provider Gate Boundary
 

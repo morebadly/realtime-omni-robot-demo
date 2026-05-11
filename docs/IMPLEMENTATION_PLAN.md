@@ -1,4 +1,28 @@
-# 技术落地路线 v1.3.3
+# 技术落地路线 v1.3.4
+
+## v1.3.4 Realtime Mux / Backpressure / Session Correlation Guard
+
+Goal: stop camera/context traffic from blocking audio or interrupt on the LocalDev path, and make multi-stream realtime observable, without enabling any real cloud realtime.
+
+Completed:
+
+1. Add `realtimeSessionCorrelation` and `realtimeMediaMux` Runtime modules.
+2. Tag `omni.input_packet.v1`, `omni.audio_frame.v1`, `omni.camera_frame.v1`, `omni.interrupt.v1`, `omni.output_state.v1`, and `omni.reply_audio_frame.v1` with optional `sessionId / streamId / sequence / timestampMs / source / priority` (backward compatible).
+3. Propagate the correlation fields through `cloudgenie.local_dev.envelope.v1`, `cloudgenie.local_dev.media_envelope.v1`, and `cloudgenie.local_dev.control_envelope.v1`.
+4. Expose `getBufferedAmount()` on the LocalDev bridge so the mux can read WebSocket backpressure.
+5. Apply mux decisions in `useRuntimeCore.js`: audio is protected, camera keeps latest, input packet coalesces, interrupt always passes.
+6. Fix `handleReplyAudioFramePlayed` to compute `outputDone` from the next state returned by `markReplyAudioFramePlayed` instead of a stale React snapshot.
+7. Add a small `Realtime Mux / WebSocket Backpressure / Session Correlation` diagnostic row in `OmniSessionPanel`.
+8. Add `test:realtime-mux-backpressure` smoke (22 checks total in the safe smoke suite).
+
+Still out of scope:
+
+1. Real Qwen/DashScope realtime sessions.
+2. Real microphone PCM upload to a provider.
+3. Real camera JPEG upload to a provider.
+4. Real realtime billing calls.
+5. Real TTS or `reply_text -> playback`.
+6. Automatic VAD/AEC barge-in.
 
 ## v1.3.3 Provider Camera Dry-run Gate
 

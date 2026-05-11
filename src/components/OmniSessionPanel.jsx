@@ -2,6 +2,8 @@ import { summarizeOmniPacket } from '../runtime/omniPacket';
 import { summarizeMediaChannels } from '../runtime/omniMediaFrames';
 import { summarizeRealtimeOutputChannel } from '../runtime/realtimeOutputChannel';
 import { summarizeRealtimeSessionState, getRealtimeSessionStateLabel } from '../runtime/realtimeSessionState';
+import { summarizeMuxState } from '../runtime/realtimeMediaMux';
+import { summarizeSessionCorrelation } from '../runtime/realtimeSessionCorrelation';
 
 function prettyJson(value) {
   if (!value) return '暂无';
@@ -51,6 +53,8 @@ export default function OmniSessionPanel({
   mediaChannels,
   realtimeOutput,
   realtimeSessionState,
+  realtimeMux,
+  sessionCorrelation,
   providerGate,
   providerHealth,
   providerHandshake,
@@ -144,6 +148,9 @@ export default function OmniSessionPanel({
 
 
       <div className="realtime-output-grid">
+        <div><small>Realtime Mux</small><strong>{summarizeMuxState(realtimeMux)}</strong><p>Mock realtime: yes · Real cloud realtime: no · Audio: protected / non-blocking · Camera: selected / drop-old · Interrupt: highest · media_ack: diagnostics only</p></div>
+        <div><small>WebSocket Backpressure</small><strong>{realtimeMux?.bufferedLevel || 'normal'}</strong><p>bufferedAmount={realtimeMux?.bufferedAmount || 0}B · last={realtimeMux?.lastDecision?.decision || 'none'} ({realtimeMux?.lastDecision?.reason || '—'})</p></div>
+        <div><small>Session Correlation</small><strong>session correlation: enabled</strong><p>{summarizeSessionCorrelation(sessionCorrelation)}</p></div>
         <div><small>Provider Handshake</small><strong>{providerHandshake?.status || providerHealth?.status || providerGate?.status || 'blocked'}</strong><p>provider={providerHandshake?.providerId || providerHealth?.providerId || providerGate?.providerId || 'localdev_mock'} / mode={providerHandshake?.mode || providerHealth?.mode || providerGate?.mode || 'mock'} / socket={providerHandshake?.canOpenRealtimeSocket ? 'yes' : 'no'} / media_upload=no</p></div>
         <div><small>Audio Dry-run Gate</small><strong>{providerAudioGate?.status || 'blocked'}</strong><p>real_audio={providerAudioGate?.canSendRealAudio ? 'yes' : 'no'} / dry_run={providerAudioGate?.canSendDryRunAudioPayload ? 'yes' : 'no'} / camera=no / billing=no</p></div>
         <div><small>Camera Dry-run Gate</small><strong>{providerCameraGate?.status || 'blocked'}</strong><p>real_camera={providerCameraGate?.canSendRealCamera ? 'yes' : 'no'} / dry_run={providerCameraGate?.canSendDryRunCameraPayload ? 'yes' : 'no'} / audio=no / billing=no</p></div>

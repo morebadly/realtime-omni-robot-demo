@@ -1,3 +1,5 @@
+import { tagFrameWithCorrelation } from './realtimeSessionCorrelation.js';
+
 function createFrameId(prefix) {
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}_${Date.now().toString(36)}_${rand}`;
@@ -48,11 +50,13 @@ export function createAudioFrame({
   sampleCount = 0,
   durationMs = 250,
   codec = 'pcm_float32',
-  channels = 1
+  channels = 1,
+  correlation = null,
+  source = 'client_runtime_audio'
 }) {
   const sampleRate = session?.sampleRate || 48000;
   const hasPayload = Boolean(payloadBase64 && byteLength > 0);
-  return {
+  const frame = {
     schema: 'omni.audio_frame.v1',
     frameId: createFrameId('aud'),
     createdAt: nowIso(),
@@ -78,13 +82,18 @@ export function createAudioFrame({
     },
     guardrails: { asrTextIsNotPrimaryInput: true, rawAudioStreamFirst: true }
   };
+  return tagFrameWithCorrelation(frame, correlation, {
+    robotId: frame.robotId,
+    displayName: frame.displayName,
+    source
+  });
 }
 
-export function createCameraFrame({ robot, frame, framePolicy, sequence = 0, includePayload = true }) {
+export function createCameraFrame({ robot, frame, framePolicy, sequence = 0, includePayload = true, correlation = null, source = 'client_runtime_camera' }) {
   const payloadBase64 = frame?.dataUrl ? getDataUrlBase64(frame.dataUrl) : null;
   const byteLength = approxDataUrlBytes(frame?.dataUrl);
   const hasPayload = Boolean(includePayload && payloadBase64 && byteLength > 0);
-  return {
+  const output = {
     schema: 'omni.camera_frame.v1',
     frameId: createFrameId('cam'),
     createdAt: nowIso(),
@@ -112,6 +121,11 @@ export function createCameraFrame({ robot, frame, framePolicy, sequence = 0, inc
     },
     guardrails: { noFrontendEmotionSummary: true, selectedFramesGoToOmniAdapter: true }
   };
+  return tagFrameWithCorrelation(output, correlation, {
+    robotId: output.robotId,
+    displayName: output.displayName,
+    source
+  });
 }
 
 export function updateMediaChannelStats(prev, frame, status = 'observed') {

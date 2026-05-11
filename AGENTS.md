@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.3.
+Current version: v1.3.4.
 
 Tech stack:
 - Vite
@@ -373,3 +373,15 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - `camera_dry_run` may validate an `omni.camera_frame.v1` JPEG payload shape locally, but must not persist, upload, or send it to a real provider.
 - Audio upload, realtime billing, real realtime sockets, and TTS remain blocked.
 - `reply_text` remains subtitles/log/debug only and must not become speech synthesis input.
+
+## v1.3.4 Realtime Mux / Backpressure / Session Correlation rule
+
+- v1.3.4 adds two Runtime-only modules: `realtimeSessionCorrelation` and `realtimeMediaMux`.
+- `omni.interrupt.v1` is always highest priority and must never be blocked or deferred by media frames or context updates.
+- `omni.audio_frame.v1` is protected; it must continue to send best-effort even when WebSocket `bufferedAmount` is elevated or overflow.
+- `omni.camera_frame.v1` must drop old frames and keep the latest keyframe under elevated/high/overflow backpressure.
+- `omni.input_packet.v1` may coalesce/replace as a low-frequency context update; it must not block audio.
+- `cloudgenie.local_dev.media_ack.v1` is diagnostics-only. It must never be used as a per-frame send gate.
+- All realtime envelopes/frames may carry optional `sessionId / streamId / sequence / timestampMs / source / priority` correlation fields, but the LocalDev contract stays backward compatible for consumers that ignore them.
+- Real audio upload, real camera upload, realtime billing, real provider sockets, and `reply_text -> TTS` remain blocked.
+- LocalDev Mock fallback remains required.

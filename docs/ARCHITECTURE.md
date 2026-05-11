@@ -1,4 +1,32 @@
-# 架构说明 v1.3.3
+# 架构说明 v1.3.4
+
+## v1.3.4 Realtime Mux / Backpressure / Session Correlation Architecture
+
+v1.3.4 adds two Runtime-only modules above the existing LocalDev Adapter path:
+
+- `src/runtime/realtimeSessionCorrelation.js` issues a stable `sessionId` per Runtime session and per-stream `streamId / sequence` for `audio_input`, `camera_input`, `context_input`, `control`, and `audio_output`. It tags all realtime envelopes/frames with `sessionId / streamId / sequence / timestampMs / source / priority` without breaking existing consumers.
+- `src/runtime/realtimeMediaMux.js` is a pure decision module: it classifies WebSocket `bufferedAmount` into `normal / elevated / high / overflow` and returns `send / drop_old / coalesce` decisions per priority.
+
+Priority order (always enforced):
+
+```text
+highest   omni.interrupt.v1
+high      omni.output_state.v1 / session control
+realtime  omni.audio_frame.v1 / omni.reply_audio_frame.v1
+medium    omni.camera_frame.v1
+low       omni.input_packet.v1 / context / log
+```
+
+Backpressure rules:
+
+- audio is protected: best-effort send even under overflow.
+- camera drops old frames and keeps the latest keyframe under elevated/high/overflow.
+- input packet coalesces under elevated/high/overflow.
+- interrupt always sends regardless of buffer pressure.
+
+`media_ack` stays diagnostics-only — it is never used as a per-frame send gate. The fix in `useRuntimeCore.js:handleReplyAudioFramePlayed` now reads the freshly computed `next` state from `markReplyAudioFramePlayed` instead of a stale React snapshot, so "output done" is correctly observed.
+
+This release stays Mock-first and Omni-first. No real provider realtime call, no real audio upload, no real camera upload, no realtime billing, and no `reply_text -> TTS` path.
 
 ## v1.3.3 Provider Camera Dry-run Architecture
 

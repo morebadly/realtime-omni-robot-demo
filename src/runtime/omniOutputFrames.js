@@ -1,3 +1,5 @@
+import { tagFrameWithCorrelation } from './realtimeSessionCorrelation.js';
+
 function createId(prefix) {
   const rand = Math.random().toString(36).slice(2, 8);
   return `${prefix}_${Date.now().toString(36)}_${rand}`;
@@ -14,9 +16,10 @@ export function createOmniOutputState({
   state = 'thinking',
   requestId = null,
   reason = '',
-  source = 'local_dev_mock_server'
+  source = 'local_dev_mock_server',
+  correlation = null
 } = {}) {
-  return {
+  const frame = {
     schema: 'omni.output_state.v1',
     type: 'omni.output_state',
     stateId: createId('out_state'),
@@ -34,6 +37,9 @@ export function createOmniOutputState({
       replyTextIsSubtitleOnly: true
     }
   };
+  return correlation
+    ? tagFrameWithCorrelation(frame, correlation, { robotId: frame.robotId, displayName: frame.displayName, source, requestId, turnId: frame.turnId })
+    : frame;
 }
 
 export function createReplyAudioFrame({
@@ -48,10 +54,11 @@ export function createReplyAudioFrame({
   sampleRate = 24000,
   channels = 1,
   durationMs = 120,
-  source = 'local_dev_mock_server'
+  source = 'local_dev_mock_server',
+  correlation = null
 } = {}) {
   const hasPayload = Boolean(payloadBase64 && byteLength > 0);
-  return {
+  const frame = {
     schema: 'omni.reply_audio_frame.v1',
     type: 'omni.reply_audio_frame',
     frameId: createId('reply_aud'),
@@ -81,6 +88,9 @@ export function createReplyAudioFrame({
       replyTextIsSubtitleOnly: true
     }
   };
+  return correlation
+    ? tagFrameWithCorrelation(frame, correlation, { robotId: frame.robotId, displayName: frame.displayName, source, requestId, turnId: frame.turnId })
+    : frame;
 }
 
 export function createOmniInterrupt({
@@ -90,9 +100,10 @@ export function createOmniInterrupt({
   requestId = null,
   reason = 'user_barge_in',
   source = 'client_runtime',
-  target = 'current_output'
+  target = 'current_output',
+  correlation = null
 } = {}) {
-  return {
+  const frame = {
     schema: 'omni.interrupt.v1',
     type: 'omni.interrupt',
     interruptId: createId('interrupt'),
@@ -111,6 +122,9 @@ export function createOmniInterrupt({
       replyAudioFrameCannotTriggerInterrupt: true
     }
   };
+  return correlation
+    ? tagFrameWithCorrelation(frame, correlation, { robotId, displayName, source, requestId, turnId })
+    : frame;
 }
 
 export function normalizeInterruptMessage(message) {

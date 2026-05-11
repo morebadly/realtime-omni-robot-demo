@@ -1,4 +1,5 @@
-import { summarizeVisualFrameBuffer } from './visualFrameBuffer';
+import { summarizeVisualFrameBuffer } from './visualFrameBuffer.js';
+import { tagFrameWithCorrelation } from './realtimeSessionCorrelation.js';
 
 function compactEvent(event = {}) {
   return {
@@ -50,7 +51,8 @@ export function buildOmniInputPacket({
   connection,
   mediaChannels,
   permissions,
-  plugins
+  plugins,
+  correlation = null
 }) {
   const cloudMode = ['wifi_cloud', 'cellular_cloud', 'self_hosted_cloud'].includes(robot?.mode);
   const cameraCloudPermission = permissions?.find((item) => item.key === 'camera.cloud_upload')?.status || 'disabled';
@@ -61,7 +63,7 @@ export function buildOmniInputPacket({
     cameraCloudPermission
   });
 
-  return {
+  const packet = {
     packetId: createPacketId(),
     schema: 'omni.input_packet.v1',
     createdAt: new Date().toISOString(),
@@ -155,6 +157,11 @@ export function buildOmniInputPacket({
       userCodeMustReturnActionIntentOnly: true
     }
   };
+  return tagFrameWithCorrelation(packet, correlation, {
+    robotId: robot?.robotId || null,
+    displayName: robotProfile?.displayName || robot?.name || null,
+    source: 'client_runtime_context'
+  });
 }
 
 export function summarizeOmniPacket(packet) {
