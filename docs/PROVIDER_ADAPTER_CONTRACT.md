@@ -1,4 +1,33 @@
-# Provider Adapter Contract (v1.3.6)
+# Provider Adapter Contract (v1.3.7)
+
+## v1.3.7 Provider Proxy Addendum
+
+v1.3.7 extends the descriptor with two further changes:
+
+1. `descriptor.socketSandbox.requiresEphemeralToken = true` and `descriptor.socketSandbox.acceptedTokenKinds = ['synthetic_only']`. Synthetic socket lifecycles now require a `synthetic_only` ephemeral token descriptor before reaching `synthetic_ready`. Real-cloud / self-hosted providers stay `blocked` even with a token.
+2. `descriptor.providerProxy` is a new block that mirrors the Provider Proxy Contract:
+
+```js
+descriptor.providerProxy = {
+  schema: 'omni.provider_proxy_contract.v1',
+  proxyRequired: true,
+  frontendCanHoldApiKey: false,
+  browserDirectProviderSocketAllowed: false,
+  serverSideSecretRequired: <bool>,
+  supportedTokenKinds: ['synthetic_only', 'dry_run_only'],
+  realMediaUploadAllowed: false,
+  realtimeBillingAllowed: false,
+  replyTextToTts: false,
+  replyAudioFrameNative: true,
+  fallbackProviderId: 'localdev_mock',
+  contract: { /* full contract object */ }
+};
+
+descriptor.guardrails.providerProxyRequired = true;
+descriptor.guardrails.ephemeralTokenSyntheticOrDryRunOnly = true;
+```
+
+These are descriptive guardrails. They do not open a real socket, upload real media, start billing, or feed `reply_text` into TTS.
 
 ## v1.3.6 Socket Sandbox Addendum
 

@@ -1,4 +1,8 @@
-# Provider Secret Boundary (v1.3.6)
+# Provider Secret Boundary (v1.3.7)
+
+## v1.3.7 Provider Proxy Reminder
+
+v1.3.7 formalizes "real provider API keys must live in a server-side proxy / Robot Gateway / Device Runtime" as a code-level contract (`omni.provider_proxy_contract.v1`). The frontend never holds a real API key, never sends one in a request, and never receives one in a decision envelope. Any `apiKey` / `secret` / `tokenRawValue` / `authorization` / `client_secret` field passed to `evaluateProviderProxyRequest()` is stripped before evaluation; `decision.secretStripped` is set to `true` and the raw value never appears anywhere in the response. Ephemeral session tokens (`omni.ephemeral_session_token.v1`) are `synthetic_only` / `dry_run_only` only — they are not real provider tokens and they cannot unlock real audio / camera / billing / socket / TTS.
 
 ## v1.3.6 Socket Sandbox Reminder
 

@@ -13,7 +13,9 @@ import {
   createDefaultSocketSandboxState,
   transitionSocketSandbox,
   requestSocketSandbox,
-  getSocketSandboxCapability
+  getSocketSandboxCapability,
+  validateSocketSandboxToken,
+  PROVIDER_SOCKET_SANDBOX_ACCEPTED_TOKEN_KINDS
 } from '../providerSocketSandbox.js';
 
 function nowMs() { return Date.now(); }
@@ -77,6 +79,7 @@ export function createSyntheticProviderAdapter(options = {}) {
 
   let activeSession = null;
   let socketSandbox = createDefaultSocketSandboxState({ providerId, providerKind });
+  let acceptedToken = null;
 
   function broadcastSocketLifecycle(event, detail) {
     for (const cb of listeners.socketLifecycle) {
@@ -160,9 +163,65 @@ export function createSyntheticProviderAdapter(options = {}) {
       return { ok: true, opensRealSocket: false, syntheticOnly: true, socketSandbox: { ...socketSandbox } };
     },
 
+    // v1.3.7: token-gated synthetic open path. Accepts an ephemeral session
+    // token descriptor produced by the proxy policy and only proceeds if the
+    // token kind is `synthetic_only` and the token is currently valid.
+    // Real providers remain blocked even with a synthetic token.
+    acceptEphemeralToken(token) {
+      const validation = validateSocketSandboxToken(socketSandbox, token);
+      if (!validation.ok) {
+        socketSandbox = {
+          ...socketSandbox,
+          tokenRejectedCount: socketSandbox.tokenRejectedCount + 1,
+          activeTokenId: null,
+          activeTokenKind: null,
+          lastTokenDecision: {
+            accepted: false,
+            reason: validation.reason,
+            tokenKind: token?.tokenKind || null,
+            tokenId: token?.tokenId || null,
+            at: nowIso()
+          }
+        };
+        emitError('ephemeral_token_rejected', { reason: validation.reason });
+        return { ok: false, reason: validation.reason, opensRealSocket: false, syntheticOnly: true, socketSandbox: { ...socketSandbox } };
+      }
+      acceptedToken = token;
+      socketSandbox = {
+        ...socketSandbox,
+        tokenAcceptedCount: socketSandbox.tokenAcceptedCount + 1,
+        activeTokenId: token.tokenId,
+        activeTokenKind: token.tokenKind,
+        lastTokenDecision: {
+          accepted: true,
+          reason: 'token_accepted',
+          tokenKind: token.tokenKind,
+          tokenId: token.tokenId,
+          at: nowIso()
+        }
+      };
+      return { ok: true, opensRealSocket: false, syntheticOnly: true, tokenKind: token.tokenKind, tokenId: token.tokenId, socketSandbox: { ...socketSandbox } };
+    },
+
+    openSyntheticSocketWithToken(token) {
+      const accepted = this.acceptEphemeralToken(token);
+      if (!accepted.ok) return accepted;
+      return this.openSyntheticSocket();
+    },
+
+    getActiveEphemeralToken() {
+      return acceptedToken ? { ...acceptedToken } : null;
+    },
+
+    getAcceptedTokenKinds() {
+      return [...PROVIDER_SOCKET_SANDBOX_ACCEPTED_TOKEN_KINDS];
+    },
+
     closeSyntheticSocket(reason = 'synthetic_close_requested') {
       socketSandbox = transitionSocketSandbox(socketSandbox, 'provider.socket.synthetic_closed', { reason });
       stats.socketClosed += 1;
+      acceptedToken = null;
+      socketSandbox = { ...socketSandbox, activeTokenId: null, activeTokenKind: null };
       broadcastSocketLifecycle('provider.socket.synthetic_closed', { providerId, providerKind, reason });
       return { ok: true, opensRealSocket: false, syntheticOnly: true, socketSandbox: { ...socketSandbox } };
     },

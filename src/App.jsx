@@ -49,6 +49,7 @@ export default function App() {
     providerCameraGate,
     providerAdapterDescriptor,
     providerSocketSandbox,
+    providerProxyDiagnostics,
     omniPacket,
     lastOmniTurn,
     omniSessionStatus,
@@ -183,6 +184,7 @@ export default function App() {
             providerCameraGate={providerCameraGate}
             providerAdapterDescriptor={providerAdapterDescriptor}
             providerSocketSandbox={providerSocketSandbox}
+            providerProxyDiagnostics={providerProxyDiagnostics}
             onBuild={actions.handleOmniPacketBuild}
             onSimulate={actions.handleOmniTurnSimulate}
             onSendLocalDev={actions.handleLocalDevOmniSend}

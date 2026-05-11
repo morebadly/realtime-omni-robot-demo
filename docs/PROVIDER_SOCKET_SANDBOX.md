@@ -1,4 +1,29 @@
-# Provider Socket Sandbox (v1.3.6)
+# Provider Socket Sandbox (v1.3.7)
+
+## v1.3.7 Token Gating Addendum
+
+v1.3.7 makes the synthetic socket lifecycle ephemeral-token-gated. The sandbox state now carries:
+
+- `requiresEphemeralToken: true`
+- `acceptedTokenKinds: ['synthetic_only']`
+- `activeTokenId` / `activeTokenKind`
+- `tokenAcceptedCount` / `tokenRejectedCount`
+- `lastTokenDecision`
+
+Two new helpers live next to the existing API:
+
+- `validateSocketSandboxToken(state, token)` — pure function that returns `{ ok, reason }`. Real-cloud / self-hosted providers always return `{ ok: false, reason: 'real_provider_socket_blocked_by_default' }`. Synthetic providers with no token return `{ ok: false, reason: 'ephemeral_token_required' }`. Only an active `omni.ephemeral_session_token.v1` with `tokenKind="synthetic_only"` is accepted.
+- `runSyntheticSocketSessionWithToken(prev, token, { providerId, providerKind })` — drives the full safe lifecycle only when the token validates; otherwise it stops at `requested`. Real-cloud / self-hosted providers are still routed to `blocked` even with a synthetic token.
+
+`syntheticProviderAdapter` adds:
+
+- `acceptEphemeralToken(token)` — token gate.
+- `openSyntheticSocketWithToken(token)` — accept + open synthetic.
+- `getActiveEphemeralToken()`, `getAcceptedTokenKinds()`.
+
+The existing v1.3.6 lifecycle (`openSyntheticSocket`, `emitSyntheticReady`, `closeSyntheticSocket`, `runSyntheticSocketSession`) keeps working unchanged for backward compatibility. New code should prefer the token-gated path.
+
+All safety locks remain in force: `opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`, `billingStarted=false`, `syntheticOnly=true`, `replyTextToTts=false`. Tokens do not weaken these locks.
 
 ## What This Is — And What It Is Not
 

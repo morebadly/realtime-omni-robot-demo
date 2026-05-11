@@ -1,4 +1,10 @@
-# LocalDev Adapter Contract v1.3.6
+# LocalDev Adapter Contract v1.3.7
+
+## v1.3.7 Provider Proxy / Ephemeral Session Token Addendum
+
+v1.3.7 adds a safety contract layer for "future real provider must be reached through a server-side proxy / Robot Gateway / Device Runtime", with `omni.provider_proxy_contract.v1`, `omni.provider_proxy_request.v1`, `omni.provider_proxy_decision.v1`, and `omni.ephemeral_session_token.v1`. The LocalDev contract on the wire is unchanged. `localdev_mock` is still the default and only working realtime provider in the demo.
+
+The Provider Socket Sandbox is now token-gated: synthetic providers cannot reach `synthetic_ready` without a valid `synthetic_only` ephemeral token descriptor; real-cloud / self-hosted providers stay `blocked` even with a token. Real audio upload, camera upload, billing, real provider socket, and `reply_text -> TTS` remain blocked.
 
 ## v1.3.6 Real Socket Sandbox / Synthetic-only Session Addendum
 

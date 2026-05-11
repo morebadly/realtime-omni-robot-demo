@@ -1,4 +1,32 @@
-# 技术落地路线 v1.3.6
+# 技术落地路线 v1.3.7
+
+## v1.3.7 Provider Proxy Skeleton / Ephemeral Session Token
+
+Goal: define how a future real Realtime Omni Provider socket would be opened via a server-side proxy / Robot Gateway / Device Runtime, while keeping the demo safe Mock-first. Real traffic stays blocked.
+
+Completed:
+
+1. Add `src/runtime/providerProxyContract.js` with `omni.provider_proxy_contract.v1`, denied scopes, default TTL, and `validateProviderProxyContract`.
+2. Add `src/runtime/providerEphemeralSession.js` with `omni.ephemeral_session_token.v1` (`synthetic_only` / `dry_run_only`), token validator, and UI describer.
+3. Add `src/runtime/providerProxyPolicy.js` with `evaluateProviderProxyRequest` / `requestEphemeralProviderSession`. Strips `apiKey` / `secret` / `tokenRawValue` / `authorization` / `client_secret` etc., denies real audio / camera / billing / socket / TTS, denies real-cloud / self-hosted by default.
+4. Extend `providerSocketSandbox` with `requiresEphemeralToken`, `acceptedTokenKinds=['synthetic_only']`, `validateSocketSandboxToken`, and `runSyntheticSocketSessionWithToken`.
+5. Extend `providerAdapters/syntheticProviderAdapter` with `acceptEphemeralToken`, `openSyntheticSocketWithToken`, `getActiveEphemeralToken`, `getAcceptedTokenKinds`. Close clears token references.
+6. Extend `providerAdapterContract` descriptor `socketSandbox` with token gating; add `descriptor.providerProxy` block.
+7. Wire `providerProxyPolicy` / `providerProxyDecision` / `providerProxyDiagnostics` into `useRuntimeCore`, plus handlers `handleProviderProxyRequestEphemeralToken` and `handleProviderSocketSandboxRunSyntheticSessionWithToken`.
+8. Add a compact Provider Proxy / Ephemeral Token diagnostic card to `OmniSessionPanel`; update the Socket Sandbox card to show token state.
+9. Add `scripts/provider-proxy-contract-smoke.mjs` (20 safety assertions); add `test:provider-proxy-contract` to `package.json` and the smoke suite (24 → 25 checks).
+10. Add `docs/PROVIDER_PROXY_CONTRACT.md`, `docs/RELEASE_NOTES_v1.3.7.md`, `docs/UPDATE_GUIDE_v1.3.7.md`; update `README.md`, `AGENTS.md`, `docs/ARCHITECTURE.md`, and existing provider docs.
+
+Still out of scope:
+
+1. Real Qwen / DashScope realtime sessions.
+2. Real microphone PCM upload.
+3. Real camera JPEG upload.
+4. Real realtime billing.
+5. Real TTS, `reply_text -> playback`, or any ASR -> LLM -> TTS path.
+6. Automatic VAD / AEC barge-in.
+7. Real provider API keys / tokens reaching the frontend or any UI state.
+8. Real socket lifecycle inside `providerSocketSandbox`.
 
 ## v1.3.6 Real Socket Sandbox / Synthetic-only Provider Session
 

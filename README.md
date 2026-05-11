@@ -1,4 +1,18 @@
-# Realtime Omni Robot Demo v1.3.6
+# Realtime Omni Robot Demo v1.3.7
+
+## v1.3.7 Provider Proxy Skeleton / Ephemeral Session Token
+
+v1.3.7 adds a Provider Proxy / Ephemeral Session Token safety contract layer on top of the v1.3.6 socket sandbox. It is still safe Mock-first against `localdev_mock`. It does **not** open a real provider socket, does **not** upload real audio / camera frames, does **not** start realtime billing, and does **not** connect `reply_text` to TTS.
+
+- New `omni.provider_proxy_contract.v1` declares that real provider API keys must live on a server-side proxy / Robot Gateway / Device Runtime; browsers cannot hold an API key and cannot open a real provider socket.
+- New `omni.ephemeral_session_token.v1` models short-lived `synthetic_only` / `dry_run_only` token descriptors with `safety.opensRealSocket=false`, `safety.canSendRealAudio=false`, `safety.canSendRealCamera=false`, `safety.canStartBillingSession=false`, `safety.replyTextToTts=false`, `safety.sentToProvider=false`, `safety.uploaded=false`, `safety.persisted=false`.
+- New `providerProxyPolicy.evaluateProviderProxyRequest()` strips any `apiKey` / `secret` / `tokenRawValue` / `authorization` field from a request, denies real audio / camera / billing / socket / TTS requests, denies real-cloud / self-hosted providers by default, and only grants synthetic / dry-run tokens to `synthetic_test` / `localdev_mock` / `offline_pet_engine`.
+- `providerSocketSandbox` gains `requiresEphemeralToken`, `acceptedTokenKinds=['synthetic_only']`, plus `validateSocketSandboxToken` and `runSyntheticSocketSessionWithToken` helpers. Real-cloud / self-hosted providers stay `blocked` even with a synthetic token; synthetic providers cannot reach `synthetic_ready` without a valid token.
+- `syntheticProviderAdapter` adds `acceptEphemeralToken` / `openSyntheticSocketWithToken` / `getActiveEphemeralToken`.
+- `providerAdapterDescriptor.socketSandbox` exposes token gating; new `descriptor.providerProxy` block surfaces the contract.
+- UI: OmniSessionPanel adds a compact Provider Proxy / Ephemeral Token diagnostic card and shows token state on the Socket Sandbox card. No new top-level entrances.
+- `npm run verify` now includes `test:provider-proxy-contract`; the safe smoke suite is 25 checks.
+- No real audio upload, no real camera upload, no realtime billing, no real provider socket, no `reply_text → TTS`. `localdev_mock` fallback remains required.
 
 ## v1.3.6 Real Socket Sandbox / Synthetic-only Provider Session
 

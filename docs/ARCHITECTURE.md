@@ -1,4 +1,28 @@
-# 架构说明 v1.3.6
+# 架构说明 v1.3.7
+
+## v1.3.7 Provider Proxy Skeleton / Ephemeral Session Token Architecture
+
+v1.3.7 adds a Provider Proxy safety contract layer on top of the v1.3.6 socket sandbox. It is descriptive and policy-only — it does not open a real provider socket, does not upload real audio / camera, does not start billing, and does not connect `reply_text` to TTS.
+
+```text
+Web Console
+  -> (restricted request, never an API key, never raw user media)
+Server-side Proxy / Robot Gateway / Device Runtime   <-- holds real API keys
+  -> evaluateProviderProxyRequest
+  -> issues omni.ephemeral_session_token.v1 (synthetic_only | dry_run_only)
+Provider Socket Sandbox (v1.3.6, extended in v1.3.7 with token gating)
+Synthetic Provider Adapter (v1.3.5, extended in v1.3.6+v1.3.7)
+```
+
+Key invariants (continued):
+
+- Browsers cannot hold a real API key. `contract.frontendCanHoldApiKey = false`.
+- Browsers cannot open a real provider socket. `contract.browserDirectProviderSocketAllowed = false`.
+- Real provider secrets must live in the server-side proxy / Robot Gateway / Device Runtime. `contract.serverSideSecretRequired = true`.
+- Ephemeral tokens are `synthetic_only` or `dry_run_only`. `token.safety.*` is hard-locked: `opensRealSocket=false`, `canSendRealAudio=false`, `canSendRealCamera=false`, `canStartBillingSession=false`, `replyTextToTts=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`.
+- The Provider Socket Sandbox now requires a `synthetic_only` token to enter `synthetic_ready`. Real-cloud / self-hosted providers stay `blocked` even with a token. Synthetic providers without a token also stay short of `synthetic_ready`.
+- `omni.reply_audio_frame.v1` remains the realtime voice output. `reply_text` is subtitle / log / debug only and is never a TTS input. ASR → LLM → TTS regression is forbidden by `guardrails.asrLlmTtsRegressionForbidden = true`.
+- `fallbackProviderId = "localdev_mock"` everywhere.
 
 ## v1.3.6 Real Socket Sandbox / Synthetic-only Provider Session Architecture
 

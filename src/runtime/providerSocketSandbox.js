@@ -23,8 +23,15 @@
 // / log / debug / Visible Context only. `reply_text` is NEVER a TTS input.
 
 import { getProviderCapability } from './providerCapabilities.js';
+import {
+  isTokenActive,
+  validateEphemeralSessionToken,
+  EPHEMERAL_SESSION_TOKEN_SCHEMA
+} from './providerEphemeralSession.js';
 
 export const PROVIDER_SOCKET_SANDBOX_PROTOCOL = 'omni.provider_socket_sandbox.v1';
+
+export const PROVIDER_SOCKET_SANDBOX_ACCEPTED_TOKEN_KINDS = ['synthetic_only'];
 
 export const PROVIDER_SOCKET_SANDBOX_STATES = [
   'idle',
@@ -99,6 +106,14 @@ export function createDefaultSocketSandboxState({ providerId = 'localdev_mock', 
     fallbackCount: 0,
     history: [],
     fallbackProviderId: 'localdev_mock',
+    // v1.3.7: token-gating fields.
+    requiresEphemeralToken: true,
+    acceptedTokenKinds: [...PROVIDER_SOCKET_SANDBOX_ACCEPTED_TOKEN_KINDS],
+    activeTokenId: null,
+    activeTokenKind: null,
+    tokenAcceptedCount: 0,
+    tokenRejectedCount: 0,
+    lastTokenDecision: null,
     safety: lockSafetyFields(),
     guardrails: {
       realProviderSocketBlockedByDefault: true,
@@ -109,7 +124,9 @@ export function createDefaultSocketSandboxState({ providerId = 'localdev_mock', 
       replyTextNotTtsInput: true,
       asrLlmTtsRegressionForbidden: true,
       localdevMockFallbackRequired: true,
-      apiKeyMustNotEnterFrontend: true
+      apiKeyMustNotEnterFrontend: true,
+      ephemeralTokenRequired: true,
+      ephemeralTokenSyntheticOnly: true
     }
   };
 }
@@ -324,7 +341,8 @@ export function runSyntheticSocketSession(prev, { providerId, providerKind } = {
 
 export function summarizeSocketSandbox(state) {
   if (!state) return 'socket sandbox 未初始化';
-  return `${state.providerId}/${state.providerKind}: ${state.state} · real=no · synthetic_only=yes · billing=no · fallback=${state.fallbackProviderId} · last=${state.lastEvent || 'none'}`;
+  const token = state.activeTokenId ? `token=${state.activeTokenKind}:${state.activeTokenId}` : 'token=none';
+  return `${state.providerId}/${state.providerKind}: ${state.state} · real=no · synthetic_only=yes · billing=no · ${token} · fallback=${state.fallbackProviderId} · last=${state.lastEvent || 'none'}`;
 }
 
 export function getSocketSandboxCapability() {
@@ -341,6 +359,138 @@ export function getSocketSandboxCapability() {
     replyAudioFrameNative: true,
     replyTextSubtitleOnly: true,
     replyTextToTts: false,
-    fallbackProviderId: 'localdev_mock'
+    fallbackProviderId: 'localdev_mock',
+    requiresEphemeralToken: true,
+    acceptedTokenKinds: [...PROVIDER_SOCKET_SANDBOX_ACCEPTED_TOKEN_KINDS]
+  };
+}
+
+function tokenMatchesProvider(token, providerId) {
+  if (!token) return false;
+  if (!token.providerId) return true;
+  return token.providerId === providerId;
+}
+
+function acceptedTokenKind(token) {
+  if (!token) return false;
+  return PROVIDER_SOCKET_SANDBOX_ACCEPTED_TOKEN_KINDS.includes(token.tokenKind);
+}
+
+// v1.3.7: validate an ephemeral token against the socket sandbox without
+// performing any side effect. Returns { ok, reason }.
+export function validateSocketSandboxToken(state, token, nowMs = Date.now()) {
+  const base = state || createDefaultSocketSandboxState();
+  if (isRealProviderKind(base.providerKind)) {
+    return { ok: false, reason: 'real_provider_socket_blocked_by_default' };
+  }
+  if (!token) {
+    return { ok: false, reason: 'ephemeral_token_required' };
+  }
+  if (token.schema !== EPHEMERAL_SESSION_TOKEN_SCHEMA) {
+    return { ok: false, reason: 'token_schema_mismatch' };
+  }
+  if (!acceptedTokenKind(token)) {
+    return { ok: false, reason: `token_kind_not_accepted:${token.tokenKind || 'unknown'}` };
+  }
+  if (!tokenMatchesProvider(token, base.providerId)) {
+    return { ok: false, reason: 'token_provider_mismatch' };
+  }
+  const result = validateEphemeralSessionToken(token, nowMs);
+  if (!result.ok) {
+    return { ok: false, reason: `token_invalid:${result.failures.join('|')}` };
+  }
+  if (!isTokenActive(token, nowMs)) {
+    return { ok: false, reason: 'token_expired' };
+  }
+  return { ok: true, reason: 'token_accepted' };
+}
+
+// v1.3.7: drive a full safe synthetic lifecycle, but only if a valid
+// ephemeral synthetic_only token descriptor is provided. Real providers
+// remain blocked even with a token.
+export function runSyntheticSocketSessionWithToken(prev, token, { providerId, providerKind } = {}) {
+  const seed = prev || createDefaultSocketSandboxState({ providerId, providerKind });
+  const resolvedProviderId = providerId || seed.providerId;
+  const resolvedKind = providerKind || seed.providerKind || safeProviderKind(resolvedProviderId);
+  const base = {
+    ...seed,
+    providerId: resolvedProviderId,
+    providerKind: resolvedKind,
+    requiresEphemeralToken: true,
+    acceptedTokenKinds: [...PROVIDER_SOCKET_SANDBOX_ACCEPTED_TOKEN_KINDS]
+  };
+
+  if (isRealProviderKind(resolvedKind)) {
+    const blocked = transitionSocketSandbox(base, 'provider.socket.requested', {
+      reason: 'real_provider_socket_blocked_by_default'
+    });
+    return {
+      ...blocked,
+      tokenRejectedCount: blocked.tokenRejectedCount + 1,
+      lastTokenDecision: {
+        accepted: false,
+        reason: 'real_provider_socket_blocked_by_default',
+        tokenKind: token?.tokenKind || null,
+        tokenId: token?.tokenId || null,
+        at: nowIso()
+      },
+      activeTokenId: null,
+      activeTokenKind: null
+    };
+  }
+
+  const validation = validateSocketSandboxToken(base, token);
+  if (!validation.ok) {
+    const requested = transitionSocketSandbox(base, 'provider.socket.requested', {
+      reason: validation.reason
+    });
+    return {
+      ...requested,
+      tokenRejectedCount: requested.tokenRejectedCount + 1,
+      activeTokenId: null,
+      activeTokenKind: null,
+      lastTokenDecision: {
+        accepted: false,
+        reason: validation.reason,
+        tokenKind: token?.tokenKind || null,
+        tokenId: token?.tokenId || null,
+        at: nowIso()
+      }
+    };
+  }
+
+  const accepted = {
+    ...base,
+    tokenAcceptedCount: base.tokenAcceptedCount + 1,
+    activeTokenId: token.tokenId,
+    activeTokenKind: token.tokenKind,
+    lastTokenDecision: {
+      accepted: true,
+      reason: 'token_accepted',
+      tokenKind: token.tokenKind,
+      tokenId: token.tokenId,
+      at: nowIso()
+    }
+  };
+
+  let state = transitionSocketSandbox(accepted, 'provider.socket.requested', {
+    reason: 'synthetic_only_socket_sandbox_requested_with_token'
+  });
+  if (state.state === 'blocked') return state;
+  state = transitionSocketSandbox(state, 'provider.socket.synthetic_opening', { reason: 'synthetic_open_requested_with_token' });
+  state = transitionSocketSandbox(state, 'provider.socket.synthetic_opened', { reason: 'synthetic_open_acknowledged_with_token' });
+  state = transitionSocketSandbox(state, 'provider.socket.synthetic_ready', { reason: 'synthetic_ready_with_token' });
+  state = transitionSocketSandbox(state, 'provider.socket.synthetic_closed', { reason: 'synthetic_close_requested_with_token' });
+  return {
+    ...state,
+    activeTokenId: token.tokenId,
+    activeTokenKind: token.tokenKind,
+    lastTokenDecision: {
+      accepted: true,
+      reason: 'token_accepted_lifecycle_completed',
+      tokenKind: token.tokenKind,
+      tokenId: token.tokenId,
+      at: nowIso()
+    }
   };
 }

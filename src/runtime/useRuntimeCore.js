@@ -26,7 +26,8 @@ import { createProviderHandshake } from './providerHandshake';
 import { createProviderAudioGate } from './providerAudioGate';
 import { createProviderCameraGate } from './providerCameraGate';
 import { createProviderAdapterDescriptor } from './providerAdapterContract';
-import { createDefaultSocketSandboxState, requestSocketSandbox, runSyntheticSocketSession, summarizeSocketSandbox, transitionSocketSandbox } from './providerSocketSandbox';
+import { createDefaultSocketSandboxState, requestSocketSandbox, runSyntheticSocketSession, runSyntheticSocketSessionWithToken, summarizeSocketSandbox, transitionSocketSandbox } from './providerSocketSandbox';
+import { createDefaultProviderProxyPolicy, evaluateProviderProxyRequest, summarizeProviderProxyDecision, describeProxyForUi } from './providerProxyPolicy';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -145,6 +146,12 @@ export function useRuntimeCore() {
   const [providerSocketSandbox, setProviderSocketSandbox] = useState(() => createDefaultSocketSandboxState({
     providerId: initialSeed.robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock'
   }));
+  const providerProxyPolicy = useMemo(() => createDefaultProviderProxyPolicy(), []);
+  const [providerProxyDecision, setProviderProxyDecision] = useState(null);
+  const providerProxyDiagnostics = useMemo(
+    () => describeProxyForUi(providerProxyPolicy, providerProxyDecision),
+    [providerProxyPolicy, providerProxyDecision]
+  );
   const [localDevBridge, setLocalDevBridge] = useState({
     status: 'idle',
     endpoint: initialSeed.robot.adapterDetail?.endpoint || '未配置',
@@ -311,6 +318,7 @@ export function useRuntimeCore() {
     setProviderSocketSandbox(createDefaultSocketSandboxState({
       providerId: robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock'
     }));
+    setProviderProxyDecision(null);
     setCameraStatus({
       cameraActive: false,
       cameraPolicy: '摄像头未开启',
@@ -741,6 +749,44 @@ export function useRuntimeCore() {
       const next = runSyntheticSocketSession(prev, { providerId, providerKind });
       pushLog(next.state === 'blocked' ? 'warn' : 'success', 'Synthetic socket sandbox session done', summarizeSocketSandbox(next));
       pushTrace('ProviderSocketSandbox', 'synthetic_session', `${providerId} · ${next.state}`);
+      return next;
+    });
+  }
+
+  function handleProviderProxyRequestEphemeralToken(overrides = {}) {
+    const providerId = overrides.providerId || robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock';
+    const request = {
+      providerId,
+      robotId: activeRobotId,
+      sessionId: sessionCorrelation?.sessionId || null,
+      tokenKind: overrides.tokenKind || 'synthetic_only',
+      requestedScope: overrides.requestedScope,
+      ttlMs: overrides.ttlMs
+    };
+    const decision = evaluateProviderProxyRequest(request, providerProxyPolicy);
+    setProviderProxyDecision(decision);
+    if (decision.decision === 'granted') {
+      pushLog('info', 'Provider Proxy 出具临时 token 描述', summarizeProviderProxyDecision(decision));
+      pushTrace('ProviderProxy', 'token.granted', `${decision.providerId}/${decision.tokenKind} · ttlMs=${decision.token?.ttlMs}`);
+    } else {
+      pushLog('warn', 'Provider Proxy 拒绝临时 token 请求', summarizeProviderProxyDecision(decision));
+      pushTrace('ProviderProxy', 'token.denied', `${decision.providerId}: ${(decision.blockReasons || []).join(',') || 'no_reason'}`);
+    }
+    return decision;
+  }
+
+  function handleProviderSocketSandboxRunSyntheticSessionWithToken() {
+    const decision = handleProviderProxyRequestEphemeralToken({ tokenKind: 'synthetic_only' });
+    if (decision.decision !== 'granted' || !decision.token) {
+      pushTrace('ProviderSocketSandbox', 'synthetic_session_with_token.skipped', `decision=${decision.decision}`);
+      return;
+    }
+    setProviderSocketSandbox((prev) => {
+      const providerId = robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock';
+      const providerKind = providerAdapterDescriptor?.providerKind || 'localdev_mock';
+      const next = runSyntheticSocketSessionWithToken(prev, decision.token, { providerId, providerKind });
+      pushLog(next.state === 'blocked' ? 'warn' : 'success', 'Synthetic socket sandbox session (token-gated) done', summarizeSocketSandbox(next));
+      pushTrace('ProviderSocketSandbox', 'synthetic_session.token', `${providerId} · ${next.state} · token=${decision.token.tokenId}`);
       return next;
     });
   }
@@ -1253,6 +1299,9 @@ export function useRuntimeCore() {
     providerCameraGate,
     providerAdapterDescriptor,
     providerSocketSandbox,
+    providerProxyPolicy,
+    providerProxyDecision,
+    providerProxyDiagnostics,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,
@@ -1298,7 +1347,9 @@ export function useRuntimeCore() {
       handleProviderSocketSandboxSyntheticOpen,
       handleProviderSocketSandboxClose,
       handleProviderSocketSandboxFallback,
-      handleProviderSocketSandboxRunSyntheticSession
+      handleProviderSocketSandboxRunSyntheticSession,
+      handleProviderProxyRequestEphemeralToken,
+      handleProviderSocketSandboxRunSyntheticSessionWithToken
     }
   };
 }

@@ -14,7 +14,15 @@ import { createProviderHealthCheck } from './providerHealthCheck.js';
 import { createProviderHandshake } from './providerHandshake.js';
 import { createProviderAudioGate } from './providerAudioGate.js';
 import { createProviderCameraGate } from './providerCameraGate.js';
-import { getSocketSandboxCapability } from './providerSocketSandbox.js';
+import {
+  getSocketSandboxCapability,
+  PROVIDER_SOCKET_SANDBOX_ACCEPTED_TOKEN_KINDS
+} from './providerSocketSandbox.js';
+import {
+  createProviderProxyContract,
+  PROVIDER_PROXY_CONTRACT_SCHEMA,
+  PROVIDER_PROXY_TOKEN_KINDS
+} from './providerProxyContract.js';
 
 export const PROVIDER_ADAPTER_SCHEMA = 'omni.provider_adapter.v1';
 
@@ -155,7 +163,23 @@ export function createProviderAdapterDescriptor(input = {}) {
       replyAudioFrameNative: true,
       replyTextSubtitleOnly: true,
       replyTextToTts: false,
-      fallbackProviderId: 'localdev_mock'
+      fallbackProviderId: 'localdev_mock',
+      requiresEphemeralToken: true,
+      acceptedTokenKinds: [...PROVIDER_SOCKET_SANDBOX_ACCEPTED_TOKEN_KINDS]
+    },
+    providerProxy: {
+      schema: PROVIDER_PROXY_CONTRACT_SCHEMA,
+      proxyRequired: true,
+      frontendCanHoldApiKey: false,
+      browserDirectProviderSocketAllowed: false,
+      serverSideSecretRequired: Boolean(capability.requiresServerSideSecret) || capability.providerKind === 'real_cloud' || capability.providerKind === 'self_hosted',
+      supportedTokenKinds: [...PROVIDER_PROXY_TOKEN_KINDS],
+      realMediaUploadAllowed: false,
+      realtimeBillingAllowed: false,
+      replyTextToTts: false,
+      replyAudioFrameNative: true,
+      fallbackProviderId: 'localdev_mock',
+      contract: createProviderProxyContract()
     },
     gateLinks: {
       providerGate: providerGate?.status || 'unknown',
@@ -177,7 +201,9 @@ export function createProviderAdapterDescriptor(input = {}) {
       apiKeyMustNotEnterFrontend: true,
       syntheticOnlyTestPathAvailable: true,
       replyAudioFrameIsRealtimeVoiceOutput: true,
-      asrLlmTtsRegressionForbidden: true
+      asrLlmTtsRegressionForbidden: true,
+      providerProxyRequired: true,
+      ephemeralTokenSyntheticOrDryRunOnly: true
     }
   };
 }

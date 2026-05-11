@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.6.
+Current version: v1.3.7.
 
 Tech stack:
 - Vite
@@ -407,4 +407,20 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - ASR → LLM → TTS regression is explicitly forbidden by `guardrails.asrLlmTtsRegressionForbidden = true` in every descriptor.
 - If a future provider can only return text and TTS (no native `omni.reply_audio_frame.v1`), it MUST be registered as a non-omni provider capability and MUST NOT become the main realtime Omni provider.
 - Real provider API keys / tokens never enter the sandbox state, descriptor, logs, or Visible Context. The synthetic adapter and sandbox never carry a real secret.
+- LocalDev Mock fallback remains required and the LocalDev Adapter Contract on the wire is unchanged.
+
+## v1.3.7 Provider Proxy Skeleton / Ephemeral Session Token rule
+
+- v1.3.7 adds three Runtime-only safety contracts: `omni.provider_proxy_contract.v1`, `omni.provider_proxy_request.v1`, `omni.provider_proxy_decision.v1`, plus the ephemeral token descriptor `omni.ephemeral_session_token.v1`.
+- A future real Realtime Omni Provider session MUST be opened by a server-side proxy / Robot Gateway / Device Runtime. The browser MUST NOT hold a real API key and MUST NOT open a real provider socket directly.
+- Ephemeral session tokens in v1.3.7 are `synthetic_only` or `dry_run_only` only. `safety.opensRealSocket`, `safety.canSendRealAudio`, `safety.canSendRealCamera`, `safety.canStartBillingSession`, `safety.replyTextToTts`, `safety.sentToProvider`, `safety.uploaded`, `safety.persisted` MUST all be `false`.
+- `providerProxyPolicy.evaluateProviderProxyRequest()` MUST:
+  - strip any `apiKey` / `secret` / `tokenRawValue` / `authorization` / `client_secret` / `password` etc. fields and mark `secretStripped=true`;
+  - deny real audio / camera / billing / socket / TTS requests with explicit `blockReasons`;
+  - deny `real_cloud` / `self_hosted` providers by default;
+  - only grant `synthetic_only` / `dry_run_only` tokens to `synthetic_test` / `localdev_mock` / `offline_pet_engine`;
+  - always return `fallbackProviderId="localdev_mock"`.
+- `providerSocketSandbox` MUST require an accepted ephemeral token (`synthetic_only`) before driving synthetic_ready. A real-cloud / self-hosted provider MUST stay `blocked` even with a synthetic token.
+- Real provider API keys / tokens never enter the descriptor, logs, Visible Context, localStorage, sessionStorage, or any UI state.
+- `omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` MUST NOT be a TTS input. ASR → LLM → TTS regression remains forbidden.
 - LocalDev Mock fallback remains required and the LocalDev Adapter Contract on the wire is unchanged.
