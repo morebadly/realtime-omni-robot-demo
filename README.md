@@ -1,4 +1,15 @@
-# Realtime Omni Robot Demo v1.2.4
+# Realtime Omni Robot Demo v1.3.0
+
+## v1.3.0 Provider Health Check Preflight
+
+v1.3.0 adds a real Provider health-check preflight layer without opening realtime calls. It validates provider configuration, Provider Gate state, fallback behavior, and user-visible safety status while keeping LocalDev Mock as the working path.
+
+- No real microphone PCM upload.
+- No real camera JPEG upload.
+- No realtime billing/session creation.
+- No real TTS and no `reply_text -> playback` path.
+- `npm run verify` includes `test:provider-health-check`; the smoke suite now covers health-check safety without requiring an API key.
+- `health:dashscope-omni` is dry-run/config validation only and does not open a WebSocket session.
 
 ## v1.2.4 Provider Configuration Gates
 

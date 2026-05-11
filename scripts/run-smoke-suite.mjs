@@ -14,6 +14,7 @@ const DEFAULT_SCRIPTS = [
   'test:localdev-reconnect-recovery',
   'test:localdev-contract-matrix',
   'test:provider-config-gate',
+  'test:provider-health-check',
   'test:dashscope-omni-config',
   'test:localdev-provider-registry',
   'test:realtime-output-queue',

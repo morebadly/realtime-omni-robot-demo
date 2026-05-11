@@ -52,6 +52,7 @@ export default function OmniSessionPanel({
   realtimeOutput,
   realtimeSessionState,
   providerGate,
+  providerHealth,
   onBuild,
   onSimulate,
   onSendLocalDev,
@@ -140,7 +141,7 @@ export default function OmniSessionPanel({
 
 
       <div className="realtime-output-grid">
-        <div><small>Provider Gate</small><strong>{providerGate?.status || 'mock_ready'}</strong><p>provider={providerGate?.providerId || 'localdev_mock'} / mode={providerGate?.mode || 'mock'} / real_upload={providerGate?.canRealtime ? 'allowed' : 'blocked'}</p></div>
+        <div><small>Provider Health</small><strong>{providerHealth?.status || providerGate?.status || 'mock_ready'}</strong><p>provider={providerHealth?.providerId || providerGate?.providerId || 'localdev_mock'} / mode={providerHealth?.mode || providerGate?.mode || 'mock'} / realtime={providerHealth?.canStartRealtime ? 'yes' : 'no'} / media_upload=no</p></div>
         <div><small>Session State Machine</small><strong>{summarizeRealtimeSessionState(realtimeSessionState)}</strong><p>session={realtimeSessionState?.sessionId || '暂无'} · last={realtimeSessionState?.lastTransition || 'none'}</p></div>
         <div><small>Current Lifecycle</small><strong>{getRealtimeSessionStateLabel(realtimeSessionState?.state)}</strong><p>turn={realtimeSessionState?.currentTurnId || '暂无'} · request={realtimeSessionState?.currentRequestId || '暂无'}</p></div>
         <div><small>Input Channels</small><strong>A {realtimeSessionState?.inputAudioFramesSent || 0}/{realtimeSessionState?.inputAudioFramesObserved || 0} · C {realtimeSessionState?.inputCameraFramesSent || 0}/{realtimeSessionState?.inputCameraFramesObserved || 0}</strong><p>model_speaking 时仍可监听；audio_frame 不会自动变成 interrupt。</p></div>

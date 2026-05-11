@@ -19,6 +19,7 @@ import { routeToolIntents } from './toolIntentRouter';
 import { createLocalDevOmniBridge } from './localDevOmniClient';
 import { buildRealtimeReadiness } from './realtimeReadiness';
 import { evaluateProviderGate } from './providerGate';
+import { createProviderHealthCheck } from './providerHealthCheck';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -160,6 +161,10 @@ export function useRuntimeCore() {
     adapter: robot.adapterDetail,
     providerConfig: robot.adapterDetail?.providerConfig
   }), [robot.adapterDetail]);
+
+  const providerHealth = useMemo(() => createProviderHealthCheck({
+    providerGate
+  }), [providerGate]);
 
   const realtimeRoute = useMemo(() => {
     const permissionMap = createPermissionMap(permissions);
@@ -1069,6 +1074,7 @@ export function useRuntimeCore() {
     realtimeRoute,
     realtimeReadiness,
     providerGate,
+    providerHealth,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,

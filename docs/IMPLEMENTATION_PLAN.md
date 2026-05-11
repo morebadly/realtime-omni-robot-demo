@@ -1,4 +1,23 @@
-# 技术落地路线 v1.2.4
+# 技术落地路线 v1.3.0
+
+## v1.3.0 Provider Health Check Preflight
+
+Goal: add provider health-check preflight without opening real realtime calls.
+
+Completed:
+
+1. Add Runtime `providerHealthCheck` result schema.
+2. Add `test:provider-health-check` and include it in the safe smoke suite.
+3. Convert DashScope health command to dry-run/config validation only.
+4. Display provider health status in small Model Provider, Visible Context, and Omni Session surfaces.
+
+Still out of scope:
+
+1. Real Qwen/DashScope realtime sessions.
+2. Real microphone PCM or camera JPEG upload.
+3. Real realtime billing calls.
+4. Real TTS or `reply_text -> playback`.
+5. Automatic VAD/AEC barge-in.
 
 ## v1.2.4 Provider Configuration Gate
 

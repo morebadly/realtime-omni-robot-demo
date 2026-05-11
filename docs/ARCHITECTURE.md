@@ -1,4 +1,15 @@
-# 架构说明 v1.2.4
+# 架构说明 v1.3.0
+
+## v1.3.0 Provider Health Check Architecture
+
+v1.3.0 adds `providerHealthCheck` as a preflight layer above Provider Gate. It converts gate/config state into a stable health result:
+
+- disabled, unconfigured, blocked, ready_for_health_check, health_check_ok, or health_check_failed.
+- `canStartRealtime`, `canSendAudio`, `canSendCamera`, and `canStartBillingSession` are always false in v1.3.0.
+- failed, disabled, or unconfigured real providers keep `localdev_mock` fallback.
+- UI panels may display health status, but Runtime still routes real media away from real providers.
+
+This is not a real Omni call architecture. No DashScope/Qwen realtime WebSocket session, microphone upload, camera upload, billing session, or TTS path is enabled.
 
 ## v1.2.4 Provider Gate Architecture
 

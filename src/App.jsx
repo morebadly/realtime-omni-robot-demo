@@ -43,6 +43,7 @@ export default function App() {
     realtimeRoute,
     realtimeReadiness,
     providerGate,
+    providerHealth,
     omniPacket,
     lastOmniTurn,
     omniSessionStatus,
@@ -138,7 +139,7 @@ export default function App() {
             onAdapterDisconnect={actions.handleLocalDevOmniDisconnect}
           />
           <RobotRegistryPanel robots={robotRegistry} activeRobotId={activeRobotId} onSelect={actions.handleRobotSelect} onAdd={actions.handleRobotAdd} onDelete={actions.handleRobotDelete} />
-          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} providerGate={providerGate} />
+          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} providerGate={providerGate} providerHealth={providerHealth} />
         </aside>
       </main>
     );
@@ -167,6 +168,7 @@ export default function App() {
             realtimeOutput={realtimeOutput}
             realtimeSessionState={realtimeSessionState}
             providerGate={providerGate}
+            providerHealth={providerHealth}
             onBuild={actions.handleOmniPacketBuild}
             onSimulate={actions.handleOmniTurnSimulate}
             onSendLocalDev={actions.handleLocalDevOmniSend}
@@ -178,6 +180,7 @@ export default function App() {
             activeMode={robot.mode}
             profiles={adapterProfiles}
             providerGate={providerGate}
+            providerHealth={providerHealth}
             onUpdate={actions.handleModelProviderUpdate}
             onReset={actions.handleModelProviderReset}
             onTest={actions.handleModelProviderTest}
@@ -229,7 +232,7 @@ export default function App() {
       <main className="dashboard dashboard-split">
         <section className="center-stage">
           {workspaceBanner}
-          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} providerGate={providerGate} />
+          <VisibleContext robot={robot} recentEvents={recentEvents} cameraStatus={cameraStatus} framePolicy={framePolicy} connection={connectionSnapshot} realtimeSession={realtimeSession} realtimeRoute={realtimeRoute} mediaChannels={mediaChannels} realtimeOutput={realtimeOutput} realtimeSessionState={realtimeSessionState} providerGate={providerGate} providerHealth={providerHealth} />
         </section>
         <aside className="right-column">
           <RobotConnectionStatusPanel

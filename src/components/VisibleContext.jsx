@@ -10,7 +10,7 @@ function StatusTile({ label, value, detail }) {
   );
 }
 
-export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState, providerGate }) {
+export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState, providerGate, providerHealth }) {
   const cloudMode = robot.mode === 'wifi_cloud' || robot.mode === 'cellular_cloud' || robot.mode === 'self_hosted_cloud';
   const audioObserved = mediaChannels?.audio?.observed || 0;
   const audioSent = mediaChannels?.audio?.sent || 0;
@@ -54,6 +54,11 @@ export default function VisibleContext({ robot, recentEvents, cameraStatus, fram
           label="Provider Gate"
           value={providerGate?.status || 'mock_ready'}
           detail={`${providerGate?.providerId || 'localdev_mock'} / ${providerGate?.mode || 'mock'}`}
+        />
+        <StatusTile
+          label="Provider Health"
+          value={providerHealth?.status || 'mock_ready'}
+          detail={`audio=${providerHealth?.canSendAudio ? 'yes' : 'no'} / camera=${providerHealth?.canSendCamera ? 'yes' : 'no'} / billing=${providerHealth?.canStartBillingSession ? 'yes' : 'no'}`}
         />
       </div>
 

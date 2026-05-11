@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.2.4.
+Current version: v1.3.0.
 
 Tech stack:
 - Vite
@@ -341,3 +341,11 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - Real secrets must not be placed in frontend-readable Vite variables or committed files.
 - Mock fallback, permission gate, and visible context are required before any future real provider experiment.
 - `reply_text` remains subtitles/log/debug only and must not become TTS input.
+
+## v1.3.0 Provider Health Check rule
+
+- v1.3.0 adds provider health-check preflight only. It must not establish a real realtime Omni call.
+- Health checks must return `canStartRealtime=false`, `canSendAudio=false`, `canSendCamera=false`, and `canStartBillingSession=false`.
+- `health_check_only` may validate configuration/readiness, but it must not send `omni.audio_frame.v1`, `omni.camera_frame.v1`, or billing/session start messages.
+- Missing endpoint/API key, disabled providers, failed health checks, or unsupported modes must keep fallback on `localdev_mock`.
+- `health:dashscope-omni` remains dry-run/config validation only unless a future version explicitly changes that boundary.
