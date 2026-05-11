@@ -1,4 +1,15 @@
-# 架构说明 v1.3.0
+# 架构说明 v1.3.1
+
+## v1.3.1 Provider Handshake Architecture
+
+v1.3.1 adds `providerHandshake` above Provider Health Check. It models a dry-run handshake and event contract without creating a real provider session:
+
+- statuses: disabled, blocked, unconfigured, ready_for_handshake, handshake_dry_run_ok, handshake_failed.
+- events: `provider.handshake.started`, `provider.handshake.ready`, `provider.handshake.blocked`, `provider.handshake.failed`, and `provider.handshake.fallback`.
+- `canOpenRealtimeSocket`, `canSendAudio`, `canSendCamera`, and `canStartBillingSession` are always false.
+- fallback remains `localdev_mock`.
+
+The architecture still does not open a real realtime socket, upload audio/camera media, start billing, or connect TTS.
 
 ## v1.3.0 Provider Health Check Architecture
 

@@ -1,4 +1,15 @@
-# Realtime Omni Robot Demo v1.3.0
+# Realtime Omni Robot Demo v1.3.1
+
+## v1.3.1 Provider Handshake Dry-run
+
+v1.3.1 adds a provider handshake dry-run status model and ready/error/fallback event contract. It does not open a real realtime socket and does not start a provider call.
+
+- No real realtime WebSocket session is opened.
+- No microphone PCM or camera JPEG is sent to a real provider.
+- No realtime billing session is started.
+- `reply_text` remains subtitles/log/debug only and is not TTS input.
+- `npm run verify` includes `test:provider-handshake`; the smoke suite does not require a real API key.
+- Handshake events are for Runtime/UI diagnostics only: `provider.handshake.started`, `provider.handshake.ready`, `provider.handshake.blocked`, `provider.handshake.failed`, and `provider.handshake.fallback`.
 
 ## v1.3.0 Provider Health Check Preflight
 

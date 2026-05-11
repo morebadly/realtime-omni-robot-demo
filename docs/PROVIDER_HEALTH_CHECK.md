@@ -1,4 +1,12 @@
-# Provider Health Check v1.3.0
+# Provider Health Check v1.3.1
+
+## v1.3.1 Relationship To Handshake
+
+Provider Health Check remains read-only preflight. Provider Handshake builds on its result but stays dry-run only:
+
+- health check may become `ready_for_health_check`.
+- handshake may become `ready_for_handshake` or `handshake_dry_run_ok`.
+- neither layer opens a real realtime socket, sends audio/camera media, starts billing, or connects TTS.
 
 v1.3.0 adds a provider health-check preflight layer. It is intentionally not a realtime provider integration.
 

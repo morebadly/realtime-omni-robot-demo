@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.0.
+Current version: v1.3.1.
 
 Tech stack:
 - Vite
@@ -349,3 +349,11 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - `health_check_only` may validate configuration/readiness, but it must not send `omni.audio_frame.v1`, `omni.camera_frame.v1`, or billing/session start messages.
 - Missing endpoint/API key, disabled providers, failed health checks, or unsupported modes must keep fallback on `localdev_mock`.
 - `health:dashscope-omni` remains dry-run/config validation only unless a future version explicitly changes that boundary.
+
+## v1.3.1 Provider Handshake rule
+
+- v1.3.1 adds provider handshake dry-run state and ready/error/fallback event contracts only.
+- Handshake must return `canOpenRealtimeSocket=false`, `canSendAudio=false`, `canSendCamera=false`, and `canStartBillingSession=false`.
+- `handshake_only` may become `ready_for_handshake` or `handshake_dry_run_ok`, but it must not open a real socket or send media.
+- `realtime_experimental` remains blocked in v1.3.1.
+- Handshake events are diagnostics only and must not trigger `omni.audio_frame.v1`, `omni.camera_frame.v1`, billing, or TTS.

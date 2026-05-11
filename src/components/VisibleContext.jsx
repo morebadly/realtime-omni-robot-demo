@@ -10,7 +10,7 @@ function StatusTile({ label, value, detail }) {
   );
 }
 
-export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState, providerGate, providerHealth }) {
+export default function VisibleContext({ robot, recentEvents, cameraStatus, framePolicy, connection, realtimeSession, realtimeRoute, mediaChannels, realtimeOutput, realtimeSessionState, providerGate, providerHealth, providerHandshake }) {
   const cloudMode = robot.mode === 'wifi_cloud' || robot.mode === 'cellular_cloud' || robot.mode === 'self_hosted_cloud';
   const audioObserved = mediaChannels?.audio?.observed || 0;
   const audioSent = mediaChannels?.audio?.sent || 0;
@@ -59,6 +59,11 @@ export default function VisibleContext({ robot, recentEvents, cameraStatus, fram
           label="Provider Health"
           value={providerHealth?.status || 'mock_ready'}
           detail={`audio=${providerHealth?.canSendAudio ? 'yes' : 'no'} / camera=${providerHealth?.canSendCamera ? 'yes' : 'no'} / billing=${providerHealth?.canStartBillingSession ? 'yes' : 'no'}`}
+        />
+        <StatusTile
+          label="Handshake"
+          value={providerHandshake?.status || 'blocked'}
+          detail={`socket=${providerHandshake?.canOpenRealtimeSocket ? 'yes' : 'no'} / fallback=${providerHandshake?.fallbackProviderId || 'localdev_mock'}`}
         />
       </div>
 

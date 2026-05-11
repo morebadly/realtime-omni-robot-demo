@@ -20,6 +20,7 @@ import { createLocalDevOmniBridge } from './localDevOmniClient';
 import { buildRealtimeReadiness } from './realtimeReadiness';
 import { evaluateProviderGate } from './providerGate';
 import { createProviderHealthCheck } from './providerHealthCheck';
+import { createProviderHandshake } from './providerHandshake';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -165,6 +166,10 @@ export function useRuntimeCore() {
   const providerHealth = useMemo(() => createProviderHealthCheck({
     providerGate
   }), [providerGate]);
+
+  const providerHandshake = useMemo(() => createProviderHandshake({
+    providerHealth
+  }), [providerHealth]);
 
   const realtimeRoute = useMemo(() => {
     const permissionMap = createPermissionMap(permissions);
@@ -1075,6 +1080,7 @@ export function useRuntimeCore() {
     realtimeReadiness,
     providerGate,
     providerHealth,
+    providerHandshake,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,

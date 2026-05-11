@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MODEL_ADAPTERS } from '../runtime/modelAdapters';
 import { evaluateProviderGate, summarizeProviderGate } from '../runtime/providerGate';
 import { createProviderHealthCheck, summarizeProviderHealthCheck } from '../runtime/providerHealthCheck';
+import { createProviderHandshake, summarizeProviderHandshake } from '../runtime/providerHandshake';
 
 const CAPABILITY_OPTIONS = [
   { key: 'audio_in', label: '原始音频输入' },
@@ -17,7 +18,7 @@ const CAPABILITY_OPTIONS = [
   { key: 'preset_motion', label: '预设动作' }
 ];
 
-export default function ModelProviderPanel({ activeMode, profiles, providerGate, providerHealth, onUpdate, onReset, onTest }) {
+export default function ModelProviderPanel({ activeMode, profiles, providerGate, providerHealth, providerHandshake, onUpdate, onReset, onTest }) {
   const [selectedKey, setSelectedKey] = useState(activeMode || 'local_dev');
   const selectedProfile = useMemo(() => profiles?.[selectedKey] || MODEL_ADAPTERS.find((item) => item.key === selectedKey), [profiles, selectedKey]);
   const [draft, setDraft] = useState(selectedProfile);
@@ -38,6 +39,11 @@ export default function ModelProviderPanel({ activeMode, profiles, providerGate,
       ? providerHealth
       : createProviderHealthCheck({ providerGate: selectedGate })
   ), [activeMode, providerHealth, selectedGate, selectedKey]);
+  const selectedHandshake = useMemo(() => (
+    selectedKey === activeMode && providerHandshake
+      ? providerHandshake
+      : createProviderHandshake({ providerHealth: selectedHealth })
+  ), [activeMode, providerHandshake, selectedHealth, selectedKey]);
 
   useEffect(() => {
     setSelectedKey(activeMode || 'local_dev');
@@ -133,6 +139,7 @@ export default function ModelProviderPanel({ activeMode, profiles, providerGate,
         <p>{summarizeProviderGate(selectedGate)}</p>
         <p>Real provider media upload and realtime billing stay blocked unless endpoint, API key, feature flags, permission gate, visible context, and LocalDev Mock fallback are explicit.</p>
         <p>Health: {summarizeProviderHealthCheck(selectedHealth)}</p>
+        <p>Handshake: {summarizeProviderHandshake(selectedHandshake)}</p>
       </div>
 
       <div className="provider-actions">

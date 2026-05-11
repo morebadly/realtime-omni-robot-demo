@@ -1,4 +1,23 @@
-# 技术落地路线 v1.3.0
+# 技术落地路线 v1.3.1
+
+## v1.3.1 Provider Handshake Dry-run
+
+Goal: add provider handshake state and event contracts without opening real realtime sessions.
+
+Completed:
+
+1. Add Runtime `providerHandshake` result schema and summary.
+2. Add provider handshake event contract for started, ready, blocked, failed, and fallback.
+3. Add `test:provider-handshake` and include it in the safe smoke suite.
+4. Display handshake status in small Model Provider, Visible Context, and Omni Session surfaces.
+
+Still out of scope:
+
+1. Real provider WebSocket/session creation.
+2. Real microphone PCM or camera JPEG upload.
+3. Real realtime billing.
+4. Real TTS or `reply_text -> playback`.
+5. Automatic VAD/AEC barge-in.
 
 ## v1.3.0 Provider Health Check Preflight
 

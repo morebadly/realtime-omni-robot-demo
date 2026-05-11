@@ -1,4 +1,13 @@
-# Provider Gate v1.3.0
+# Provider Gate v1.3.1
+
+## v1.3.1 Handshake Dry-run Boundary
+
+Provider Gate still blocks real provider traffic. v1.3.1 adds a handshake dry-run state above health check:
+
+- `handshake_only` may report `ready_for_handshake` or `handshake_dry_run_ok`.
+- `realtime_experimental` remains blocked.
+- `canOpenRealtimeSocket`, `canSendAudio`, `canSendCamera`, and `canStartBillingSession` remain false.
+- handshake events are diagnostic events only and do not send media frames.
 
 ## v1.3.0 Health Check Preflight
 
