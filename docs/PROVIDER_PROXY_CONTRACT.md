@@ -1,4 +1,11 @@
-# Provider Proxy Skeleton / Ephemeral Session Token (v1.3.7)
+# Provider Proxy Skeleton / Ephemeral Session Token (v1.3.7, extended in v1.3.8)
+
+## v1.3.8 Addendum
+
+v1.3.8 adds an actually-runnable local Mock skeleton (`scripts/provider-proxy-skeleton-server.mjs`) and a pure handshake dry-run state machine (`src/runtime/providerProxyHandshakeSandbox.js`). Both are local-only. Neither holds a real API key, contacts a real provider, opens a real socket, uploads real media, starts billing, or runs TTS. See `docs/PROVIDER_PROXY_SERVER.md` and `docs/PROVIDER_PROXY_HANDSHAKE_SANDBOX.md`.
+
+BigModel and DashScope realtime candidates (`bigmodel_glm_realtime_candidate`, `dashscope_qwen_omni_candidate`) are registered as capability placeholders with `providerKind='real_cloud_candidate'` and `candidateOnly=true`. They are always blocked by the policy, by the socket sandbox, and by the handshake sandbox. No real key is read; no real endpoint is contacted.
+
 
 v1.3.7 把 “未来真实 provider 必须由 server-side proxy / Robot Gateway / Device
 Runtime 出 token” 这件事，从口头规则升级到可代码验证的安全合同层。

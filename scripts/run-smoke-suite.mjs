@@ -21,6 +21,7 @@ const DEFAULT_SCRIPTS = [
   'test:provider-adapter-contract',
   'test:provider-socket-sandbox',
   'test:provider-proxy-contract',
+  'test:provider-proxy-server',
   'test:realtime-mux-backpressure',
   'test:dashscope-omni-config',
   'test:localdev-provider-registry',

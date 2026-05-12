@@ -27,7 +27,9 @@ import { createProviderAudioGate } from './providerAudioGate';
 import { createProviderCameraGate } from './providerCameraGate';
 import { createProviderAdapterDescriptor } from './providerAdapterContract';
 import { createDefaultSocketSandboxState, requestSocketSandbox, runSyntheticSocketSession, runSyntheticSocketSessionWithToken, summarizeSocketSandbox, transitionSocketSandbox } from './providerSocketSandbox';
-import { createDefaultProviderProxyPolicy, evaluateProviderProxyRequest, summarizeProviderProxyDecision, describeProxyForUi } from './providerProxyPolicy';
+import { createDefaultProviderProxyPolicy, evaluateProviderProxyRequest, evaluateProxyHandshakeDryRun, summarizeProviderProxyDecision, describeProxyForUi } from './providerProxyPolicy';
+import { createProviderProxyServerContract, summarizeProviderProxyServerContract } from './providerProxyServerContract';
+import { createDefaultProxyHandshakeSandboxState, runProxyHandshakeDryRun, summarizeProxyHandshakeSandbox, transitionProxyHandshakeSandbox } from './providerProxyHandshakeSandbox';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -147,11 +149,16 @@ export function useRuntimeCore() {
     providerId: initialSeed.robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock'
   }));
   const providerProxyPolicy = useMemo(() => createDefaultProviderProxyPolicy(), []);
+  const providerProxyServerContract = useMemo(() => createProviderProxyServerContract(), []);
   const [providerProxyDecision, setProviderProxyDecision] = useState(null);
   const providerProxyDiagnostics = useMemo(
     () => describeProxyForUi(providerProxyPolicy, providerProxyDecision),
     [providerProxyPolicy, providerProxyDecision]
   );
+  const [providerProxyHandshakeSandbox, setProviderProxyHandshakeSandbox] = useState(() => createDefaultProxyHandshakeSandboxState({
+    providerId: initialSeed.robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock'
+  }));
+  const [providerProxyHandshakeDryRun, setProviderProxyHandshakeDryRun] = useState(null);
   const [localDevBridge, setLocalDevBridge] = useState({
     status: 'idle',
     endpoint: initialSeed.robot.adapterDetail?.endpoint || '未配置',
@@ -319,6 +326,10 @@ export function useRuntimeCore() {
       providerId: robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock'
     }));
     setProviderProxyDecision(null);
+    setProviderProxyHandshakeSandbox(createDefaultProxyHandshakeSandboxState({
+      providerId: robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock'
+    }));
+    setProviderProxyHandshakeDryRun(null);
     setCameraStatus({
       cameraActive: false,
       cameraPolicy: '摄像头未开启',
@@ -773,6 +784,37 @@ export function useRuntimeCore() {
       pushTrace('ProviderProxy', 'token.denied', `${decision.providerId}: ${(decision.blockReasons || []).join(',') || 'no_reason'}`);
     }
     return decision;
+  }
+
+  function handleProviderProxyHandshakeDryRun() {
+    const providerId = robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock';
+    const providerKind = providerAdapterDescriptor?.providerKind || 'localdev_mock';
+    const decision = handleProviderProxyRequestEphemeralToken({ tokenKind: 'synthetic_only', providerId });
+    if (decision.decision !== 'granted' || !decision.token) {
+      const blocked = transitionProxyHandshakeSandbox(providerProxyHandshakeSandbox, 'provider.proxy.handshake.blocked', { reason: `proxy_denied_token:${(decision.blockReasons || []).join('|') || 'unknown'}` });
+      setProviderProxyHandshakeSandbox(blocked);
+      pushLog('warn', 'Proxy handshake dry-run blocked', summarizeProxyHandshakeSandbox(blocked));
+      pushTrace('ProviderProxyHandshakeSandbox', 'blocked', `${blocked.providerId} · ${blocked.lastReason}`);
+      return;
+    }
+    const next = runProxyHandshakeDryRun(providerProxyHandshakeSandbox, { providerId, providerKind, token: decision.token });
+    setProviderProxyHandshakeSandbox(next);
+    const dryRunResult = evaluateProxyHandshakeDryRun({ providerId, token: decision.token }, providerProxyPolicy);
+    setProviderProxyHandshakeDryRun(dryRunResult);
+    if (next.state === 'dry_run_ready') {
+      pushLog('success', 'Proxy handshake dry-run validated locally', summarizeProxyHandshakeSandbox(next));
+      pushTrace('ProviderProxyHandshakeSandbox', 'dry_run_ready', `${next.providerId} · token=${decision.token.tokenKind}:${decision.token.tokenId}`);
+    } else {
+      pushLog('warn', 'Proxy handshake dry-run did not reach ready', summarizeProxyHandshakeSandbox(next));
+      pushTrace('ProviderProxyHandshakeSandbox', next.state, `${next.providerId} · ${next.lastReason}`);
+    }
+  }
+
+  function handleProviderProxyHandshakeFallback() {
+    const next = transitionProxyHandshakeSandbox(providerProxyHandshakeSandbox, 'provider.proxy.handshake.fallback', { reason: 'manual_fallback_to_localdev_mock' });
+    setProviderProxyHandshakeSandbox(next);
+    pushLog('warn', 'Proxy handshake sandbox fallback', `${next.providerId} → localdev_mock`);
+    pushTrace('ProviderProxyHandshakeSandbox', 'fallback', `${next.providerId} → localdev_mock`);
   }
 
   function handleProviderSocketSandboxRunSyntheticSessionWithToken() {
@@ -1302,6 +1344,9 @@ export function useRuntimeCore() {
     providerProxyPolicy,
     providerProxyDecision,
     providerProxyDiagnostics,
+    providerProxyServerContract,
+    providerProxyHandshakeSandbox,
+    providerProxyHandshakeDryRun,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,
@@ -1349,7 +1394,9 @@ export function useRuntimeCore() {
       handleProviderSocketSandboxFallback,
       handleProviderSocketSandboxRunSyntheticSession,
       handleProviderProxyRequestEphemeralToken,
-      handleProviderSocketSandboxRunSyntheticSessionWithToken
+      handleProviderSocketSandboxRunSyntheticSessionWithToken,
+      handleProviderProxyHandshakeDryRun,
+      handleProviderProxyHandshakeFallback
     }
   };
 }

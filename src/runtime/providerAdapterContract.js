@@ -100,9 +100,16 @@ export function createProviderAdapterDescriptor(input = {}) {
   const safety = lockSafetyBooleans();
   const safetyMode = deriveSafetyMode(capability, providerGate);
 
+  const isRealOrCandidateKind = capability.providerKind === 'real_cloud'
+    || capability.providerKind === 'self_hosted'
+    || capability.providerKind === 'real_cloud_candidate';
+
   const reasons = [];
-  if (capability.providerKind === 'real_cloud' || capability.providerKind === 'self_hosted') {
+  if (isRealOrCandidateKind) {
     reasons.push('real_provider_traffic_blocked_by_default');
+  }
+  if (capability.providerKind === 'real_cloud_candidate' || capability.candidateOnly === true) {
+    reasons.push('real_cloud_candidate_blocked_by_default');
   }
   if (capability.providerKind === 'synthetic') {
     reasons.push('synthetic_only_adapter_for_contract_testing');
@@ -115,7 +122,7 @@ export function createProviderAdapterDescriptor(input = {}) {
   }
 
   const socketSandboxCapability = getSocketSandboxCapability();
-  const socketSandboxMode = capability.providerKind === 'real_cloud' || capability.providerKind === 'self_hosted'
+  const socketSandboxMode = isRealOrCandidateKind
     ? 'blocked'
     : capability.providerKind === 'offline_engine'
       ? 'offline_only'
@@ -154,7 +161,7 @@ export function createProviderAdapterDescriptor(input = {}) {
     socketSandbox: {
       socketSandboxAvailable: socketSandboxCapability.socketSandboxAvailable,
       socketSandboxMode,
-      canOpenSyntheticSocket: capability.providerKind !== 'real_cloud' && capability.providerKind !== 'self_hosted',
+      canOpenSyntheticSocket: !isRealOrCandidateKind,
       canOpenRealtimeSocket: false,
       opensRealSocket: false,
       syntheticOnly: capability.providerKind === 'synthetic' || socketSandboxMode === 'synthetic_only',
@@ -172,7 +179,7 @@ export function createProviderAdapterDescriptor(input = {}) {
       proxyRequired: true,
       frontendCanHoldApiKey: false,
       browserDirectProviderSocketAllowed: false,
-      serverSideSecretRequired: Boolean(capability.requiresServerSideSecret) || capability.providerKind === 'real_cloud' || capability.providerKind === 'self_hosted',
+      serverSideSecretRequired: Boolean(capability.requiresServerSideSecret) || isRealOrCandidateKind,
       supportedTokenKinds: [...PROVIDER_PROXY_TOKEN_KINDS],
       realMediaUploadAllowed: false,
       realtimeBillingAllowed: false,

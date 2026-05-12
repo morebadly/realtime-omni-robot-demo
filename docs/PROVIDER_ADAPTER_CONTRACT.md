@@ -1,4 +1,8 @@
-# Provider Adapter Contract (v1.3.7)
+# Provider Adapter Contract (v1.3.8)
+
+## v1.3.8 Real-Cloud-Candidate Addendum
+
+v1.3.8 introduces a new `real_cloud_candidate` provider kind for the BigModel / DashScope realtime placeholders. The descriptor builder now treats `real_cloud_candidate` exactly like `real_cloud` / `self_hosted`: `socketSandbox.canOpenSyntheticSocket=false`, `socketSandbox.socketSandboxMode='blocked'`, `providerProxy.serverSideSecretRequired=true`. A new descriptor reason `real_cloud_candidate_blocked_by_default` surfaces when the underlying capability has `candidateOnly=true` or `providerKind='real_cloud_candidate'`.
 
 ## v1.3.7 Provider Proxy Addendum
 

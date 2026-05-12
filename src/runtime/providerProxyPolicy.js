@@ -70,7 +70,7 @@ const REAL_ACTION_SCOPE_MAP = {
 };
 
 function isRealProviderKind(kind) {
-  return kind === 'real_cloud' || kind === 'self_hosted';
+  return kind === 'real_cloud' || kind === 'self_hosted' || kind === 'real_cloud_candidate';
 }
 
 function stripSecrets(obj, droppedOut) {
@@ -281,6 +281,167 @@ export function evaluateProviderProxyRequest(request = {}, policy = null) {
 export function requestEphemeralProviderSession(input = {}) {
   const policy = input.policy || createDefaultProviderProxyPolicy();
   return evaluateProviderProxyRequest(input, policy);
+}
+
+// v1.3.8: handshake dry-run pure decision. Used by both the Runtime and
+// the local skeleton server. Real-cloud / self-hosted / real-cloud-candidate
+// providers are blocked. Synthetic / localdev / offline kinds may receive a
+// dry-run-ready decision IF the supplied ephemeral token validates.
+export function evaluateProxyHandshakeDryRun(request = {}, policy = null) {
+  const effectivePolicy = policy || createDefaultProviderProxyPolicy();
+  // Pull the legitimate ephemeral token descriptor (if any) BEFORE scrubbing.
+  // SECRET_FIELD_NAMES intentionally contains 'token' to defend against
+  // raw token strings being passed in, but here the caller may pass a
+  // structured `omni.ephemeral_session_token.v1` descriptor.
+  const inputToken = (request && typeof request.token === 'object' && request.token && request.token.schema === EPHEMERAL_SESSION_TOKEN_SCHEMA) ? request.token : null;
+  const requestForScrub = { ...(request || {}) };
+  delete requestForScrub.token;
+  const strippedFields = [];
+  const scrubbedRequest = stripSecrets({ ...requestForScrub, schema: 'omni.provider_handshake_dry_run_request.v1' }, strippedFields);
+  const providerId = scrubbedRequest.providerId || 'localdev_mock';
+  const capability = getProviderCapability(providerId);
+  const providerKind = capability?.providerKind || 'unknown';
+  const realProvider = isRealProviderKind(providerKind);
+  const blockReasons = describeBlockReasons(scrubbedRequest);
+  const secretStripped = strippedFields.length > 0;
+
+  const baseEnvelope = {
+    schema: 'omni.provider_handshake_dry_run.v1',
+    providerId,
+    providerKind,
+    fallbackProviderId: effectivePolicy.fallbackProviderId || 'localdev_mock',
+    secretStripped,
+    strippedFields,
+    scrubbedRequest,
+    safety: {
+      opensRealSocket: false,
+      sentToProvider: false,
+      uploaded: false,
+      persisted: false,
+      billingStarted: false,
+      canSendRealAudio: false,
+      canSendRealCamera: false,
+      canStartBillingSession: false,
+      replyTextToTts: false,
+      apiKeyReturned: false,
+      apiKeyAccepted: false,
+      realProviderHandshake: false
+    },
+    dryRunOnly: true,
+    decidedAt: new Date().toISOString()
+  };
+
+  if (realProvider) {
+    return {
+      ...baseEnvelope,
+      decision: 'blocked',
+      dryRunReady: false,
+      blockReasons: ['real_provider_handshake_blocked_by_default', ...blockReasons],
+      notes: ['Real / candidate provider handshake must happen on a future server-side proxy / Robot Gateway / Device Runtime. The browser and the skeleton must not perform real handshakes.']
+    };
+  }
+
+  if (blockReasons.length > 0) {
+    return {
+      ...baseEnvelope,
+      decision: 'blocked',
+      dryRunReady: false,
+      blockReasons,
+      notes: ['Real audio upload / camera upload / billing / socket / TTS are blocked.']
+    };
+  }
+
+  const token = inputToken;
+  if (!token) {
+    return {
+      ...baseEnvelope,
+      decision: 'blocked',
+      dryRunReady: false,
+      blockReasons: ['ephemeral_token_required_for_dry_run'],
+      notes: ['Handshake dry-run requires a synthetic_only / dry_run_only ephemeral session token descriptor.']
+    };
+  }
+
+  const tokenValidation = validateEphemeralSessionToken(token);
+  if (!tokenValidation.ok) {
+    return {
+      ...baseEnvelope,
+      decision: 'blocked',
+      dryRunReady: false,
+      blockReasons: [`token_invalid:${tokenValidation.failures.join('|')}`],
+      notes: ['Provided ephemeral token did not validate. Falling back to localdev_mock is recommended.']
+    };
+  }
+
+  return {
+    ...baseEnvelope,
+    decision: 'dry_run_ready',
+    dryRunReady: true,
+    tokenKind: token.tokenKind,
+    tokenId: token.tokenId,
+    blockReasons: [],
+    notes: ['Dry-run validation completed locally. No real provider was contacted. No socket, audio, camera, or billing was started.']
+  };
+}
+
+// v1.3.8: server health descriptor for the local Mock skeleton server.
+export function createProviderProxyHealth(input = {}) {
+  return {
+    schema: 'omni.provider_proxy_health.v1',
+    serverKind: input.serverKind || 'local_mock_skeleton',
+    status: 'ok',
+    productionReady: false,
+    proxyRequired: true,
+    frontendCanHoldApiKey: false,
+    browserDirectProviderSocketAllowed: false,
+    serverSideSecretRequired: true,
+    realProviderHandshakeAllowed: false,
+    realMediaUploadAllowed: false,
+    realtimeBillingAllowed: false,
+    replyTextToTts: false,
+    replyAudioFrameNative: true,
+    fallbackProviderId: 'localdev_mock',
+    readsRealApiKeyEnv: false,
+    callsRealProviderEndpoint: false,
+    bootedAt: input.bootedAt || new Date().toISOString(),
+    notes: input.notes || [
+      'Local Mock skeleton only. Not a production proxy.',
+      'No real provider endpoint is contacted.',
+      'No real API key is read from env.',
+      'omni.reply_audio_frame.v1 remains the realtime voice output. reply_text is never a TTS input.'
+    ]
+  };
+}
+
+// v1.3.8: explicit fallback decision envelope returned by the skeleton
+// server's /provider-proxy/fallback endpoint. Always lands on localdev_mock.
+export function createProviderProxyFallbackDecision(input = {}) {
+  const strippedFields = [];
+  const scrubbedRequest = stripSecrets({ ...input, schema: 'omni.provider_proxy_fallback_request.v1' }, strippedFields);
+  return {
+    schema: 'omni.provider_proxy_fallback_decision.v1',
+    decision: 'fallback_to_localdev_mock',
+    fromProviderId: scrubbedRequest.fromProviderId || scrubbedRequest.providerId || null,
+    fallbackProviderId: 'localdev_mock',
+    reason: typeof scrubbedRequest.reason === 'string' ? scrubbedRequest.reason : 'safety_fallback_required',
+    secretStripped: strippedFields.length > 0,
+    strippedFields,
+    scrubbedRequest,
+    safety: {
+      opensRealSocket: false,
+      sentToProvider: false,
+      uploaded: false,
+      persisted: false,
+      billingStarted: false,
+      replyTextToTts: false,
+      realProviderHandshake: false
+    },
+    decidedAt: new Date().toISOString(),
+    notes: [
+      'Fallback always points to localdev_mock.',
+      'No real provider was contacted. No real media, billing, or TTS was triggered.'
+    ]
+  };
 }
 
 export { validateEphemeralSessionToken };

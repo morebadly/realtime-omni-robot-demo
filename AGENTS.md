@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.7.
+Current version: v1.3.8.
 
 Tech stack:
 - Vite
@@ -424,3 +424,14 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - Real provider API keys / tokens never enter the descriptor, logs, Visible Context, localStorage, sessionStorage, or any UI state.
 - `omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` MUST NOT be a TTS input. ASR → LLM → TTS regression remains forbidden.
 - LocalDev Mock fallback remains required and the LocalDev Adapter Contract on the wire is unchanged.
+
+## v1.3.8 Provider Proxy Server Skeleton / Real Provider Handshake Sandbox rule
+
+- v1.3.8 ships `scripts/provider-proxy-skeleton-server.mjs`. It is a LOCAL Mock HTTP skeleton only. It MUST NOT be deployed as a production proxy. It MUST NOT read real provider env keys (`BIGMODEL_API_KEY`, `BIGMODEL_TOKEN`, `DASHSCOPE_API_KEY`, `DASHSCOPE_TOKEN`, `QWEN_API_KEY`, `OPENAI_API_KEY`, `MINIMAX_API_KEY`, etc.). It MUST NOT reference real provider hostnames in its source. It MUST NOT call `fetch(`, construct `new WebSocket(`, or import `ws`. The smoke test asserts these statically.
+- The six skeleton endpoints (`/health`, `/provider-proxy/contract`, `/provider-proxy/session/request`, `/provider-proxy/session/validate`, `/provider-proxy/handshake/dry-run`, `/provider-proxy/fallback`) return safety-locked envelopes only. Real provider sessions are denied. Real handshake is denied. Real audio / camera / billing / TTS scopes are denied.
+- `src/runtime/providerProxyHandshakeSandbox.js` is dry-run-only. Real-cloud / self-hosted / `real_cloud_candidate` providers MUST be routed to `provider_handshake_blocked` regardless of which event arrives.
+- `bigmodel_glm_realtime_candidate` and `dashscope_qwen_omni_candidate` are capability placeholders only. They MUST stay `providerKind='real_cloud_candidate'`, `supportsRealtimeSocket=false`, `supportsAudioInput=false`, `supportsCameraInput=false`, `requiresServerSideSecret=true`, `browserDirectProviderSocketAllowed=false`, `candidateOnly=true`. No real key reads. No real endpoint calls.
+- `providerProxyPolicy.evaluateProxyHandshakeDryRun()` MUST strip any `apiKey` / `secret` / `tokenRawValue` / `authorization` / `client_secret` etc. fields, deny real audio / camera / billing / socket / TTS scopes, deny real / candidate providers, and only return `dry_run_ready` for synthetic / localdev / offline providers WITH a valid `synthetic_only` / `dry_run_only` ephemeral token descriptor.
+- The skeleton's `/provider-proxy/session/validate` MUST return a sanitized token shape (no secret-like fields echoed back).
+- `omni.reply_audio_frame.v1` remains the realtime voice output. `reply_text` MUST NOT be a TTS input. ASR → LLM → TTS regression remains forbidden.
+- `localdev_mock` fallback remains required across contract / policy / sandbox / fallback endpoint.

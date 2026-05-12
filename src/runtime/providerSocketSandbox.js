@@ -146,7 +146,7 @@ function appendHistory(prev, event, nextState, detail = {}) {
 }
 
 function isRealProviderKind(kind) {
-  return kind === 'real_cloud' || kind === 'self_hosted';
+  return kind === 'real_cloud' || kind === 'self_hosted' || kind === 'real_cloud_candidate';
 }
 
 export function transitionSocketSandbox(prev, event, detail = {}) {

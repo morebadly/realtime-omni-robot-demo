@@ -1,4 +1,10 @@
-# Provider Secret Boundary (v1.3.7)
+# Provider Secret Boundary (v1.3.8)
+
+## v1.3.8 Provider Proxy Server Skeleton Reminder
+
+v1.3.8 ships a local Mock HTTP skeleton at `scripts/provider-proxy-skeleton-server.mjs`. The skeleton is the place where, in a future production deployment, a real server-side proxy / Robot Gateway / Device Runtime would hold real provider API keys. The skeleton itself **never** reads `BIGMODEL_API_KEY`, `BIGMODEL_TOKEN`, `DASHSCOPE_API_KEY`, `DASHSCOPE_TOKEN`, `QWEN_API_KEY`, `OPENAI_API_KEY`, `MINIMAX_API_KEY`, or any similar env var. The smoke test injects canary values into all of them and asserts no canary string ever appears in any server response. The skeleton source also contains no reference to any real provider hostname and no `fetch` / `WebSocket` / `import 'ws'` call. The boundary is `127.0.0.1` only.
+
+BigModel and DashScope realtime candidates (`bigmodel_glm_realtime_candidate`, `dashscope_qwen_omni_candidate`) are capability placeholders only, with `providerKind='real_cloud_candidate'` and `candidateOnly=true`. They are blocked everywhere: the proxy policy denies their session requests, the socket sandbox denies their socket events, and the new handshake sandbox routes them to `provider_handshake_blocked` even when a valid synthetic token is presented.
 
 ## v1.3.7 Provider Proxy Reminder
 

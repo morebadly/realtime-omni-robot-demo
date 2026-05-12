@@ -1,4 +1,36 @@
-# 架构说明 v1.3.7
+# 架构说明 v1.3.8
+
+## v1.3.8 Provider Proxy Server Skeleton / Real Provider Handshake Sandbox Architecture
+
+v1.3.8 extends the v1.3.7 Provider Proxy contract with two new layers, both safe Mock-first:
+
+```text
+Web Console / Web Runtime
+  -> HTTP (127.0.0.1) JSON requests, never API key, never raw user media
+[ scripts/provider-proxy-skeleton-server.mjs ]   <-- LOCAL Mock skeleton
+  -> pure Runtime functions (policy / handshake sandbox / token descriptors)
+omni.reply_audio_frame.v1 / omni.output_state.v1 / omni.output_turn.v1
+  -> Web Audio / Robot Speaker via localdev_mock fallback
+```
+
+Module map:
+
+- `src/runtime/providerProxyServerContract.js` declares `omni.provider_proxy_server_contract.v1`, `omni.provider_proxy_health.v1`, `omni.provider_handshake_dry_run.v1`, plus `forbiddenEnvVarNames` and `forbiddenOutboundHosts` lists.
+- `src/runtime/providerProxyHandshakeSandbox.js` is a pure 8-state / 6-event state machine. All states carry hard-locked `opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`, `billingStarted=false`, `replyTextToTts=false`, `dryRunOnly=true`. Real-cloud / self-hosted / `real_cloud_candidate` providers always end in `provider_handshake_blocked`.
+- `src/runtime/providerProxyPolicy.js` adds `evaluateProxyHandshakeDryRun`, `createProviderProxyHealth`, `createProviderProxyFallbackDecision`. Secret stripping applies to every request body before evaluation.
+- `src/runtime/providerCapabilities.js` adds `bigmodel_glm_realtime_candidate` and `dashscope_qwen_omni_candidate` (`providerKind='real_cloud_candidate'`, `candidateOnly=true`, all supports* locked false). `PROVIDER_KINDS` now includes `real_cloud_candidate`.
+- `scripts/provider-proxy-skeleton-server.mjs` is a LOCAL Mock HTTP skeleton. It exposes six endpoints, returns safety-locked envelopes, and statically declares it neither reads real env keys nor calls real provider endpoints. `scripts/provider-proxy-server-smoke.mjs` greps the source to prove these invariants.
+- Runtime + UI wiring: `useRuntimeCore` exposes `providerProxyServerContract`, `providerProxyHandshakeSandbox`, `providerProxyHandshakeDryRun`, plus `actions.handleProviderProxyHandshakeDryRun` and `actions.handleProviderProxyHandshakeFallback`. `OmniSessionPanel` shows two compact diagnostic rows.
+
+Safety invariants (continued from v1.3.7):
+
+- Browser cannot hold a real API key.
+- Browser cannot open a real provider socket.
+- Skeleton server does not read real env keys and does not call real provider endpoints.
+- BigModel / DashScope candidates are blocked even with a valid synthetic token.
+- `omni.reply_audio_frame.v1` remains the realtime voice output. `reply_text` is never a TTS input.
+- ASR → LLM → TTS regression remains forbidden.
+- `fallbackProviderId = "localdev_mock"` everywhere.
 
 ## v1.3.7 Provider Proxy Skeleton / Ephemeral Session Token Architecture
 

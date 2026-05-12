@@ -6,6 +6,7 @@ import { summarizeMuxState } from '../runtime/realtimeMediaMux';
 import { summarizeSessionCorrelation } from '../runtime/realtimeSessionCorrelation';
 import { summarizeProviderAdapterDescriptor } from '../runtime/providerAdapterContract';
 import { summarizeSocketSandbox } from '../runtime/providerSocketSandbox';
+import { summarizeProxyHandshakeSandbox } from '../runtime/providerProxyHandshakeSandbox';
 
 function prettyJson(value) {
   if (!value) return '暂无';
@@ -65,6 +66,9 @@ export default function OmniSessionPanel({
   providerAdapterDescriptor,
   providerSocketSandbox,
   providerProxyDiagnostics,
+  providerProxyServerContract,
+  providerProxyHandshakeSandbox,
+  providerProxyHandshakeDryRun,
   onBuild,
   onSimulate,
   onSendLocalDev,
@@ -156,6 +160,8 @@ export default function OmniSessionPanel({
         <div><small>Provider Adapter Contract</small><strong>{providerAdapterDescriptor ? `${providerAdapterDescriptor.providerId}/${providerAdapterDescriptor.providerKind}/${providerAdapterDescriptor.safetyMode}` : 'not_initialized'}</strong><p>real_socket={providerAdapterDescriptor?.canOpenRealtimeSocket ? 'yes' : 'no'} · real_audio={providerAdapterDescriptor?.canSendAudio ? 'yes' : 'no'} · real_camera={providerAdapterDescriptor?.canSendCamera ? 'yes' : 'no'} · billing={providerAdapterDescriptor?.canStartBillingSession ? 'yes' : 'no'} · secret_server_side={providerAdapterDescriptor?.secretBoundary?.requiresServerSideSecret ? 'required' : 'not_required'} · synthetic_only={providerAdapterDescriptor?.providerKind === 'synthetic' ? 'yes' : 'available_for_test'}</p></div>
         <div><small>Provider Socket Sandbox</small><strong>{summarizeSocketSandbox(providerSocketSandbox)}</strong><p>Real socket: blocked · Synthetic socket sandbox: available · Native reply_audio_frame: required · reply_text → TTS: blocked · Secret boundary: server-side required · Token gate: {providerSocketSandbox?.requiresEphemeralToken ? 'required' : 'optional'} ({(providerSocketSandbox?.acceptedTokenKinds || []).join('|') || 'synthetic_only'}) · Active token: {providerSocketSandbox?.activeTokenId ? `${providerSocketSandbox?.activeTokenKind}:${providerSocketSandbox.activeTokenId}` : 'none'}</p></div>
         <div><small>Provider Proxy / Ephemeral Token</small><strong>proxy={providerProxyDiagnostics?.proxyRequired ? 'required' : 'optional'} · direct_socket={providerProxyDiagnostics?.browserDirectProviderSocketAllowed ? 'allowed' : 'blocked'}</strong><p>frontend_api_key={providerProxyDiagnostics?.frontendCanHoldApiKey ? 'allowed' : 'forbidden'} · server_side_secret={providerProxyDiagnostics?.serverSideSecretRequired ? 'required' : 'not_required'} · tokens={(providerProxyDiagnostics?.supportedTokenKinds || []).join('|')} · ttl={Math.round((providerProxyDiagnostics?.defaultTtlMs || 0) / 1000)}s · real_media={providerProxyDiagnostics?.realMediaUploadAllowed ? 'allowed' : 'blocked'} · billing={providerProxyDiagnostics?.realtimeBillingAllowed ? 'allowed' : 'blocked'} · reply_text→TTS={providerProxyDiagnostics?.replyTextToTts ? 'allowed' : 'blocked'} · fallback={providerProxyDiagnostics?.fallbackProviderId} · last={providerProxyDiagnostics?.lastDecision ? `${providerProxyDiagnostics.lastDecision.decision}/${providerProxyDiagnostics.lastDecision.tokenKind || 'no_token'}` : 'none'}</p></div>
+        <div><small>Provider Proxy Server Skeleton</small><strong>{providerProxyServerContract ? `${providerProxyServerContract.serverKind} · production=${providerProxyServerContract.productionReady ? 'yes' : 'no'}` : 'not_initialized'}</strong><p>local_only=yes · reads_real_api_key=no · calls_real_provider=no · endpoints={(providerProxyServerContract?.endpoints || []).length} · real_handshake={providerProxyServerContract?.realProviderHandshakeAllowed ? 'allowed' : 'blocked'} · real_media={providerProxyServerContract?.realMediaUploadAllowed ? 'allowed' : 'blocked'} · billing={providerProxyServerContract?.realtimeBillingAllowed ? 'allowed' : 'blocked'} · fallback={providerProxyServerContract?.fallbackProviderId} · reply_audio_frame=required · reply_text→TTS=blocked</p></div>
+        <div><small>Proxy Handshake Sandbox (dry-run only)</small><strong>{summarizeProxyHandshakeSandbox(providerProxyHandshakeSandbox)}</strong><p>real_provider_handshake=blocked · dry_run_only=yes · real_audio=no · real_camera=no · billing=no · reply_text→TTS=blocked · last_dry_run={providerProxyHandshakeDryRun ? `${providerProxyHandshakeDryRun.decision}` : 'none'}</p></div>
         <div><small>Realtime Mux</small><strong>{summarizeMuxState(realtimeMux)}</strong><p>Mock realtime: yes · Real cloud realtime: no · Audio: protected / non-blocking · Camera: selected / drop-old · Interrupt: highest · media_ack: diagnostics only</p></div>
         <div><small>WebSocket Backpressure</small><strong>{realtimeMux?.bufferedLevel || 'normal'}</strong><p>bufferedAmount={realtimeMux?.bufferedAmount || 0}B · last={realtimeMux?.lastDecision?.decision || 'none'} ({realtimeMux?.lastDecision?.reason || '—'})</p></div>
         <div><small>Session Correlation</small><strong>session correlation: enabled</strong><p>{summarizeSessionCorrelation(sessionCorrelation)}</p></div>

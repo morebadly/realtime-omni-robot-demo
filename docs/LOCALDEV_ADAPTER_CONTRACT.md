@@ -1,4 +1,10 @@
-# LocalDev Adapter Contract v1.3.7
+# LocalDev Adapter Contract v1.3.8
+
+## v1.3.8 Provider Proxy Server Skeleton / Handshake Sandbox Addendum
+
+v1.3.8 introduces a local Mock HTTP skeleton (`scripts/provider-proxy-skeleton-server.mjs`) and a pure handshake-sandbox state machine (`omni.provider_proxy_handshake_sandbox.v1`). Neither contacts a real provider. The skeleton refuses to read `BIGMODEL_API_KEY` / `DASHSCOPE_API_KEY` / `OPENAI_API_KEY` / `MINIMAX_API_KEY` etc. and never issues outbound `fetch` / `WebSocket`. The LocalDev contract on the wire is unchanged. `localdev_mock` remains the only working realtime provider in the demo and is always the fallback.
+
+BigModel and DashScope realtime candidates exist now only as `providerKind='real_cloud_candidate'` placeholders. They have `supportsRealtimeSocket=false`, `supportsAudioInput=false`, `supportsCameraInput=false`, `requiresServerSideSecret=true`, `browserDirectProviderSocketAllowed=false`, and `candidateOnly=true`. The socket sandbox and the proxy handshake sandbox both route them to `blocked` / `provider_handshake_blocked`.
 
 ## v1.3.7 Provider Proxy / Ephemeral Session Token Addendum
 

@@ -1,4 +1,31 @@
-# 技术落地路线 v1.3.7
+# 技术落地路线 v1.3.8
+
+## v1.3.8 Provider Proxy Server Skeleton / Real Provider Handshake Sandbox
+
+Goal: define the future server-side proxy / Robot Gateway / Device Runtime boundary as an actually-runnable local Mock HTTP skeleton plus a pure dry-run handshake state machine. Real traffic stays blocked. Real provider keys stay out of the frontend AND out of the skeleton.
+
+Completed:
+
+1. Add `src/runtime/providerProxyServerContract.js` with `omni.provider_proxy_server_contract.v1`, `omni.provider_proxy_health.v1`, `omni.provider_handshake_dry_run.v1`, and `omni.provider_proxy_fallback_decision.v1` shapes, plus `forbiddenEnvVarNames` and `forbiddenOutboundHosts`.
+2. Add `src/runtime/providerProxyHandshakeSandbox.js` with 8 states / 6 events. All states hard-lock `opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`, `billingStarted=false`, `replyTextToTts=false`, `dryRunOnly=true`. Real-cloud / self-hosted / `real_cloud_candidate` providers route to `provider_handshake_blocked`.
+3. Extend `providerProxyPolicy` with `evaluateProxyHandshakeDryRun`, `createProviderProxyHealth`, `createProviderProxyFallbackDecision`. Secret-like fields are stripped before evaluation and never echoed.
+4. Extend `providerCapabilities` with `bigmodel_glm_realtime_candidate` and `dashscope_qwen_omni_candidate` (`providerKind='real_cloud_candidate'`, `candidateOnly=true`, all supports* locked false). Treat candidates as real-blocked in `providerSocketSandbox` and `providerAdapterContract`.
+5. Add `scripts/provider-proxy-skeleton-server.mjs`. LOCAL Mock only. Six HTTP endpoints. Does not read real env keys. Does not reference real provider hostnames. Does not call `fetch`, `new WebSocket`, or import `ws`.
+6. Wire new state and handlers into `useRuntimeCore`. Add compact diagnostic rows to `OmniSessionPanel`. Wire props through `App.jsx`.
+7. Add `scripts/provider-proxy-server-smoke.mjs` with 24 safety assertions. Add `test:provider-proxy-server` to the smoke suite (25 → 26 checks). Add `proxy:provider:skeleton` npm script.
+8. Add `docs/PROVIDER_PROXY_SERVER.md`, `docs/PROVIDER_PROXY_HANDSHAKE_SANDBOX.md`, `docs/RELEASE_NOTES_v1.3.8.md`, `docs/UPDATE_GUIDE_v1.3.8.md`. Update `README.md`, `AGENTS.md`, `docs/ARCHITECTURE.md`, and existing provider docs.
+
+Still out of scope:
+
+1. Real Qwen / DashScope / BigModel / OpenAI realtime sessions.
+2. Real microphone PCM upload.
+3. Real camera JPEG upload.
+4. Real realtime billing.
+5. Real TTS, `reply_text -> playback`, or any ASR -> LLM -> TTS path.
+6. Automatic VAD / AEC barge-in.
+7. Real provider API keys / tokens reaching the frontend or the skeleton.
+8. Real socket lifecycle inside any sandbox.
+9. Production deployment of the skeleton.
 
 ## v1.3.7 Provider Proxy Skeleton / Ephemeral Session Token
 

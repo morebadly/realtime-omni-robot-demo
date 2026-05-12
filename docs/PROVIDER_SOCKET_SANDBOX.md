@@ -1,4 +1,8 @@
-# Provider Socket Sandbox (v1.3.7)
+# Provider Socket Sandbox (v1.3.8)
+
+## v1.3.8 Real-Cloud-Candidate Addendum
+
+v1.3.8 introduces a new `real_cloud_candidate` provider kind for the BigModel and DashScope realtime placeholders. `isRealProviderKind` now treats `real_cloud_candidate` exactly like `real_cloud` / `self_hosted`: the socket sandbox routes them to `blocked` regardless of which event arrives, and the synthetic adapter cannot drive them past `blocked` even with a valid `synthetic_only` ephemeral token. The new Provider Proxy Handshake Sandbox (`src/runtime/providerProxyHandshakeSandbox.js`, see `docs/PROVIDER_PROXY_HANDSHAKE_SANDBOX.md`) makes the same guarantee for handshake-level transitions: candidates always end in `provider_handshake_blocked`.
 
 ## v1.3.7 Token Gating Addendum
 

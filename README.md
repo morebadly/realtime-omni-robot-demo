@@ -1,4 +1,17 @@
-# Realtime Omni Robot Demo v1.3.7
+# Realtime Omni Robot Demo v1.3.8
+
+## v1.3.8 Provider Proxy Server Skeleton / Real Provider Handshake Sandbox
+
+v1.3.8 adds a local Mock HTTP skeleton server plus a pure handshake-sandbox state machine on top of v1.3.7's Provider Proxy contract layer. It is still safe Mock-first against `localdev_mock`. It does **not** open a real provider socket, does **not** upload real audio / camera frames, does **not** start realtime billing, and does **not** connect `reply_text` to TTS.
+
+- New `scripts/provider-proxy-skeleton-server.mjs` exposes six HTTP endpoints (`/health`, `/provider-proxy/contract`, `/provider-proxy/session/request`, `/provider-proxy/session/validate`, `/provider-proxy/handshake/dry-run`, `/provider-proxy/fallback`) on `127.0.0.1`. It is a LOCAL Mock skeleton only: it never reads `BIGMODEL_API_KEY` / `DASHSCOPE_API_KEY` / `OPENAI_API_KEY` / `MINIMAX_API_KEY` etc., never references any real provider hostname, never calls `fetch` / `new WebSocket` / `import 'ws'`.
+- New `src/runtime/providerProxyServerContract.js` declares `omni.provider_proxy_server_contract.v1`, `omni.provider_proxy_health.v1`, and `omni.provider_handshake_dry_run.v1`, plus `forbiddenEnvVarNames` and `forbiddenOutboundHosts` lists.
+- New `src/runtime/providerProxyHandshakeSandbox.js` is a pure 8-state / 6-event state machine with hard-locked safety (`opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`, `billingStarted=false`, `replyTextToTts=false`, `dryRunOnly=true`). Real-cloud / self-hosted / `real_cloud_candidate` providers always end in `provider_handshake_blocked`.
+- `providerProxyPolicy` adds `evaluateProxyHandshakeDryRun`, `createProviderProxyHealth`, and `createProviderProxyFallbackDecision`. Any `apiKey` / `secret` / `tokenRawValue` / `authorization` / `client_secret` field in a request is stripped before evaluation; decisions never echo the raw value.
+- New BigModel and DashScope candidate placeholders (`bigmodel_glm_realtime_candidate`, `dashscope_qwen_omni_candidate`) sit in `providerCapabilities` with `providerKind='real_cloud_candidate'`, `supportsRealtimeSocket=false`, `supportsAudioInput=false`, `supportsCameraInput=false`, `requiresServerSideSecret=true`, `browserDirectProviderSocketAllowed=false`, `candidateOnly=true`. No real key is read; no real endpoint is contacted.
+- UI: OmniSessionPanel adds two compact diagnostic rows (Provider Proxy Server Skeleton + Proxy Handshake Sandbox). No new top-level entrances.
+- `npm run proxy:provider:skeleton` boots the local skeleton; `npm run test:provider-proxy-server` runs 24 safety assertions. The safe smoke suite is now 26 checks.
+- No real audio upload, no real camera upload, no realtime billing, no real provider socket, no `reply_text → TTS`. `localdev_mock` fallback remains required.
 
 ## v1.3.7 Provider Proxy Skeleton / Ephemeral Session Token
 
