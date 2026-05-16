@@ -1,4 +1,18 @@
-# Provider Proxy Server Skeleton (v1.3.8)
+# Provider Proxy Server Skeleton (v1.3.9)
+
+## v1.3.9 Provider-specific Endpoints Addendum
+
+v1.3.9 adds five local Mock provider-specific endpoints:
+
+| Method | Path | Response schema |
+| --- | --- | --- |
+| GET | `/provider-proxy/providers` | `omni.provider_specific_handshake_adapter_list.v1` |
+| GET | `/provider-proxy/providers/:providerId/handshake-adapter` | `omni.provider_specific_handshake_adapter.v1` |
+| POST | `/provider-proxy/providers/:providerId/handshake/dry-run` | `omni.provider_specific_handshake_dry_run.v1` |
+| GET | `/provider-proxy/providers/:providerId/event-mapping` | `omni.provider_handshake_event_mapping.v1` |
+| GET | `/provider-proxy/providers/:providerId/error-mapping` | `omni.provider_handshake_error_mapping.v1` |
+
+These endpoints return BigModel / DashScope candidate metadata, event mapping, error mapping, and fallback decisions only. They do not read real provider API keys, do not call real provider endpoints, do not open sockets, do not upload media, do not start billing, and do not connect `reply_text` to TTS.
 
 v1.3.8 adds a local Mock skeleton server that defines the HTTP boundary
 between a Web Console / Web Runtime and a future server-side proxy /

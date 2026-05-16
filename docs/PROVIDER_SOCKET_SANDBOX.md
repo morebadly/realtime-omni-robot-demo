@@ -1,4 +1,8 @@
-# Provider Socket Sandbox (v1.3.8)
+# Provider Socket Sandbox (v1.3.9)
+
+## v1.3.9 Provider-specific Handshake Adapter Addendum
+
+Provider-specific dry-run metadata does not change socket sandbox behavior. `real_cloud_candidate` providers are still real-blocked in the socket sandbox, even when provider-specific adapter metadata validates locally. Metadata `dry_run_ready` is not socket readiness.
 
 ## v1.3.8 Real-Cloud-Candidate Addendum
 

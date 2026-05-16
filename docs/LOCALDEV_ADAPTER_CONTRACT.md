@@ -1,4 +1,10 @@
-# LocalDev Adapter Contract v1.3.8
+# LocalDev Adapter Contract v1.3.9
+
+## v1.3.9 Provider-specific Handshake Adapter Addendum
+
+v1.3.9 does not change the LocalDev wire contract. It adds provider-specific dry-run descriptors and local skeleton endpoints for BigModel / DashScope candidate metadata only. The LocalDev schemas remain `omni.input_packet.v1`, `omni.audio_frame.v1`, `omni.camera_frame.v1`, `omni.interrupt.v1`, `omni.output_state.v1`, `omni.output_turn.v1`, `omni.reply_audio_frame.v1`, and `cloudgenie.local_dev.media_ack.v1`.
+
+Provider-specific event mapping remains descriptive. `omni.reply_audio_frame.v1` is still the realtime voice output, `reply_text` is still subtitle/log/debug only, audio frames do not auto-interrupt, and `media_ack` remains diagnostics-only. `localdev_mock` remains the fallback.
 
 ## v1.3.8 Provider Proxy Server Skeleton / Handshake Sandbox Addendum
 

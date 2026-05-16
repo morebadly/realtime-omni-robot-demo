@@ -32,10 +32,23 @@ import {
   createDefaultProviderProxyPolicy,
   createProviderProxyFallbackDecision,
   createProviderProxyHealth,
+  createProviderHandshakeDryRunReport,
+  createProviderSpecificFallbackDecision,
   evaluateProviderProxyRequest,
+  evaluateProviderSpecificHandshakeDryRun,
   evaluateProxyHandshakeDryRun,
+  listProviderSpecificHandshakeAdapterSummaries,
   validateEphemeralSessionToken
 } from '../src/runtime/providerProxyPolicy.js';
+import {
+  getProviderSpecificHandshakeAdapter
+} from '../src/runtime/providerSpecificHandshakeAdapters.js';
+import {
+  createProviderHandshakeEventMapping
+} from '../src/runtime/providerHandshakeEventMapping.js';
+import {
+  createProviderHandshakeErrorMapping
+} from '../src/runtime/providerHandshakeErrorMapping.js';
 
 const DEFAULT_PORT = Number(process.env.PROVIDER_PROXY_SKELETON_PORT) || 8011;
 const DEFAULT_HOST = process.env.PROVIDER_PROXY_SKELETON_HOST || '127.0.0.1';
@@ -90,6 +103,13 @@ function sendError(res, status, reason, detail) {
       replyTextToTts: false
     }
   });
+}
+
+function providerSpecificRoute(pathname, suffix) {
+  const prefix = '/provider-proxy/providers/';
+  if (!pathname.startsWith(prefix) || !pathname.endsWith(suffix)) return null;
+  const providerId = pathname.slice(prefix.length, pathname.length - suffix.length);
+  return providerId && !providerId.includes('/') ? decodeURIComponent(providerId) : null;
 }
 
 async function readJsonBody(req, maxBytes = 64 * 1024) {
@@ -193,6 +213,55 @@ export function createProviderProxySkeletonHandler(options = {}) {
         const body = await readJsonBody(req);
         return sendJson(res, 200, createProviderProxyFallbackDecision(body));
       }
+      if (route === 'GET /provider-proxy/providers') {
+        return sendJson(res, 200, {
+          schema: 'omni.provider_specific_handshake_adapter_list.v1',
+          dryRunOnly: true,
+          count: listProviderSpecificHandshakeAdapterSummaries().length,
+          providers: listProviderSpecificHandshakeAdapterSummaries(),
+          fallbackProviderId: 'localdev_mock',
+          safety: {
+            opensRealSocket: false,
+            sentToProvider: false,
+            uploaded: false,
+            persisted: false,
+            billingStarted: false,
+            replyTextToTts: false
+          }
+        });
+      }
+
+      const adapterProviderId = providerSpecificRoute(url.pathname, '/handshake-adapter');
+      if (req.method === 'GET' && adapterProviderId) {
+        const adapter = getProviderSpecificHandshakeAdapter(adapterProviderId);
+        if (!adapter) return sendError(res, 404, 'provider_specific_adapter_not_found', adapterProviderId);
+        return sendJson(res, 200, adapter);
+      }
+
+      const dryRunProviderId = providerSpecificRoute(url.pathname, '/handshake/dry-run');
+      if (req.method === 'POST' && dryRunProviderId) {
+        const body = await readJsonBody(req);
+        const result = evaluateProviderSpecificHandshakeDryRun(dryRunProviderId, body, policy);
+        return sendJson(res, result.decision === 'dry_run_ready' ? 200 : 403, result);
+      }
+
+      const eventMappingProviderId = providerSpecificRoute(url.pathname, '/event-mapping');
+      if (req.method === 'GET' && eventMappingProviderId) {
+        const mapping = createProviderHandshakeEventMapping(eventMappingProviderId);
+        if (!mapping) return sendError(res, 404, 'provider_specific_event_mapping_not_found', eventMappingProviderId);
+        return sendJson(res, 200, mapping);
+      }
+
+      const errorMappingProviderId = providerSpecificRoute(url.pathname, '/error-mapping');
+      if (req.method === 'GET' && errorMappingProviderId) {
+        const mapping = createProviderHandshakeErrorMapping(errorMappingProviderId);
+        if (!mapping) return sendError(res, 404, 'provider_specific_error_mapping_not_found', errorMappingProviderId);
+        return sendJson(res, 200, {
+          ...mapping,
+          dryRunReport: createProviderHandshakeDryRunReport(errorMappingProviderId),
+          sampleFallback: createProviderSpecificFallbackDecision(errorMappingProviderId, { category: 'socket_denied' })
+        });
+      }
       // Unknown route: list endpoints + safety reminder.
       return sendJson(res, 404, {
         schema: 'omni.provider_proxy_server_error.v1',
@@ -208,7 +277,7 @@ export function createProviderProxySkeletonHandler(options = {}) {
 }
 
 export function startProviderProxySkeletonServer(options = {}) {
-  const port = Number(options.port) || DEFAULT_PORT;
+  const port = Number.isFinite(Number(options.port)) ? Number(options.port) : DEFAULT_PORT;
   const host = options.host || DEFAULT_HOST;
   const handler = createProviderProxySkeletonHandler(options);
   const server = http.createServer((req, res) => { handler(req, res); });

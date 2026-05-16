@@ -1,4 +1,30 @@
-# 技术落地路线 v1.3.8
+# 技术落地路线 v1.3.9
+
+# 鎶€鏈惤鍦拌矾绾?v1.3.9
+
+## v1.3.9 Provider-specific Handshake Adapter Dry-run
+
+Goal: define provider-specific handshake adapter metadata for BigModel GLM-Realtime and DashScope Qwen-Omni candidates without connecting either provider.
+
+Completed:
+
+1. Add `src/runtime/providerSpecificHandshakeAdapters.js` for candidate endpoint metadata and safety-locked adapter descriptors.
+2. Add `src/runtime/providerHandshakeEventMapping.js` for internal Omni schema to provider-candidate event mapping.
+3. Add `src/runtime/providerHandshakeErrorMapping.js` for provider error categories to Runtime fallback reasons.
+4. Extend `providerProxyPolicy` with provider-specific dry-run report / evaluation / fallback helpers.
+5. Extend the local provider proxy skeleton with provider-specific metadata, dry-run, event-mapping, and error-mapping endpoints.
+6. Add compact Omni Session diagnostics for provider-specific dry-run adapters.
+7. Add `scripts/provider-specific-handshake-adapter-smoke.mjs` and include it in the safe smoke suite (26 -> 27 checks).
+8. Add provider-specific handshake adapter, event mapping, error mapping, release notes, and update guide docs.
+
+Still out of scope:
+
+1. Real BigModel / DashScope calls.
+2. Real provider WebSocket.
+3. Real audio or camera upload.
+4. Realtime billing.
+5. Real provider API keys in the browser or local skeleton.
+6. `reply_text -> TTS` or ASR -> LLM -> TTS regression.
 
 ## v1.3.8 Provider Proxy Server Skeleton / Real Provider Handshake Sandbox
 

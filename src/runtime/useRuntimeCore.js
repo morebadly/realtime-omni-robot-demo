@@ -30,6 +30,9 @@ import { createDefaultSocketSandboxState, requestSocketSandbox, runSyntheticSock
 import { createDefaultProviderProxyPolicy, evaluateProviderProxyRequest, evaluateProxyHandshakeDryRun, summarizeProviderProxyDecision, describeProxyForUi } from './providerProxyPolicy';
 import { createProviderProxyServerContract, summarizeProviderProxyServerContract } from './providerProxyServerContract';
 import { createDefaultProxyHandshakeSandboxState, runProxyHandshakeDryRun, summarizeProxyHandshakeSandbox, transitionProxyHandshakeSandbox } from './providerProxyHandshakeSandbox';
+import { listProviderSpecificHandshakeAdapters, summarizeProviderSpecificHandshakeAdapter } from './providerSpecificHandshakeAdapters';
+import { createProviderHandshakeEventMapping, summarizeProviderHandshakeEventMapping } from './providerHandshakeEventMapping';
+import { createProviderHandshakeErrorMapping, summarizeProviderHandshakeErrorMapping } from './providerHandshakeErrorMapping';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -159,6 +162,32 @@ export function useRuntimeCore() {
     providerId: initialSeed.robot?.adapterDetail?.providerConfig?.providerId || 'localdev_mock'
   }));
   const [providerProxyHandshakeDryRun, setProviderProxyHandshakeDryRun] = useState(null);
+  const providerSpecificHandshakeDiagnostics = useMemo(() => (
+    listProviderSpecificHandshakeAdapters().map((adapter) => {
+      const eventMapping = createProviderHandshakeEventMapping(adapter.providerId);
+      const errorMapping = createProviderHandshakeErrorMapping(adapter.providerId);
+      return {
+        providerId: adapter.providerId,
+        providerKind: adapter.providerKind,
+        displayName: adapter.displayName,
+        officialName: adapter.officialName,
+        adapter,
+        eventMapping,
+        errorMapping,
+        adapterSummary: summarizeProviderSpecificHandshakeAdapter(adapter),
+        eventMappingSummary: summarizeProviderHandshakeEventMapping(eventMapping),
+        errorMappingSummary: summarizeProviderHandshakeErrorMapping(errorMapping),
+        dryRunOnly: true,
+        browserDirectSocketAllowed: false,
+        requiresServerSideSecret: true,
+        realMediaUploadAllowed: false,
+        realtimeBillingAllowed: false,
+        replyTextToTts: false,
+        replyAudioFrameNativeRequired: true,
+        fallbackProviderId: 'localdev_mock'
+      };
+    })
+  ), []);
   const [localDevBridge, setLocalDevBridge] = useState({
     status: 'idle',
     endpoint: initialSeed.robot.adapterDetail?.endpoint || '未配置',
@@ -1347,6 +1376,7 @@ export function useRuntimeCore() {
     providerProxyServerContract,
     providerProxyHandshakeSandbox,
     providerProxyHandshakeDryRun,
+    providerSpecificHandshakeDiagnostics,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,

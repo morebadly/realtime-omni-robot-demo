@@ -1,4 +1,10 @@
-# Provider Proxy Handshake Sandbox (v1.3.8)
+# Provider Proxy Handshake Sandbox (v1.3.9)
+
+## v1.3.9 Provider-specific Dry-run Addendum
+
+v1.3.9 keeps this sandbox dry-run-only and adds a separate provider-specific metadata validation layer. BigModel / DashScope candidates can return `dry_run_ready` for metadata validation reports, but this does not mean real provider readiness. The handshake sandbox itself still blocks real-cloud / self-hosted / `real_cloud_candidate` provider handshakes from becoming real-ready.
+
+Every provider-specific dry-run report keeps `opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `persisted=false`, `billingStarted=false`, `replyTextToTts=false`, and `fallbackProviderId='localdev_mock'`.
 
 `src/runtime/providerProxyHandshakeSandbox.js` is a pure state machine
 that models how a future server-side proxy / Robot Gateway / Device

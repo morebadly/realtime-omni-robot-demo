@@ -1,4 +1,22 @@
-# 架构说明 v1.3.8
+# 架构说明 v1.3.9
+
+# 鏋舵瀯璇存槑 v1.3.9
+
+## v1.3.9 Provider-specific Handshake Adapter Dry-run Architecture
+
+v1.3.9 adds a provider-specific dry-run descriptor layer under the Provider Proxy / Handshake Sandbox boundary:
+
+```text
+Provider Proxy Skeleton (local Mock only)
+  -> providerSpecificHandshakeAdapters
+  -> providerHandshakeEventMapping
+  -> providerHandshakeErrorMapping
+  -> localdev_mock fallback
+```
+
+The BigModel GLM-Realtime and DashScope Qwen-Omni candidates are still `real_cloud_candidate` metadata only. Endpoint templates are documentation metadata, not connection targets for the browser or skeleton. The skeleton returns dry-run reports and mappings, with `opensRealSocket=false`, `sentToProvider=false`, `uploaded=false`, `billingStarted=false`, `replyTextToTts=false`, and `fallbackProviderId='localdev_mock'`.
+
+`omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` remains subtitle / log / debug only. No ASR -> LLM -> TTS regression is introduced.
 
 ## v1.3.8 Provider Proxy Server Skeleton / Real Provider Handshake Sandbox Architecture
 

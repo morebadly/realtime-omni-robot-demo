@@ -1,4 +1,8 @@
-# Provider Proxy Skeleton / Ephemeral Session Token (v1.3.7, extended in v1.3.8)
+# Provider Proxy Skeleton / Ephemeral Session Token (v1.3.7, extended in v1.3.9)
+
+## v1.3.9 Addendum
+
+v1.3.9 adds provider-specific handshake adapter dry-run reports under the same Provider Proxy safety contract. The browser still cannot hold a real API key, cannot open a real provider socket, cannot upload real media, and cannot start billing. BigModel / DashScope candidates are metadata-only and always fall back to `localdev_mock` on errors.
 
 ## v1.3.8 Addendum
 

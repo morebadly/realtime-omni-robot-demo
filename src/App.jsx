@@ -53,6 +53,7 @@ export default function App() {
     providerProxyServerContract,
     providerProxyHandshakeSandbox,
     providerProxyHandshakeDryRun,
+    providerSpecificHandshakeDiagnostics,
     omniPacket,
     lastOmniTurn,
     omniSessionStatus,
@@ -191,6 +192,7 @@ export default function App() {
             providerProxyServerContract={providerProxyServerContract}
             providerProxyHandshakeSandbox={providerProxyHandshakeSandbox}
             providerProxyHandshakeDryRun={providerProxyHandshakeDryRun}
+            providerSpecificHandshakeDiagnostics={providerSpecificHandshakeDiagnostics}
             onBuild={actions.handleOmniPacketBuild}
             onSimulate={actions.handleOmniTurnSimulate}
             onSendLocalDev={actions.handleLocalDevOmniSend}

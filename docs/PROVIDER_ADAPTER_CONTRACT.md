@@ -1,4 +1,8 @@
-# Provider Adapter Contract (v1.3.8)
+# Provider Adapter Contract (v1.3.9)
+
+## v1.3.9 Provider-specific Handshake Adapter Addendum
+
+v1.3.9 adds candidate-specific dry-run descriptors above the existing Provider Adapter Contract. BigModel / DashScope candidates remain `real_cloud_candidate`, `candidateOnly=true`, `dryRunOnly=true`, `browserDirectSocketAllowed=false`, `requiresServerSideSecret=true`, and all real-channel safety booleans remain false. The provider adapter contract still does not open sessions or upload media.
 
 ## v1.3.8 Real-Cloud-Candidate Addendum
 

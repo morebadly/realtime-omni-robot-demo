@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.8.
+Current version: v1.3.9.
 
 Tech stack:
 - Vite
@@ -435,3 +435,12 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - The skeleton's `/provider-proxy/session/validate` MUST return a sanitized token shape (no secret-like fields echoed back).
 - `omni.reply_audio_frame.v1` remains the realtime voice output. `reply_text` MUST NOT be a TTS input. ASR → LLM → TTS regression remains forbidden.
 - `localdev_mock` fallback remains required across contract / policy / sandbox / fallback endpoint.
+
+## v1.3.9 Provider-specific Handshake Adapter Dry-run rule
+
+- v1.3.9 adds provider-specific handshake adapter dry-run metadata for `bigmodel_glm_realtime_candidate` and `dashscope_qwen_omni_candidate`.
+- This remains metadata / mapping / validation only. Do not open real provider sockets, upload real audio, upload real camera, start realtime billing, read real provider API keys, or call real BigModel / DashScope endpoints.
+- Browser direct provider socket remains blocked. Real secrets remain server-side only: server-side proxy / Robot Gateway / Device Runtime.
+- Event mapping must keep `omni.reply_audio_frame.v1` as realtime voice output and `reply_text` as subtitles/log/debug/Visible Context only.
+- Error mapping must fall back to `localdev_mock` for auth, quota, billing, socket, media, endpoint, and model errors.
+- The local skeleton provider-specific endpoints are local Mock only and must keep safety fields false: `opensRealSocket`, `sentToProvider`, `uploaded`, `persisted`, `billingStarted`, and `replyTextToTts`.

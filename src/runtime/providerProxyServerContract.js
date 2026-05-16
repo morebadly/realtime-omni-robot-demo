@@ -28,7 +28,12 @@ export const PROVIDER_PROXY_SERVER_ENDPOINTS = Object.freeze([
   { method: 'POST', path: '/provider-proxy/session/request', responseSchema: 'omni.provider_proxy_decision.v1' },
   { method: 'POST', path: '/provider-proxy/session/validate', responseSchema: 'omni.provider_proxy_decision.v1' },
   { method: 'POST', path: '/provider-proxy/handshake/dry-run', responseSchema: PROVIDER_PROXY_HANDSHAKE_DRY_RUN_SCHEMA },
-  { method: 'POST', path: '/provider-proxy/fallback', responseSchema: PROVIDER_PROXY_FALLBACK_DECISION_SCHEMA }
+  { method: 'POST', path: '/provider-proxy/fallback', responseSchema: PROVIDER_PROXY_FALLBACK_DECISION_SCHEMA },
+  { method: 'GET', path: '/provider-proxy/providers', responseSchema: 'omni.provider_specific_handshake_adapter_list.v1' },
+  { method: 'GET', path: '/provider-proxy/providers/:providerId/handshake-adapter', responseSchema: 'omni.provider_specific_handshake_adapter.v1' },
+  { method: 'POST', path: '/provider-proxy/providers/:providerId/handshake/dry-run', responseSchema: 'omni.provider_specific_handshake_dry_run.v1' },
+  { method: 'GET', path: '/provider-proxy/providers/:providerId/event-mapping', responseSchema: 'omni.provider_handshake_event_mapping.v1' },
+  { method: 'GET', path: '/provider-proxy/providers/:providerId/error-mapping', responseSchema: 'omni.provider_handshake_error_mapping.v1' }
 ]);
 
 function lockServerSafety() {
@@ -99,11 +104,23 @@ export function createProviderProxyServerContract(input = {}) {
       apiKeyMustNotBeReadFromEnvBySkeleton: true,
       skeletonMustNotCallRealProvider: true
     },
+    providerSpecificHandshakeAdapters: {
+      available: true,
+      dryRunOnly: true,
+      providerIds: [
+        'bigmodel_glm_realtime_candidate',
+        'dashscope_qwen_omni_candidate'
+      ],
+      browserDirectSocketAllowed: false,
+      serverSideSecretRequired: true,
+      fallbackProviderId: 'localdev_mock'
+    },
     notes: input.notes || [
       'Local Mock skeleton only. Not a production server.',
       'Browser cannot hold a real API key. Real secrets live on the production server-side proxy.',
       'Skeleton must not read BIGMODEL_API_KEY / DASHSCOPE_API_KEY / OPENAI_API_KEY / etc.',
       'Skeleton must not perform fetch / WebSocket calls to real provider endpoints.',
+      'Provider-specific handshake adapters are dry-run metadata only.',
       'Skeleton must always fall back to localdev_mock on failure.',
       'omni.reply_audio_frame.v1 remains the realtime voice output. reply_text is never a TTS input.'
     ]

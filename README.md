@@ -1,4 +1,15 @@
-# Realtime Omni Robot Demo v1.3.8
+# Realtime Omni Robot Demo v1.3.9
+
+## v1.3.9 Provider-specific Handshake Adapter Dry-run
+
+v1.3.9 adds dry-run-only provider-specific handshake adapter metadata for `bigmodel_glm_realtime_candidate` and `dashscope_qwen_omni_candidate`. It adds endpoint metadata, request/response schema mapping, event mapping, error mapping, fallback decisions, local skeleton endpoints, compact UI diagnostics, and a new smoke test. It remains safe Mock-first against `localdev_mock`.
+
+- New Runtime descriptors: `src/runtime/providerSpecificHandshakeAdapters.js`, `src/runtime/providerHandshakeEventMapping.js`, and `src/runtime/providerHandshakeErrorMapping.js`.
+- New local skeleton endpoints: `/provider-proxy/providers`, `/provider-proxy/providers/:providerId/handshake-adapter`, `/provider-proxy/providers/:providerId/handshake/dry-run`, `/provider-proxy/providers/:providerId/event-mapping`, and `/provider-proxy/providers/:providerId/error-mapping`.
+- `npm run test:provider-specific-handshake-adapter` validates candidate metadata, event/error mapping, fallback behavior, secret stripping, and the local skeleton endpoints.
+- The safe smoke suite is now 27 checks.
+- No real audio upload, no real camera upload, no realtime billing, no real provider socket, no real BigModel / DashScope endpoint call, no real provider API key read, and no `reply_text -> TTS`.
+- `omni.reply_audio_frame.v1` remains the realtime voice output path. `localdev_mock` fallback remains required.
 
 ## v1.3.8 Provider Proxy Server Skeleton / Real Provider Handshake Sandbox
 

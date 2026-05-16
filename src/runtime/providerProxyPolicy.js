@@ -34,6 +34,21 @@ import {
   EPHEMERAL_SESSION_TOKEN_SCHEMA
 } from './providerEphemeralSession.js';
 import { getProviderCapability } from './providerCapabilities.js';
+import {
+  getProviderSpecificHandshakeAdapter,
+  listProviderSpecificHandshakeAdapters,
+  validateProviderSpecificHandshakeAdapter,
+  summarizeProviderSpecificHandshakeAdapter
+} from './providerSpecificHandshakeAdapters.js';
+import {
+  createProviderHandshakeEventMapping,
+  validateProviderHandshakeEventMapping
+} from './providerHandshakeEventMapping.js';
+import {
+  createProviderHandshakeErrorMapping,
+  validateProviderHandshakeErrorMapping,
+  createProviderSpecificFallbackDecision as createProviderSpecificFallbackDecisionEnvelope
+} from './providerHandshakeErrorMapping.js';
 
 const SECRET_FIELD_NAMES = new Set([
   'apiKey',
@@ -442,6 +457,129 @@ export function createProviderProxyFallbackDecision(input = {}) {
       'No real provider was contacted. No real media, billing, or TTS was triggered.'
     ]
   };
+}
+
+export function createProviderHandshakeDryRunReport(providerId, request = {}) {
+  const strippedFields = [];
+  const scrubbedRequest = stripSecrets({ ...(request || {}), schema: 'omni.provider_specific_handshake_dry_run_request.v1' }, strippedFields);
+  const adapter = getProviderSpecificHandshakeAdapter(providerId);
+  const eventMapping = createProviderHandshakeEventMapping(providerId);
+  const errorMapping = createProviderHandshakeErrorMapping(providerId);
+  const adapterValidation = validateProviderSpecificHandshakeAdapter(adapter);
+  const eventValidation = validateProviderHandshakeEventMapping(eventMapping);
+  const errorValidation = validateProviderHandshakeErrorMapping(errorMapping);
+  const ok = Boolean(adapter && adapterValidation.ok && eventValidation.ok && errorValidation.ok);
+  return {
+    schema: 'omni.provider_specific_handshake_dry_run_report.v1',
+    providerId,
+    providerKind: adapter?.providerKind || 'unknown',
+    status: ok ? 'dry_run_metadata_ready' : 'dry_run_metadata_invalid',
+    dryRunOnly: true,
+    candidateOnly: adapter?.candidateOnly === true,
+    fallbackProviderId: 'localdev_mock',
+    secretStripped: strippedFields.length > 0,
+    strippedFields,
+    scrubbedRequest,
+    adapter,
+    adapterSummary: summarizeProviderSpecificHandshakeAdapter(adapter),
+    eventMapping,
+    errorMapping,
+    validation: {
+      ok,
+      adapter: adapterValidation,
+      eventMapping: eventValidation,
+      errorMapping: errorValidation
+    },
+    safety: {
+      opensRealSocket: false,
+      sentToProvider: false,
+      uploaded: false,
+      persisted: false,
+      billingStarted: false,
+      canSendRealAudio: false,
+      canSendRealCamera: false,
+      canStartBillingSession: false,
+      replyTextToTts: false,
+      realProviderHandshake: false
+    },
+    guardrails: {
+      endpointMetadataOnly: true,
+      noFetch: true,
+      noWebSocket: true,
+      noRealAudioUpload: true,
+      noRealCameraUpload: true,
+      noRealtimeBilling: true,
+      noRealProviderSocket: true,
+      replyAudioFrameIsRealtimeVoiceOutput: true,
+      replyTextNotTtsInput: true,
+      asrLlmTtsRegressionForbidden: true,
+      localdevMockFallbackRequired: true
+    },
+    notes: [
+      'Provider-specific handshake adapter dry-run is metadata validation only.',
+      'No provider endpoint was called. No provider socket was opened.',
+      'reply_text remains subtitle/log/debug only; omni.reply_audio_frame.v1 remains the realtime voice output.'
+    ],
+    decidedAt: new Date().toISOString()
+  };
+}
+
+export function evaluateProviderSpecificHandshakeDryRun(providerId, request = {}, policy = null) {
+  const effectivePolicy = policy || createDefaultProviderProxyPolicy();
+  const report = createProviderHandshakeDryRunReport(providerId, request);
+  const explicitBlockReasons = describeBlockReasons(report.scrubbedRequest || {});
+  const decision = report.validation.ok && explicitBlockReasons.length === 0 ? 'dry_run_ready' : 'blocked';
+  return {
+    schema: 'omni.provider_specific_handshake_dry_run.v1',
+    decision,
+    dryRunReady: decision === 'dry_run_ready',
+    providerId,
+    providerKind: report.providerKind,
+    fallbackProviderId: effectivePolicy.fallbackProviderId || 'localdev_mock',
+    blockReasons: decision === 'dry_run_ready'
+      ? []
+      : [
+          ...explicitBlockReasons,
+          ...(report.validation.adapter.failures || []),
+          ...(report.validation.eventMapping.failures || []),
+          ...(report.validation.errorMapping.failures || [])
+        ],
+    report,
+    safety: { ...report.safety },
+    dryRunOnly: true,
+    secretStripped: report.secretStripped,
+    strippedFields: report.strippedFields,
+    scrubbedRequest: report.scrubbedRequest,
+    notes: report.notes,
+    decidedAt: report.decidedAt
+  };
+}
+
+export function createProviderSpecificFallbackDecision(providerId, error = {}) {
+  return createProviderSpecificFallbackDecisionEnvelope(providerId, error);
+}
+
+export function listProviderSpecificHandshakeAdapterSummaries() {
+  return listProviderSpecificHandshakeAdapters().map((adapter) => ({
+    providerId: adapter.providerId,
+    providerKind: adapter.providerKind,
+    displayName: adapter.displayName,
+    officialName: adapter.officialName,
+    endpointKind: adapter.endpointKind,
+    endpointTemplate: adapter.endpointTemplate,
+    dryRunOnly: adapter.dryRunOnly,
+    candidateOnly: adapter.candidateOnly,
+    browserDirectSocketAllowed: adapter.browserDirectSocketAllowed,
+    requiresServerSideSecret: adapter.requiresServerSideSecret,
+    canOpenRealtimeSocket: adapter.canOpenRealtimeSocket,
+    canSendRealAudio: adapter.canSendRealAudio,
+    canSendRealCamera: adapter.canSendRealCamera,
+    canStartBillingSession: adapter.canStartBillingSession,
+    replyTextToTts: adapter.replyTextToTts,
+    replyAudioFrameNativeRequired: adapter.replyAudioFrameNativeRequired,
+    fallbackProviderId: adapter.fallbackProviderId,
+    summary: summarizeProviderSpecificHandshakeAdapter(adapter)
+  }));
 }
 
 export { validateEphemeralSessionToken };

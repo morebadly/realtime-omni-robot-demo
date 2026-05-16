@@ -1,4 +1,8 @@
-# Provider Secret Boundary (v1.3.8)
+# Provider Secret Boundary (v1.3.9)
+
+## v1.3.9 Provider-specific Reminder
+
+Provider-specific handshake adapters may name endpoint templates as documentation metadata, but they must not read real `BIGMODEL_API_KEY`, `DASHSCOPE_API_KEY`, or other provider secrets. Real secrets remain server-side only in a future proxy / Robot Gateway / Device Runtime. Provider-specific dry-run endpoints strip secret-like request fields and do not echo raw values.
 
 ## v1.3.8 Provider Proxy Server Skeleton Reminder
 
