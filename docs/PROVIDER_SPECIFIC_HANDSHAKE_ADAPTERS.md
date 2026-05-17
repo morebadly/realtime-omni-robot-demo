@@ -1,4 +1,21 @@
-# Provider-specific Handshake Adapters (v1.3.9)
+# Provider-specific Handshake Adapters (v1.4.0)
+
+## v1.4.0 Real Handshake Preflight Fields
+
+v1.4.0 extends each candidate descriptor with:
+
+```text
+realHandshakePreflightSupported=true
+realHandshakePreflightDefault=blocked
+manualOptInRequired=true
+serverSideOnly=true
+browserRuntimeAllowed=false
+verifySmokeNetworkForbidden=true
+```
+
+These fields do not enable real provider traffic. They only mark that a future server-side manual preflight boundary exists. BigModel / DashScope candidates still cannot open realtime sockets, upload audio, upload camera frames, start billing, or use `reply_text` as TTS.
+
+The manual preflight path requires `ALLOW_REAL_PROVIDER_HANDSHAKE=1`, does not run in verify/smoke, does not print keys, and falls back to `localdev_mock`.
 
 v1.3.9 adds provider-specific handshake adapter dry-run descriptors for:
 

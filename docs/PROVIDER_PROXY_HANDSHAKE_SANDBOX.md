@@ -1,4 +1,10 @@
-# Provider Proxy Handshake Sandbox (v1.3.9)
+# Provider Proxy Handshake Sandbox (v1.4.0)
+
+## v1.4.0 Real Handshake Preflight Addendum
+
+The handshake sandbox remains dry-run-only. v1.4.0 adds a separate real provider handshake preflight boundary, but it does not allow the sandbox to open a real provider socket or become real-ready.
+
+Manual preflight is server-side only, requires `ALLOW_REAL_PROVIDER_HANDSHAKE=1`, and can only validate configuration metadata. It must not upload audio/camera, start billing, call TTS, call provider endpoints, or print real keys. Browser runtime is forbidden and `localdev_mock` fallback remains required.
 
 ## v1.3.9 Provider-specific Dry-run Addendum
 

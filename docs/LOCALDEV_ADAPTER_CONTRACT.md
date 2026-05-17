@@ -1,4 +1,12 @@
-# LocalDev Adapter Contract v1.3.9
+# LocalDev Adapter Contract v1.4.0
+
+## v1.4.0 Real Handshake Preflight Addendum
+
+v1.4.0 does not change the LocalDev wire contract. It adds a server-side-only, manual-opt-in preflight boundary for future real provider handshake configuration validation.
+
+LocalDev remains the safe realtime path. `omni.input_packet.v1`, `omni.audio_frame.v1`, `omni.camera_frame.v1`, `omni.interrupt.v1`, `omni.output_state.v1`, `omni.output_turn.v1`, `omni.reply_audio_frame.v1`, and `cloudgenie.local_dev.media_ack.v1` are unchanged.
+
+The preflight boundary must not upload real audio, upload real camera frames, start billing, open real provider sockets, call BigModel / DashScope endpoints, or connect `reply_text` to TTS. `npm run verify` and smoke do not run real network. `localdev_mock` remains fallback.
 
 ## v1.3.9 Provider-specific Handshake Adapter Addendum
 

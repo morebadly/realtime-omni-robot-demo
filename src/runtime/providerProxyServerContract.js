@@ -33,7 +33,8 @@ export const PROVIDER_PROXY_SERVER_ENDPOINTS = Object.freeze([
   { method: 'GET', path: '/provider-proxy/providers/:providerId/handshake-adapter', responseSchema: 'omni.provider_specific_handshake_adapter.v1' },
   { method: 'POST', path: '/provider-proxy/providers/:providerId/handshake/dry-run', responseSchema: 'omni.provider_specific_handshake_dry_run.v1' },
   { method: 'GET', path: '/provider-proxy/providers/:providerId/event-mapping', responseSchema: 'omni.provider_handshake_event_mapping.v1' },
-  { method: 'GET', path: '/provider-proxy/providers/:providerId/error-mapping', responseSchema: 'omni.provider_handshake_error_mapping.v1' }
+  { method: 'GET', path: '/provider-proxy/providers/:providerId/error-mapping', responseSchema: 'omni.provider_handshake_error_mapping.v1' },
+  { method: 'GET', path: '/provider-proxy/providers/:providerId/real-handshake-preflight', responseSchema: 'omni.real_provider_handshake_preflight.v1' }
 ]);
 
 function lockServerSafety() {
@@ -113,6 +114,16 @@ export function createProviderProxyServerContract(input = {}) {
       ],
       browserDirectSocketAllowed: false,
       serverSideSecretRequired: true,
+      fallbackProviderId: 'localdev_mock'
+    },
+    realHandshakePreflight: {
+      supported: true,
+      default: 'blocked',
+      manualOptInRequired: true,
+      serverSideOnly: true,
+      browserRuntimeAllowed: false,
+      verifySmokeNetworkForbidden: true,
+      networkCallAttempted: false,
       fallbackProviderId: 'localdev_mock'
     },
     notes: input.notes || [

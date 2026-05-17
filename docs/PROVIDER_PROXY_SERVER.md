@@ -1,4 +1,16 @@
-# Provider Proxy Server Skeleton (v1.3.9)
+# Provider Proxy Server Skeleton (v1.4.0)
+
+## v1.4.0 Real Handshake Preflight Endpoint Addendum
+
+v1.4.0 adds one local Mock metadata endpoint:
+
+| Method | Path | Response schema |
+| --- | --- | --- |
+| GET | `/provider-proxy/providers/:providerId/real-handshake-preflight` | `omni.real_provider_handshake_preflight.v1` |
+
+This endpoint returns a preflight descriptor with default blocked status, `networkCallAttempted=false`, `keyRequiredServerSide=true`, `browserForbidden=true`, and `fallbackProviderId=localdev_mock`.
+
+The skeleton still binds to `127.0.0.1`, still does not read real provider env key values, still does not call real provider endpoints, still does not open sockets, still does not upload media, still does not start billing, and still does not connect `reply_text` to TTS. Verify/smoke do not perform real network.
 
 ## v1.3.9 Provider-specific Endpoints Addendum
 

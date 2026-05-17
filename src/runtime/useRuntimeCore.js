@@ -33,6 +33,8 @@ import { createDefaultProxyHandshakeSandboxState, runProxyHandshakeDryRun, summa
 import { listProviderSpecificHandshakeAdapters, summarizeProviderSpecificHandshakeAdapter } from './providerSpecificHandshakeAdapters';
 import { createProviderHandshakeEventMapping, summarizeProviderHandshakeEventMapping } from './providerHandshakeEventMapping';
 import { createProviderHandshakeErrorMapping, summarizeProviderHandshakeErrorMapping } from './providerHandshakeErrorMapping';
+import { createRealHandshakePreflightDescriptor } from './providerRealHandshakePreflightDescriptor';
+import { createRealHandshakePreflightPolicy, evaluateRealHandshakePreflightRequest, summarizeRealHandshakePreflight } from './providerRealHandshakePreflightPolicy';
 import { getConnectionModeOption } from './connectionModes';
 import {
   createLocalDevPreflightState as createLocalDevPreflightSeed,
@@ -166,6 +168,9 @@ export function useRuntimeCore() {
     listProviderSpecificHandshakeAdapters().map((adapter) => {
       const eventMapping = createProviderHandshakeEventMapping(adapter.providerId);
       const errorMapping = createProviderHandshakeErrorMapping(adapter.providerId);
+      const realPreflightDescriptor = createRealHandshakePreflightDescriptor(adapter.providerId);
+      const realPreflightPolicy = createRealHandshakePreflightPolicy();
+      const realPreflightDecision = evaluateRealHandshakePreflightRequest({ providerId: adapter.providerId }, realPreflightPolicy);
       return {
         providerId: adapter.providerId,
         providerKind: adapter.providerKind,
@@ -174,12 +179,21 @@ export function useRuntimeCore() {
         adapter,
         eventMapping,
         errorMapping,
+        realPreflightDescriptor,
+        realPreflightDecision,
         adapterSummary: summarizeProviderSpecificHandshakeAdapter(adapter),
         eventMappingSummary: summarizeProviderHandshakeEventMapping(eventMapping),
         errorMappingSummary: summarizeProviderHandshakeErrorMapping(errorMapping),
+        realPreflightSummary: summarizeRealHandshakePreflight(realPreflightDecision),
         dryRunOnly: true,
         browserDirectSocketAllowed: false,
         requiresServerSideSecret: true,
+        realHandshakePreflightSupported: adapter.realHandshakePreflightSupported,
+        realHandshakePreflightDefault: adapter.realHandshakePreflightDefault,
+        manualOptInRequired: true,
+        serverSideOnly: true,
+        browserRuntimeAllowed: false,
+        verifySmokeNetworkForbidden: true,
         realMediaUploadAllowed: false,
         realtimeBillingAllowed: false,
         replyTextToTts: false,
@@ -188,6 +202,20 @@ export function useRuntimeCore() {
       };
     })
   ), []);
+  const providerRealHandshakePreflightDiagnostics = useMemo(() => (
+    providerSpecificHandshakeDiagnostics.map((item) => ({
+      providerId: item.providerId,
+      displayName: item.displayName,
+      decision: item.realPreflightDecision?.decision || 'denied',
+      summary: item.realPreflightSummary,
+      defaultBlocked: item.realPreflightDescriptor?.defaultDecision === 'blocked',
+      manualOptInRequired: item.manualOptInRequired,
+      serverSideOnly: item.serverSideOnly,
+      browserRuntimeAllowed: item.browserRuntimeAllowed,
+      verifySmokeNetworkForbidden: item.verifySmokeNetworkForbidden,
+      fallbackProviderId: item.fallbackProviderId
+    }))
+  ), [providerSpecificHandshakeDiagnostics]);
   const [localDevBridge, setLocalDevBridge] = useState({
     status: 'idle',
     endpoint: initialSeed.robot.adapterDetail?.endpoint || '未配置',
@@ -1377,6 +1405,7 @@ export function useRuntimeCore() {
     providerProxyHandshakeSandbox,
     providerProxyHandshakeDryRun,
     providerSpecificHandshakeDiagnostics,
+    providerRealHandshakePreflightDiagnostics,
     adapterProfiles,
     omniPacket,
     lastOmniTurn,

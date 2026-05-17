@@ -1,6 +1,6 @@
 // providerSpecificHandshakeAdapters.js
 //
-// v1.3.9 Provider-specific Handshake Adapter Dry-run.
+// v1.4.0 Provider-specific Handshake Adapter Dry-run.
 //
 // Pure metadata and validation only. This module does not read provider
 // secrets, does not call provider endpoints, does not import WebSocket
@@ -27,7 +27,10 @@ function lockSafety() {
     canStartBillingSession: false,
     replyTextToTts: false,
     replyAudioFrameNativeRequired: true,
-    dryRunOnly: true
+    dryRunOnly: true,
+    realHandshakePreflightSupported: true,
+    manualOptInRequired: true,
+    browserRuntimeAllowed: false
   };
 }
 
@@ -46,6 +49,12 @@ const BASE_ADAPTER_FIELDS = {
   replyAudioFrameNativeRequired: true,
   candidateOnly: true,
   dryRunOnly: true,
+  realHandshakePreflightSupported: true,
+  realHandshakePreflightDefault: 'blocked',
+  manualOptInRequired: true,
+  serverSideOnly: true,
+  browserRuntimeAllowed: false,
+  verifySmokeNetworkForbidden: true,
   fallbackProviderId: 'localdev_mock',
   requestSchemaMapping: {
     handshake: 'provider_specific_handshake_dry_run_request',
@@ -71,7 +80,11 @@ const BASE_ADAPTER_FIELDS = {
     replyAudioFrameIsRealtimeVoiceOutput: true,
     asrLlmTtsRegressionForbidden: true,
     localdevMockFallbackRequired: true,
-    apiKeyMustNotEnterFrontend: true
+    apiKeyMustNotEnterFrontend: true,
+    realHandshakePreflightBlockedByDefault: true,
+    realHandshakePreflightManualOnly: true,
+    realHandshakePreflightServerSideOnly: true,
+    verifySmokeNetworkForbidden: true
   }
 };
 
@@ -134,6 +147,12 @@ export function validateProviderSpecificHandshakeAdapter(adapter) {
   if (adapter.replyAudioFrameNativeRequired !== true) failures.push('replyAudioFrameNativeRequired_must_be_true');
   if (adapter.candidateOnly !== true) failures.push('candidateOnly_must_be_true');
   if (adapter.dryRunOnly !== true) failures.push('dryRunOnly_must_be_true');
+  if (adapter.realHandshakePreflightSupported !== true) failures.push('realHandshakePreflightSupported_must_be_true');
+  if (adapter.realHandshakePreflightDefault !== 'blocked') failures.push('realHandshakePreflightDefault_must_be_blocked');
+  if (adapter.manualOptInRequired !== true) failures.push('manualOptInRequired_must_be_true');
+  if (adapter.serverSideOnly !== true) failures.push('serverSideOnly_must_be_true');
+  if (adapter.browserRuntimeAllowed !== false) failures.push('browserRuntimeAllowed_must_be_false');
+  if (adapter.verifySmokeNetworkForbidden !== true) failures.push('verifySmokeNetworkForbidden_must_be_true');
   if (adapter.fallbackProviderId !== 'localdev_mock') failures.push('fallback_must_be_localdev_mock');
   const safety = adapter.safety || {};
   for (const key of ['opensRealSocket', 'sentToProvider', 'uploaded', 'persisted', 'billingStarted', 'canOpenRealtimeSocket', 'canSendRealAudio', 'canSendRealCamera', 'canStartBillingSession', 'replyTextToTts']) {
@@ -146,5 +165,5 @@ export function validateProviderSpecificHandshakeAdapter(adapter) {
 
 export function summarizeProviderSpecificHandshakeAdapter(adapter) {
   if (!adapter) return 'provider-specific handshake adapter=unknown';
-  return `${adapter.providerId}/${adapter.providerKind}: endpoint=${adapter.endpointKind}; dry_run_only=${adapter.dryRunOnly ? 'yes' : 'no'}; direct_socket=${adapter.browserDirectSocketAllowed ? 'allowed' : 'blocked'}; real_audio=no; real_camera=no; billing=no; reply_text_tts=no; reply_audio_frame=required; fallback=${adapter.fallbackProviderId}`;
+  return `${adapter.providerId}/${adapter.providerKind}: endpoint=${adapter.endpointKind}; dry_run_only=${adapter.dryRunOnly ? 'yes' : 'no'}; real_preflight=${adapter.realHandshakePreflightDefault}; direct_socket=${adapter.browserDirectSocketAllowed ? 'allowed' : 'blocked'}; real_audio=no; real_camera=no; billing=no; reply_text_tts=no; reply_audio_frame=required; fallback=${adapter.fallbackProviderId}`;
 }

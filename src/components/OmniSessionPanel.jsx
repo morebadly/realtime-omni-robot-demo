@@ -70,6 +70,7 @@ export default function OmniSessionPanel({
   providerProxyHandshakeSandbox,
   providerProxyHandshakeDryRun,
   providerSpecificHandshakeDiagnostics,
+  providerRealHandshakePreflightDiagnostics,
   onBuild,
   onSimulate,
   onSendLocalDev,
@@ -165,6 +166,7 @@ export default function OmniSessionPanel({
         <div><small>Proxy Handshake Sandbox (dry-run only)</small><strong>{summarizeProxyHandshakeSandbox(providerProxyHandshakeSandbox)}</strong><p>real_provider_handshake=blocked · dry_run_only=yes · real_audio=no · real_camera=no · billing=no · reply_text→TTS=blocked · last_dry_run={providerProxyHandshakeDryRun ? `${providerProxyHandshakeDryRun.decision}` : 'none'}</p></div>
         <div><small>Provider-specific Handshake Adapters</small><strong>dry-run only · {providerSpecificHandshakeDiagnostics?.length || 0} candidates</strong><p>{(providerSpecificHandshakeDiagnostics || []).map((item) => `${item.displayName}: blocked/metadata`).join(' · ') || 'no candidate adapters'} · browser_direct_socket=blocked · server_side_secret=required</p></div>
         <div><small>Candidate Safety Mapping</small><strong>BigModel / DashScope: metadata only</strong><p>real_audio=blocked · real_camera=blocked · billing=blocked · reply_text→TTS=blocked · reply_audio_frame=required · fallback=localdev_mock</p></div>
+        <div><small>Real Handshake Preflight</small><strong>blocked by default · manual opt-in required</strong><p>{(providerRealHandshakePreflightDiagnostics || []).map((item) => `${item.displayName}: ${item.decision}`).join(' · ') || 'candidate preflight metadata'} · server_side_only=yes · browser_runtime=forbidden · verify_smoke_network=forbidden · real_audio=blocked · real_camera=blocked · billing=blocked · reply_text→TTS=blocked · fallback=localdev_mock</p></div>
         <div><small>Realtime Mux</small><strong>{summarizeMuxState(realtimeMux)}</strong><p>Mock realtime: yes · Real cloud realtime: no · Audio: protected / non-blocking · Camera: selected / drop-old · Interrupt: highest · media_ack: diagnostics only</p></div>
         <div><small>WebSocket Backpressure</small><strong>{realtimeMux?.bufferedLevel || 'normal'}</strong><p>bufferedAmount={realtimeMux?.bufferedAmount || 0}B · last={realtimeMux?.lastDecision?.decision || 'none'} ({realtimeMux?.lastDecision?.reason || '—'})</p></div>
         <div><small>Session Correlation</small><strong>session correlation: enabled</strong><p>{summarizeSessionCorrelation(sessionCorrelation)}</p></div>

@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.3.9.
+Current version: v1.4.0.
 
 Tech stack:
 - Vite
@@ -444,3 +444,16 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - Event mapping must keep `omni.reply_audio_frame.v1` as realtime voice output and `reply_text` as subtitles/log/debug/Visible Context only.
 - Error mapping must fall back to `localdev_mock` for auth, quota, billing, socket, media, endpoint, and model errors.
 - The local skeleton provider-specific endpoints are local Mock only and must keep safety fields false: `opensRealSocket`, `sentToProvider`, `uploaded`, `persisted`, `billingStarted`, and `replyTextToTts`.
+
+## v1.4.0 Limited Real Provider Handshake Preflight rule
+
+- v1.4.0 adds a server-side-only, manual-opt-in safety boundary for future real provider handshake preflight.
+- This is still not a user realtime call. Do not upload real audio, upload real camera, start realtime billing, open a real provider socket, or connect `reply_text` to TTS.
+- `npm run verify` and the default smoke suite must not perform real network calls and must not require real provider API keys.
+- The manual script `scripts/provider-real-handshake-preflight.mjs` is not part of verify/smoke. It is disabled unless `ALLOW_REAL_PROVIDER_HANDSHAKE=1` is set.
+- Even with opt-in, the manual script may only report config validation / endpoint metadata / adapter readiness. It must not print key values, open sockets, call provider endpoints, upload media, or start billing.
+- Browser runtime remains forbidden: no real API key in frontend, Runtime config, descriptor JSON, logs, Visible Context, Action Log, `localStorage`, or `sessionStorage`.
+- BigModel / DashScope candidates may declare `realHandshakePreflightSupported=true`, but `realHandshakePreflightDefault` must remain `blocked`.
+- The skeleton endpoint `/provider-proxy/providers/:providerId/real-handshake-preflight` is local Mock metadata only. It must not read real env keys or call real endpoints.
+- `omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` remains subtitle/log/debug only. ASR -> LLM -> TTS regression remains forbidden.
+- `localdev_mock` fallback remains required.

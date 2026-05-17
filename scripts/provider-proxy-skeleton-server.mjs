@@ -33,6 +33,7 @@ import {
   createProviderProxyFallbackDecision,
   createProviderProxyHealth,
   createProviderHandshakeDryRunReport,
+  createProviderRealHandshakePreflightReport,
   createProviderSpecificFallbackDecision,
   evaluateProviderProxyRequest,
   evaluateProviderSpecificHandshakeDryRun,
@@ -49,6 +50,9 @@ import {
 import {
   createProviderHandshakeErrorMapping
 } from '../src/runtime/providerHandshakeErrorMapping.js';
+import {
+  createRealHandshakePreflightDescriptor
+} from '../src/runtime/providerRealHandshakePreflightDescriptor.js';
 
 const DEFAULT_PORT = Number(process.env.PROVIDER_PROXY_SKELETON_PORT) || 8011;
 const DEFAULT_HOST = process.env.PROVIDER_PROXY_SKELETON_HOST || '127.0.0.1';
@@ -260,6 +264,21 @@ export function createProviderProxySkeletonHandler(options = {}) {
           ...mapping,
           dryRunReport: createProviderHandshakeDryRunReport(errorMappingProviderId),
           sampleFallback: createProviderSpecificFallbackDecision(errorMappingProviderId, { category: 'socket_denied' })
+        });
+      }
+
+      const realPreflightProviderId = providerSpecificRoute(url.pathname, '/real-handshake-preflight');
+      if (req.method === 'GET' && realPreflightProviderId) {
+        const descriptor = createRealHandshakePreflightDescriptor(realPreflightProviderId);
+        if (!descriptor) return sendError(res, 404, 'provider_real_handshake_preflight_not_found', realPreflightProviderId);
+        return sendJson(res, 200, {
+          ...descriptor,
+          report: createProviderRealHandshakePreflightReport(realPreflightProviderId),
+          defaultBlocked: true,
+          networkCallAttempted: false,
+          keyRequiredServerSide: true,
+          browserForbidden: true,
+          fallbackProviderId: 'localdev_mock'
         });
       }
       // Unknown route: list endpoints + safety reminder.

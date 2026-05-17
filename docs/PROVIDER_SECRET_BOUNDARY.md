@@ -1,4 +1,12 @@
-# Provider Secret Boundary (v1.3.9)
+# Provider Secret Boundary (v1.4.0)
+
+## v1.4.0 Real Handshake Preflight Reminder
+
+Limited real provider handshake preflight remains server-side only and manual opt-in only. The browser cannot hold real provider keys and cannot open real provider sockets. `ALLOW_REAL_PROVIDER_HANDSHAKE=1` only enables the manual script to check whether a server-side key is present; it must not print the key value.
+
+`npm run verify` and the smoke suite do not run real network and do not depend on real provider API keys. The local skeleton preflight endpoint returns metadata only and does not read `BIGMODEL_API_KEY` / `DASHSCOPE_API_KEY` values.
+
+No real audio upload, real camera upload, realtime billing, real provider socket, or `reply_text -> TTS` path is allowed. `localdev_mock` fallback remains required.
 
 ## v1.3.9 Provider-specific Reminder
 

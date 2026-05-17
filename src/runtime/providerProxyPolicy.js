@@ -49,6 +49,14 @@ import {
   validateProviderHandshakeErrorMapping,
   createProviderSpecificFallbackDecision as createProviderSpecificFallbackDecisionEnvelope
 } from './providerHandshakeErrorMapping.js';
+import {
+  createRealHandshakePreflightDescriptor,
+  validateRealHandshakePreflightDescriptor
+} from './providerRealHandshakePreflightDescriptor.js';
+import {
+  createRealHandshakePreflightPolicy,
+  evaluateRealHandshakePreflightRequest
+} from './providerRealHandshakePreflightPolicy.js';
 
 const SECRET_FIELD_NAMES = new Set([
   'apiKey',
@@ -518,6 +526,7 @@ export function createProviderHandshakeDryRunReport(providerId, request = {}) {
     notes: [
       'Provider-specific handshake adapter dry-run is metadata validation only.',
       'No provider endpoint was called. No provider socket was opened.',
+      'Limited real handshake preflight is blocked by default and manual server-side only.',
       'reply_text remains subtitle/log/debug only; omni.reply_audio_frame.v1 remains the realtime voice output.'
     ],
     decidedAt: new Date().toISOString()
@@ -577,9 +586,68 @@ export function listProviderSpecificHandshakeAdapterSummaries() {
     canStartBillingSession: adapter.canStartBillingSession,
     replyTextToTts: adapter.replyTextToTts,
     replyAudioFrameNativeRequired: adapter.replyAudioFrameNativeRequired,
+    realHandshakePreflightSupported: adapter.realHandshakePreflightSupported,
+    realHandshakePreflightDefault: adapter.realHandshakePreflightDefault,
+    manualOptInRequired: adapter.manualOptInRequired,
+    serverSideOnly: adapter.serverSideOnly,
+    browserRuntimeAllowed: adapter.browserRuntimeAllowed,
+    verifySmokeNetworkForbidden: adapter.verifySmokeNetworkForbidden,
     fallbackProviderId: adapter.fallbackProviderId,
     summary: summarizeProviderSpecificHandshakeAdapter(adapter)
   }));
+}
+
+export function createProviderRealHandshakePreflightReport(providerId, request = {}) {
+  const descriptor = createRealHandshakePreflightDescriptor(providerId);
+  const validation = validateRealHandshakePreflightDescriptor(descriptor);
+  const policy = createRealHandshakePreflightPolicy();
+  const decision = evaluateRealHandshakePreflightRequest({
+    providerId,
+    ...request
+  }, policy);
+  return {
+    schema: 'omni.provider_real_handshake_preflight_report.v1',
+    providerId,
+    providerKind: descriptor?.providerKind || 'unknown',
+    status: 'blocked_by_default',
+    defaultBlocked: true,
+    manualOnly: true,
+    serverSideOnly: true,
+    browserForbidden: true,
+    keyRequiredServerSide: true,
+    fallbackProviderId: 'localdev_mock',
+    descriptor,
+    validation,
+    decision,
+    safety: {
+      opensRealSocket: false,
+      sentToProvider: false,
+      uploaded: false,
+      persisted: false,
+      billingStarted: false,
+      networkCallAttempted: false,
+      canSendRealAudio: false,
+      canSendRealCamera: false,
+      canStartBillingSession: false,
+      replyTextToTts: false,
+      keyPrinted: false
+    },
+    guardrails: {
+      verifySmokeNetworkForbidden: true,
+      noRealAudioUpload: true,
+      noRealCameraUpload: true,
+      noRealtimeBilling: true,
+      noRealProviderSocket: true,
+      replyTextNotTtsInput: true,
+      replyAudioFrameIsRealtimeVoiceOutput: true,
+      asrLlmTtsRegressionForbidden: true,
+      localdevMockFallbackRequired: true
+    },
+    notes: [
+      'Real handshake preflight is a server-side manual opt-in boundary only.',
+      'The local skeleton returns metadata and never reads real keys or calls provider endpoints.'
+    ]
+  };
 }
 
 export { validateEphemeralSessionToken };

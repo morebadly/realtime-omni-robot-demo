@@ -1,6 +1,25 @@
-# 架构说明 v1.3.9
+# 架构说明 v1.4.0
 
-# 鏋舵瀯璇存槑 v1.3.9
+# 鏋舵瀯璇存槑 v1.4.0
+
+## v1.4.0 Limited Real Provider Handshake Preflight Architecture
+
+v1.4.0 adds a preflight boundary for a future real provider handshake while keeping all real traffic disabled:
+
+```text
+Manual server-side operator action
+  -> ALLOW_REAL_PROVIDER_HANDSHAKE=1
+  -> provider-real-handshake-preflight script
+  -> providerRealHandshakePreflightPolicy / Descriptor
+  -> config validation and metadata summary only
+  -> localdev_mock fallback
+```
+
+The Web Console and browser Runtime cannot hold provider API keys and cannot open provider sockets. `npm run verify` and the smoke suite never run the manual preflight script and never perform real network calls. The local skeleton endpoint `/provider-proxy/providers/:providerId/real-handshake-preflight` returns metadata only with `networkCallAttempted=false`, `opensRealSocket=false`, `sendsMedia=false`, `startsBilling=false`, `replyTextToTts=false`, and `fallbackProviderId='localdev_mock'`.
+
+BigModel GLM-Realtime and DashScope Qwen-Omni candidates may report `realHandshakePreflightSupported=true`, but their default is still `blocked`. Any future real handshake must be server-side only, manually opted in, must not upload audio/camera, must not start billing, must not print keys, and must fall back to `localdev_mock` on failure.
+
+`omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` remains subtitle / log / debug only. No ASR -> LLM -> TTS regression is introduced.
 
 ## v1.3.9 Provider-specific Handshake Adapter Dry-run Architecture
 

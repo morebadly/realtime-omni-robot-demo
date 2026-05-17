@@ -1,6 +1,30 @@
-# 技术落地路线 v1.3.9
+# 技术落地路线 v1.4.0
 
-# 鎶€鏈惤鍦拌矾绾?v1.3.9
+# 鎶€鏈惤鍦拌矾绾?v1.4.0
+
+## v1.4.0 Limited Real Provider Handshake Preflight
+
+Goal: add a server-side-only, manual-opt-in real provider handshake preflight boundary without enabling real user calls or real provider traffic.
+
+Completed:
+
+1. Add `src/runtime/providerRealHandshakePreflightPolicy.js` with default blocked policy and explicit opt-in evaluation.
+2. Add `src/runtime/providerRealHandshakePreflightDescriptor.js` with `omni.real_provider_handshake_preflight.v1` safety-locked descriptors.
+3. Add `scripts/provider-real-handshake-preflight.mjs` as a manual tool skeleton that stays out of verify/smoke and requires `ALLOW_REAL_PROVIDER_HANDSHAKE=1`.
+4. Extend provider-specific adapters with `realHandshakePreflightSupported=true`, `realHandshakePreflightDefault='blocked'`, manual opt-in, server-side-only, browser-forbidden, and verify/smoke-network-forbidden metadata.
+5. Add `/provider-proxy/providers/:providerId/real-handshake-preflight` to the local Mock skeleton.
+6. Add compact UI diagnostics for real handshake preflight blocked-by-default status.
+7. Add `scripts/provider-real-handshake-preflight-smoke.mjs` and include it in the safe smoke suite (27 -> 28 checks).
+8. Add v1.4.0 preflight docs, release notes, and update guide.
+
+Still out of scope:
+
+1. Real BigModel / DashScope calls.
+2. Real provider WebSocket or browser direct socket.
+3. Real audio or camera upload.
+4. Realtime billing.
+5. Real provider API keys in the browser, Runtime config, descriptors, logs, Visible Context, Action Log, localStorage, or sessionStorage.
+6. `reply_text -> TTS` or ASR -> LLM -> TTS regression.
 
 ## v1.3.9 Provider-specific Handshake Adapter Dry-run
 

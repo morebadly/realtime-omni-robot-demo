@@ -178,13 +178,13 @@ try {
   assert(dirty.body.secretStripped === true, 'provider-specific dry-run must report secretStripped=true');
   assertNoSecretLeak(dirty.raw, 'provider-specific dirty dry-run');
 
-  // 27. Package smoke suite is configured for 27 checks.
+  // 27. Package smoke suite includes this test; v1.4.0 registers 28 checks overall.
   const smokeSource = fs.readFileSync('scripts/run-smoke-suite.mjs', 'utf8');
   assert(smokeSource.includes("'test:provider-specific-handshake-adapter'"), 'smoke suite must include provider-specific handshake adapter test');
   const checkCount = [...smokeSource.matchAll(/'test:[^']+'/g)].length;
-  assert(checkCount === 27, `smoke suite must contain 27 checks (got ${checkCount})`);
+  assert(checkCount === 28, `smoke suite must contain 28 checks (got ${checkCount})`);
 
-  console.log(`Provider-specific handshake adapter smoke passed: 2 candidates · 27 checks suite · no real key · no real provider call · fallback=localdev_mock`);
+  console.log(`Provider-specific handshake adapter smoke passed: 2 candidates · 28 checks suite · no real key · no real provider call · fallback=localdev_mock`);
 } finally {
   await handle.close();
 }

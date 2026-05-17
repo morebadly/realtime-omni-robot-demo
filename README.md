@@ -1,4 +1,17 @@
-# Realtime Omni Robot Demo v1.3.9
+# Realtime Omni Robot Demo v1.4.0
+
+## v1.4.0 Limited Real Provider Handshake Preflight
+
+v1.4.0 adds a safety boundary for a future server-side real provider handshake preflight. It is still not a user realtime call and still remains safe Mock-first against `localdev_mock`.
+
+- New Runtime descriptors/policy: `src/runtime/providerRealHandshakePreflightDescriptor.js` and `src/runtime/providerRealHandshakePreflightPolicy.js`.
+- New manual tool skeleton: `npm run preflight:provider:real-handshake`. It is not included in `npm run verify` or the default smoke suite.
+- New local skeleton endpoint: `/provider-proxy/providers/:providerId/real-handshake-preflight`.
+- BigModel / DashScope candidates now declare `realHandshakePreflightSupported=true`, but default remains `blocked`; manual opt-in and server-side runtime are required.
+- `ALLOW_REAL_PROVIDER_HANDSHAKE=1` can only unlock local config validation in the manual server-side script. It does not automatically connect to a provider.
+- The safe smoke suite is now 28 checks.
+- No real audio upload, no real camera upload, no realtime billing, no real provider socket, no real BigModel / DashScope endpoint call, no real provider API key in the browser, no real network in verify/smoke, and no `reply_text -> TTS`.
+- `omni.reply_audio_frame.v1` remains the realtime voice output path. `localdev_mock` fallback remains required.
 
 ## v1.3.9 Provider-specific Handshake Adapter Dry-run
 

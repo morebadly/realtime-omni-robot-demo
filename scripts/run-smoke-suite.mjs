@@ -23,6 +23,7 @@ const DEFAULT_SCRIPTS = [
   'test:provider-proxy-contract',
   'test:provider-proxy-server',
   'test:provider-specific-handshake-adapter',
+  'test:provider-real-handshake-preflight',
   'test:realtime-mux-backpressure',
   'test:dashscope-omni-config',
   'test:localdev-provider-registry',
