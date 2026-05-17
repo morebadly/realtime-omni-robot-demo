@@ -1,6 +1,27 @@
-# 技术落地路线 v1.4.0
+# 技术落地路线 v1.4.1
 
-# 鎶€鏈惤鍦拌矾绾?v1.4.0
+# 鎶€鏈惤鍦拌矾绾?v1.4.1
+
+## v1.4.1 Manual Real Handshake Probe Stub
+
+Goal: add a manual, server-side-only probe plan layer for future real provider handshake work without enabling any real provider execution.
+
+Completed:
+
+1. Add `src/runtime/providerRealHandshakeProbePlan.js` with `omni.real_provider_handshake_probe_plan.v1`.
+2. Add `src/runtime/providerRealHandshakeProbePolicy.js` with disabled-by-default blocking policy, redacted diagnostics, and secret stripping.
+3. Add `scripts/provider-real-handshake-probe-plan.mjs` as a manual plan tool that outputs `keyPresent` boolean only.
+4. Add `scripts/provider-real-handshake-probe-plan-smoke.mjs` and include it in the safe smoke suite (28 -> 29 checks).
+5. Add v1.4.1 probe plan docs, release notes, and update guide.
+
+Still out of scope:
+
+1. Real provider network handshake.
+2. Real provider WebSocket or browser direct socket.
+3. Real audio or camera upload.
+4. Realtime billing.
+5. Raw provider key printing or descriptor/log/UI leakage.
+6. `reply_text -> TTS` or ASR -> LLM -> TTS regression.
 
 ## v1.4.0 Limited Real Provider Handshake Preflight
 

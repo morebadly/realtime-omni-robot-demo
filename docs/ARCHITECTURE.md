@@ -1,6 +1,24 @@
-# 架构说明 v1.4.0
+# 架构说明 v1.4.1
 
-# 鏋舵瀯璇存槑 v1.4.0
+# 鏋舵瀯璇存槑 v1.4.1
+
+## v1.4.1 Manual Real Handshake Probe Stub Architecture
+
+v1.4.1 adds an auditable probe-plan layer for future real provider handshake work while keeping execution blocked:
+
+```text
+Manual server-side operator action
+  -> provider-real-handshake-probe-plan script
+  -> providerRealHandshakeProbePolicy / providerRealHandshakeProbePlan
+  -> redacted metadata plan only
+  -> localdev_mock fallback
+```
+
+Probe plans can describe provider selection, endpoint kind/template, region, modelId, quota risk, billing risk, and server-side key presence as metadata. They cannot authorize a real network handshake, provider socket, audio upload, camera upload, billing, or `reply_text -> TTS`.
+
+The plan schema is `omni.real_provider_handshake_probe_plan.v1`. Its safety fields stay locked: `networkCallAttempted=false`, `opensRealSocket=false`, `sendsAudio=false`, `sendsCamera=false`, `startsBilling=false`, `replyTextToTts=false`, `browserRuntimeAllowed=false`, and `fallbackProviderId='localdev_mock'`.
+
+Raw provider keys are never included. Diagnostics are redacted and key output is limited to `keyPresent` boolean metadata.
 
 ## v1.4.0 Limited Real Provider Handshake Preflight Architecture
 

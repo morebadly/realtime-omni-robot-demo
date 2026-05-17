@@ -1,6 +1,6 @@
 {
   "name": "realtime-omni-robot-demo",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -53,6 +53,7 @@
     "test:provider-proxy-server": "node scripts/provider-proxy-server-smoke.mjs",
     "test:provider-specific-handshake-adapter": "node scripts/provider-specific-handshake-adapter-smoke.mjs",
     "test:provider-real-handshake-preflight": "node scripts/provider-real-handshake-preflight-smoke.mjs",
+    "test:provider-real-handshake-probe-plan": "node scripts/provider-real-handshake-probe-plan-smoke.mjs",
     "test:realtime-mux-backpressure": "node scripts/realtime-mux-backpressure-smoke.mjs",
     "test:realtime-output-queue": "node scripts/realtime-output-queue-smoke.mjs",
     "test:dashscope-omni-config": "node scripts/dashscope-omni-realtime-config-smoke.mjs",

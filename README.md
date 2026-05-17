@@ -1,4 +1,17 @@
-# Realtime Omni Robot Demo v1.4.0
+# Realtime Omni Robot Demo v1.4.1
+
+## v1.4.1 Manual Real Handshake Probe Stub
+
+v1.4.1 adds a manual, server-side-only probe plan layer for future real provider handshake work. It is still not a user realtime call, not a real provider socket, and not a real network handshake.
+
+- New Runtime plan/policy: `src/runtime/providerRealHandshakeProbePlan.js` and `src/runtime/providerRealHandshakeProbePolicy.js`.
+- New manual plan tool: `scripts/provider-real-handshake-probe-plan.mjs`. It defaults to dry-run / no-network / disabled behavior.
+- New smoke: `npm run test:provider-real-handshake-probe-plan`.
+- Probe plans may expose endpoint / region / modelId / quota / billing risk as metadata only.
+- Key handling is boolean-only: `keyPresent=true/false`, `keyPrinted=false`, and raw keys are never included.
+- The safe smoke suite is now 29 checks.
+- No real network handshake, no real provider socket, no real audio upload, no real camera upload, no realtime billing, no `reply_text -> TTS`, and no browser-held real provider key.
+- `omni.reply_audio_frame.v1` remains the realtime voice output path. `localdev_mock` fallback remains required.
 
 ## v1.4.0 Limited Real Provider Handshake Preflight
 

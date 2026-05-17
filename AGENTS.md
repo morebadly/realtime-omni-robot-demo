@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.4.0.
+Current version: v1.4.1.
 
 Tech stack:
 - Vite
@@ -455,5 +455,19 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - Browser runtime remains forbidden: no real API key in frontend, Runtime config, descriptor JSON, logs, Visible Context, Action Log, `localStorage`, or `sessionStorage`.
 - BigModel / DashScope candidates may declare `realHandshakePreflightSupported=true`, but `realHandshakePreflightDefault` must remain `blocked`.
 - The skeleton endpoint `/provider-proxy/providers/:providerId/real-handshake-preflight` is local Mock metadata only. It must not read real env keys or call real endpoints.
+- `omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` remains subtitle/log/debug only. ASR -> LLM -> TTS regression remains forbidden.
+- `localdev_mock` fallback remains required.
+
+## v1.4.1 Manual Real Handshake Probe Stub rule
+
+- v1.4.1 adds a server-side-only manual probe plan layer for future real provider handshake work.
+- This is still not a user realtime call, not a real provider socket, and not a real network handshake.
+- Probe plans may include provider selection, endpoint kind/template, region, modelId, quota risk, billing risk, and key presence metadata only.
+- Key output is boolean-only: `keyPresent=true/false`, `keyPrinted=false`, and `rawKeyIncluded=false`. Raw provider keys must never enter descriptors, diagnostics, logs, Visible Context, Action Log, Runtime config, frontend state, `localStorage`, or `sessionStorage`.
+- Default execution mode is manual-only, server-side-only, dry-run, no-network, and browser-forbidden.
+- `audioUploadRequested`, `cameraUploadRequested`, `billingRequested`, `replyTextTtsRequested`, `realSocketRequested`, `networkRequested`, and `browserRuntime=true` must be rejected.
+- BigModel / DashScope candidates may generate probe plans, but they must not execute real handshakes.
+- Unknown providers and `localdev_mock` as a real probe target must be blocked with fallback to `localdev_mock`.
+- `npm run verify` and the default smoke suite must not perform real network calls and must not require real provider API keys.
 - `omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` remains subtitle/log/debug only. ASR -> LLM -> TTS regression remains forbidden.
 - `localdev_mock` fallback remains required.
