@@ -1,4 +1,17 @@
-# Realtime Omni Robot Demo v1.4.1
+# Realtime Omni Robot Demo v1.4.2
+
+## v1.4.2 Provider Secret Boundary Audit
+
+v1.4.2 是 Provider Secret Boundary Audit：它把 secret / API key / token / credentials 的输出边界统一成可审计的本地机制。这个版本不是接入真实 provider，也不是开启真实通话。
+
+- 新增 `src/runtime/providerSecretRedactionPolicy.js` 和 `src/runtime/providerSecretBoundaryAudit.js`，用于本地审计 provider descriptor、probe/preflight output、diagnostics、Runtime config-like object、Visible Context-like payload、Action Log-like payload、CLI output-like object 和 browser/storage sink declaration。
+- 新增 `npm run test:provider-secret-boundary-audit`，safe smoke suite 现在是 30 checks。
+- key 状态只能以 `keyPresent=true/false` 这种 boolean 形式出现。
+- raw key、masked key、key prefix、key length、key hash 都不能输出。
+- `localdev_mock` fallback 继续保留。
+- 仍然没有真实 provider socket、真实 audio upload、真实 camera upload、billing、`reply_text -> TTS`、浏览器直连真实 provider，也没有 verify / smoke 真实网络调用。
+- `omni.reply_audio_frame.v1` 仍然是实时语音输出主路径；`reply_text` 仍然只用于字幕、日志、调试和 Visible Context。
+- 本项目的语音方向是实时 Omni 语音通话链路：Provider 输出 `omni.reply_audio_frame.v1`，由 Web Audio / Robot Speaker 流式播放；`reply_text` 不能接 TTS，本项目不允许退化为 ASR -> LLM -> TTS。
 
 ## v1.4.1 Manual Real Handshake Probe Stub
 

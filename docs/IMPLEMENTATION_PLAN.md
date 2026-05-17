@@ -1,6 +1,27 @@
-# 技术落地路线 v1.4.1
+# 技术落地路线 v1.4.2
 
-# 鎶€鏈惤鍦拌矾绾?v1.4.1
+# 鎶€鏈惤鍦拌矾绾?v1.4.2
+
+## v1.4.2 Provider Secret Boundary Audit
+
+Goal: add a pure local provider secret boundary audit layer before any future real provider gateway or handshake execution work.
+
+Completed:
+
+1. Add `src/runtime/providerSecretRedactionPolicy.js` with forbidden secret-like names, forbidden derived key-output fields, synthetic canaries, and forbidden sinks.
+2. Add `src/runtime/providerSecretBoundaryAudit.js` with descriptor / preflight / probe plan / diagnostics / Runtime config / Visible Context / Action Log / CLI / browser-storage audit helpers.
+3. Add `scripts/provider-secret-boundary-audit-smoke.mjs` and include it in the safe smoke suite (29 -> 30 checks).
+4. Add v1.4.2 secret boundary audit docs, release notes, and update guide.
+
+Still out of scope:
+
+1. Real provider integration or real handshake execution.
+2. Real provider WebSocket or browser direct socket.
+3. Real audio or camera upload.
+4. Realtime billing.
+5. Raw, masked, prefix, length, or hash key output.
+6. Real provider keys in frontend, Runtime config, descriptors, diagnostics, Visible Context, Action Log, localStorage, or sessionStorage.
+7. `reply_text -> TTS` or ASR -> LLM -> TTS regression.
 
 ## v1.4.1 Manual Real Handshake Probe Stub
 

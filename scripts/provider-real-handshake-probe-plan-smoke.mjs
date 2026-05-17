@@ -175,7 +175,7 @@ assert(!/from\s+['"]ws['"]/m.test(moduleSources), 'probe runtime modules must no
 const smokeSource = fs.readFileSync('scripts/run-smoke-suite.mjs', 'utf8');
 assert(smokeSource.includes("'test:provider-real-handshake-probe-plan'"), 'smoke suite must include probe plan test');
 const checkCount = [...smokeSource.matchAll(/'test:[^']+'/g)].length;
-assert(checkCount === 29, `smoke suite must contain 29 checks (got ${checkCount})`);
+assert(checkCount === 30, `smoke suite must contain 30 checks (got ${checkCount})`);
 
 const cliResult = spawnSync(process.execPath, ['scripts/provider-real-handshake-probe-plan.mjs', providerIds[0]], {
   encoding: 'utf8',
@@ -193,4 +193,4 @@ assert(typeof cliJson.keyPresent === 'boolean', 'probe CLI keyPresent must be bo
 assert(cliJson.networkCallAttempted === false, 'probe CLI must not attempt network');
 assert(cliJson.fallbackProviderId === 'localdev_mock', 'probe CLI fallback must be localdev_mock');
 
-console.log('Provider real handshake probe plan smoke passed: 2 candidates, disabled-by-default, 29-check suite, no real network, no raw key leak, fallback=localdev_mock');
+console.log('Provider real handshake probe plan smoke passed: 2 candidates, disabled-by-default, 30-check suite, no real network, no raw key leak, fallback=localdev_mock');

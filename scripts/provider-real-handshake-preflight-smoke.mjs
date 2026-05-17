@@ -161,13 +161,13 @@ try {
   // 23. This smoke only talks to loopback skeleton.
   assert(baseUrl.startsWith('http://127.0.0.1:'), `smoke must use loopback only (got ${baseUrl})`);
 
-  // 28. Package smoke suite is configured for 29 checks in v1.4.1.
+  // 28. Package smoke suite is configured for 30 checks in v1.4.2.
   const smokeSource = fs.readFileSync('scripts/run-smoke-suite.mjs', 'utf8');
   assert(smokeSource.includes("'test:provider-real-handshake-preflight'"), 'smoke suite must include provider real handshake preflight test');
   const checkCount = [...smokeSource.matchAll(/'test:[^']+'/g)].length;
-  assert(checkCount === 29, `smoke suite must contain 29 checks (got ${checkCount})`);
+  assert(checkCount === 30, `smoke suite must contain 30 checks (got ${checkCount})`);
 
-  console.log(`Provider real handshake preflight smoke passed: 2 candidates · 29 checks suite · no real key read · no real network · fallback=localdev_mock`);
+  console.log(`Provider real handshake preflight smoke passed: 2 candidates · 30 checks suite · no real key read · no real network · fallback=localdev_mock`);
 } finally {
   await handle.close();
 }

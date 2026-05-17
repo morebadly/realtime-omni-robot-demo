@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.4.1.
+Current version: v1.4.2.
 
 Tech stack:
 - Vite
@@ -470,4 +470,16 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - Unknown providers and `localdev_mock` as a real probe target must be blocked with fallback to `localdev_mock`.
 - `npm run verify` and the default smoke suite must not perform real network calls and must not require real provider API keys.
 - `omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` remains subtitle/log/debug only. ASR -> LLM -> TTS regression remains forbidden.
+- `localdev_mock` fallback remains required.
+
+## v1.4.2 Provider Secret Boundary Audit rule
+
+- v1.4.2 adds a pure local Provider Secret Boundary Audit layer. It does not connect a real provider, execute a real handshake, open a real socket, upload audio, upload camera, start billing, or connect `reply_text` to TTS.
+- Secret audit code must not read real `BIGMODEL_API_KEY` / `DASHSCOPE_API_KEY` values and must not call real BigModel / DashScope endpoints.
+- Key output remains boolean-only: `keyPresent=true/false`. Raw key, masked key, key prefix, key length, and key hash output are all forbidden.
+- Provider secrets must not enter provider descriptors, preflight/probe outputs, diagnostics, Runtime config snapshots, Visible Context, Action Log, logs, frontend state, `localStorage`, or `sessionStorage`.
+- `frontend bundle`, `Runtime config snapshot`, `Visible Context`, `Action Log`, `localStorage`, `sessionStorage`, and `browser runtime` are forbidden secret sinks.
+- The audit result itself must never echo a suspicious value; it may report issue codes and object paths only.
+- `npm run verify` and the safe smoke suite must stay no-network for real provider work. v1.4.2 smoke only runs local audit/static checks.
+- `omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` remains subtitle/log/debug/Visible Context only.
 - `localdev_mock` fallback remains required.

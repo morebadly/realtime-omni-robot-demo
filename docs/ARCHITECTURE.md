@@ -1,6 +1,24 @@
-# 架构说明 v1.4.1
+# 架构说明 v1.4.2
 
-# 鏋舵瀯璇存槑 v1.4.1
+# 鏋舵瀯璇存槑 v1.4.2
+
+## v1.4.2 Provider Secret Boundary Audit Architecture
+
+v1.4.2 adds a pure local audit layer for provider secret output boundaries:
+
+```text
+provider descriptor / probe plan / preflight output / diagnostics / CLI output
+  -> providerSecretBoundaryAudit
+  -> issue codes + paths only
+  -> no raw / masked / prefix / length / hash key output
+  -> localdev_mock fallback remains required
+```
+
+`src/runtime/providerSecretRedactionPolicy.js` centralizes forbidden secret-like names, derived key-output fields, synthetic canaries, and forbidden sinks. `src/runtime/providerSecretBoundaryAudit.js` audits descriptor-like, diagnostics-like, Runtime config-like, Visible Context-like, Action Log-like, CLI output-like, localStorage/sessionStorage-like, and browser runtime-like payloads without echoing suspicious values.
+
+The only allowed key-state output is `keyPresent` as a boolean. Raw key, masked key, key prefix, key length, and key hash are all forbidden. The audit is local and static/pure: it does not call `fetch`, does not construct `new WebSocket`, does not import `ws`, does not read real provider env key values, and does not upload media or start billing.
+
+This does not change realtime protocol semantics. `omni.reply_audio_frame.v1` remains the realtime voice output path, `reply_text` remains subtitle / log / debug / Visible Context only, and `localdev_mock` remains the required fallback.
 
 ## v1.4.1 Manual Real Handshake Probe Stub Architecture
 
