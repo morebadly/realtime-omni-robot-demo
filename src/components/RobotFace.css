@@ -558,3 +558,174 @@
   from { transform: rotate(15deg) translate(0, 0); }
   to { transform: rotate(21deg) translate(2px, -1px); }
 }
+
+/* v1.4.3 pet console expression tokens */
+.idle_eyes .eyes,
+.happy_eyes .eyes,
+.soft_worried_eyes .eyes,
+.sleepy_eyes .eyes,
+.sleeping_eyes .eyes,
+.curious_eyes .eyes,
+.comforted_eyes .eyes,
+.lonely_eyes .eyes,
+.hungry_eyes .eyes,
+.low_battery_eyes .eyes,
+.sick_eyes .eyes,
+.focused_eyes .eyes,
+.privacy_closed_eyes .eyes {
+  gap: 76px;
+}
+
+.idle_eyes .eye,
+.comforted_eyes .eye {
+  width: 108px;
+  height: 42px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #86ffff, #35e1ef 70%, #7167ff 125%);
+  animation: idleBreath 3.2s ease-in-out infinite alternate;
+}
+
+.happy_eyes .eye {
+  width: 116px;
+  height: 58px;
+  border-radius: 0 0 88px 88px;
+  transform: translateY(-6px) rotate(180deg);
+  background: linear-gradient(135deg, #adffff, #46f3ff 58%, #7f72ff);
+}
+.happy_eyes .mouth,
+.comforted_eyes .mouth {
+  width: 72px;
+  height: 20px;
+  border-radius: 0 0 70px 70px;
+  bottom: 46px;
+  opacity: .8;
+}
+.happy_eyes .sparkle,
+.comforted_eyes .blush {
+  opacity: .95;
+}
+
+.curious_eyes .eyes { gap: 62px; }
+.curious_eyes .eye {
+  width: 84px;
+  height: 84px;
+  border-radius: 44% 56% 50% 50%;
+  transform: translateY(-4px);
+  animation: pop 1.2s ease-in-out infinite alternate;
+}
+.curious_eyes .left-eye { transform: translateY(-6px) rotate(-6deg); }
+.curious_eyes .right-eye { transform: translateY(-6px) rotate(6deg); }
+
+.soft_worried_eyes .eye,
+.lonely_eyes .eye {
+  width: 112px;
+  height: 42px;
+  border-radius: 0 0 82px 82px;
+  opacity: .88;
+}
+.soft_worried_eyes .left-eye,
+.lonely_eyes .left-eye {
+  transform: rotate(8deg) translateY(8px);
+}
+.soft_worried_eyes .right-eye,
+.lonely_eyes .right-eye {
+  transform: rotate(-8deg) translateY(8px);
+}
+.soft_worried_eyes .mouth,
+.lonely_eyes .mouth {
+  width: 56px;
+  height: 16px;
+  border-radius: 70px 70px 0 0;
+  bottom: 42px;
+  opacity: .45;
+}
+
+.sleepy_eyes .eye,
+.low_battery_eyes .eye {
+  width: 118px;
+  height: 15px;
+  border-radius: 999px;
+  transform: translateY(12px);
+  opacity: .82;
+}
+.sleeping_eyes .eye,
+.privacy_closed_eyes .eye {
+  width: 118px;
+  height: 8px;
+  border-radius: 999px;
+  transform: translateY(10px);
+  opacity: .7;
+}
+.sleepy_eyes .zzz,
+.sleeping_eyes .zzz,
+.low_battery_eyes .zzz {
+  opacity: 1;
+  animation: floatZ 1.4s infinite alternate;
+}
+
+.hungry_eyes .eye {
+  width: 92px;
+  height: 58px;
+  border-radius: 58% 58% 48% 48%;
+  transform: translateY(6px);
+}
+.hungry_eyes .mouth {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  bottom: 42px;
+  opacity: .78;
+}
+
+.sick_eyes {
+  --eye-color: #8ee8d7;
+  --eye-glow: rgba(142, 232, 215, .62);
+}
+.sick_eyes .eye {
+  width: 96px;
+  height: 34px;
+  border-radius: 999px;
+  opacity: .72;
+}
+.sick_eyes .left-eye { transform: rotate(7deg) translateY(7px); }
+.sick_eyes .right-eye { transform: rotate(-7deg) translateY(7px); }
+
+.focused_eyes .eye {
+  width: 112px;
+  height: 22px;
+  border-radius: 999px;
+  transform: translateY(-4px);
+  filter: drop-shadow(0 7px 10px rgba(91, 70, 255, .86)) drop-shadow(0 0 18px rgba(66, 241, 255, .6));
+}
+
+.privacy_closed_eyes .screen-glow {
+  background:
+    radial-gradient(circle at 50% 52%, rgba(116, 83, 255, .12), transparent 38%),
+    linear-gradient(160deg, rgba(255,255,255,0.04), transparent 30% 78%, rgba(100, 81, 255, 0.1));
+}
+
+.pet-icon {
+  position: absolute;
+  right: 30px;
+  bottom: 25px;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid rgba(88, 243, 255, .2);
+  color: rgba(220, 255, 255, .9);
+  background: rgba(88, 243, 255, .08);
+  box-shadow: 0 0 18px rgba(88, 243, 255, .08);
+  font-size: 13px;
+  font-weight: 800;
+  opacity: 0;
+}
+.pet-icon:not(:empty) {
+  opacity: 1;
+}
+.pet-icon-food { border-color: rgba(255, 209, 102, .35); color: #ffe099; background: rgba(255, 209, 102, .1); }
+.pet-icon-sleep_hat,
+.pet-icon-privacy_eye_closed { border-color: rgba(173, 159, 255, .36); color: #ddd7ff; background: rgba(116, 83, 255, .13); }
+.pet-icon-stretch,
+.pet-icon-leaf { border-color: rgba(93,247,174,.28); color: #aaffd4; background: rgba(93,247,174,.09); }

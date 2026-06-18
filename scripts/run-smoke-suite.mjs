@@ -26,6 +26,7 @@ const DEFAULT_SCRIPTS = [
   'test:provider-real-handshake-preflight',
   'test:provider-real-handshake-probe-plan',
   'test:provider-secret-boundary-audit',
+  'test:provider-gateway-execution-shell',
   'test:realtime-mux-backpressure',
   'test:dashscope-omni-config',
   'test:localdev-provider-registry',

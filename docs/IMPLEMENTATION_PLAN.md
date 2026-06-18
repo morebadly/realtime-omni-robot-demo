@@ -1,6 +1,29 @@
-# 技术落地路线 v1.4.2
+# 技术落地路线 v1.4.3
 
-# 鎶€鏈惤鍦拌矾绾?v1.4.2
+# 鎶€鏈惤鍦拌矾绾?v1.4.3
+
+## v1.4.3 Provider Gateway Execution Shell / Synthetic-only
+
+Goal: add a synthetic-only Provider Gateway Execution Shell so any future real provider execution must pass through a server-side gateway / Robot Gateway / Device Runtime boundary.
+
+Completed:
+
+1. Add `src/runtime/providerGatewayExecutionShell.js` with `omni.provider_gateway_execution_shell.v1` metadata and safety-locked descriptor helpers.
+2. Add `src/runtime/providerGatewayExecutionPolicy.js` with disabled-by-default blocking policy, redacted diagnostics, and secret boundary audit compatibility.
+3. Add `scripts/provider-gateway-execution-shell.mjs` as a manual shell CLI that outputs `keyPresent` boolean only and stays no-network / synthetic-only.
+4. Add `scripts/provider-gateway-execution-shell-smoke.mjs` and include it in the safe smoke suite (30 -> 31 checks).
+5. Add v1.4.3 gateway execution shell docs, release notes, and update guide.
+
+Still out of scope:
+
+1. Real provider integration or real gateway execution.
+2. Real BigModel / DashScope endpoint calls.
+3. Real provider WebSocket or browser direct socket.
+4. Real audio or camera upload.
+5. Realtime billing.
+6. Raw, masked, prefix, length, or hash key output.
+7. Real provider keys in frontend, Runtime config, descriptors, diagnostics, Visible Context, Action Log, localStorage, or sessionStorage.
+8. `reply_text -> TTS` or ASR -> LLM -> TTS regression.
 
 ## v1.4.2 Provider Secret Boundary Audit
 

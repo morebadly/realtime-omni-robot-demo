@@ -1,6 +1,25 @@
-# 架构说明 v1.4.2
+# 架构说明 v1.4.3
 
-# 鏋舵瀯璇存槑 v1.4.2
+# 鏋舵瀯璇存槑 v1.4.3
+
+## v1.4.3 Provider Gateway Execution Shell Architecture
+
+v1.4.3 adds a synthetic-only execution shell in front of any future real provider gateway:
+
+```text
+manual server-side operator request
+  -> providerGatewayExecutionPolicy
+  -> providerGatewayExecutionShell
+  -> secret boundary audit
+  -> redacted metadata / blocked decision
+  -> localdev_mock fallback
+```
+
+The shell schema is `omni.provider_gateway_execution_shell.v1`. It is manual-only, server-side-only, synthetic-only, no-network by default, browser-forbidden, and fallback-locked to `localdev_mock`. Candidate providers such as BigModel / DashScope can produce gateway shell metadata, but v1.4.3 cannot execute a real gateway call.
+
+The shell does not call real provider endpoints, does not open provider sockets, does not upload audio or camera frames, does not start billing, and does not connect `reply_text` to TTS. It remains compatible with v1.4.2 secret boundary audit: `keyPresent` is boolean-only, and raw / masked / prefix / length / hash key output is forbidden.
+
+Realtime semantics do not change. `omni.reply_audio_frame.v1` remains the realtime voice output path, `reply_text` remains subtitle / log / debug / Visible Context only, and ASR -> LLM -> TTS fallback remains forbidden.
 
 ## v1.4.2 Provider Secret Boundary Audit Architecture
 

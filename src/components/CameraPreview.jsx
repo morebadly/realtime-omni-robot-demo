@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 
 const DEFAULT_FRAME_POLICY = {
-  label: '本地调试：待机 1fps / 关键帧缓存开启',
+  label: 'local preview 1fps',
   intervalMs: 1000,
   captureWidth: 640,
   jpegQuality: 0.84,
   upload: 'local_debug_only',
-  rationale: '待机时只维护最近几秒缓存，减少无意义上传。'
+  rationale: 'Local preview keeps a short keyframe cache and does not infer emotion.'
 };
 
-export default function CameraPreview({ robot, framePolicy = DEFAULT_FRAME_POLICY, onStatus, onFrame }) {
+export default function CameraPreview({ framePolicy = DEFAULT_FRAME_POLICY, onStatus, onFrame, compact = false }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -18,22 +18,23 @@ export default function CameraPreview({ robot, framePolicy = DEFAULT_FRAME_POLIC
   const [enabled, setEnabled] = useState(false);
   const [error, setError] = useState('');
   const [frameCount, setFrameCount] = useState(0);
-  const [lastFrameAt, setLastFrameAt] = useState('未采集');
+  const [lastFrameAt, setLastFrameAt] = useState('not captured');
   const [thumb, setThumb] = useState('');
 
   useEffect(() => {
     onStatus?.({
       cameraActive: enabled,
-      cameraPolicy: enabled ? framePolicy.label : '摄像头未开启',
+      cameraPolicy: enabled ? framePolicy.label : 'camera closed',
       framePolicy,
       frameCount,
       lastFrameAt,
       bufferedFrames: frameBufferRef.current.length,
-      frameBufferSummary: frameBufferRef.current.map(({ capturedAt, width, height, policy }) => ({
+      frameBufferSummary: frameBufferRef.current.map(({ capturedAt, width, height, policy, uploadStatus }) => ({
         capturedAt,
         width,
         height,
-        policy
+        policy,
+        uploadStatus
       }))
     });
   }, [enabled, framePolicy, frameCount, lastFrameAt, onStatus]);
@@ -44,11 +45,29 @@ export default function CameraPreview({ robot, framePolicy = DEFAULT_FRAME_POLIC
   }, []);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
     const timer = window.setInterval(() => captureFrame(), framePolicy.intervalMs || 1000);
     return () => window.clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, framePolicy.intervalMs, framePolicy.captureWidth, framePolicy.jpegQuality]);
+
+  function emitPetEyeFrame(seed) {
+    onFrame?.({
+      schema: 'cloudgenie.pet_eye_frame.v1',
+      frameId: seed.frameId || `pet-eye-${Date.now()}`,
+      capturedAt: seed.capturedAt || new Date().toISOString(),
+      width: seed.width || 0,
+      height: seed.height || 0,
+      policy: seed.policy || framePolicy.key || framePolicy.cadence || 'local_preview',
+      localPreviewDataUrl: seed.localPreviewDataUrl || '',
+      rawDataUrl: seed.rawDataUrl || '',
+      dataUrl: seed.rawDataUrl || '',
+      uploadStatus: seed.uploadStatus || 'local_only',
+      cameraActive: seed.cameraActive,
+      debugOmniFrameAllowed: false,
+      sequence: seed.sequence || 0
+    });
+  }
 
   async function startCamera() {
     setError('');
@@ -67,10 +86,12 @@ export default function CameraPreview({ robot, framePolicy = DEFAULT_FRAME_POLIC
         await videoRef.current.play();
       }
       setEnabled(true);
+      emitPetEyeFrame({ cameraActive: true, frameId: `pet-eye-open-${Date.now()}` });
       setTimeout(() => captureFrame(), 350);
     } catch (err) {
-      setError('无法打开摄像头。请检查浏览器权限，或确认摄像头没有被其他软件占用。');
+      setError('Unable to open camera preview. Check browser camera permission.');
       setEnabled(false);
+      emitPetEyeFrame({ cameraActive: false, frameId: `pet-eye-error-${Date.now()}` });
     }
   }
 
@@ -79,6 +100,7 @@ export default function CameraPreview({ robot, framePolicy = DEFAULT_FRAME_POLIC
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setEnabled(false);
+    emitPetEyeFrame({ cameraActive: false, frameId: `pet-eye-closed-${Date.now()}` });
   }
 
   function captureFrame() {
@@ -88,6 +110,13 @@ export default function CameraPreview({ robot, framePolicy = DEFAULT_FRAME_POLIC
 
     const width = framePolicy.captureWidth || 640;
     const height = Math.round((video.videoHeight / video.videoWidth) * width) || 720;
+    const quality = framePolicy.jpegQuality || 0.84;
+
+    const rawCanvas = document.createElement('canvas');
+    rawCanvas.width = width;
+    rawCanvas.height = height;
+    rawCanvas.getContext('2d').drawImage(video, 0, 0, width, height);
+
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
@@ -96,23 +125,38 @@ export default function CameraPreview({ robot, framePolicy = DEFAULT_FRAME_POLIC
     ctx.drawImage(video, -width, 0, width, height);
     ctx.restore();
 
-    const dataUrl = canvas.toDataURL('image/jpeg', framePolicy.jpegQuality || 0.84);
-    const capturedAt = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    const rawDataUrl = rawCanvas.toDataURL('image/jpeg', quality);
+    const localPreviewDataUrl = canvas.toDataURL('image/jpeg', quality);
+    const capturedAt = new Date().toISOString();
     frameSeqRef.current += 1;
-    const frame = { dataUrl, capturedAt, width, height, policy: framePolicy.key, sequence: frameSeqRef.current };
+    const frame = {
+      schema: 'cloudgenie.pet_eye_frame.v1',
+      frameId: `pet-eye-${frameSeqRef.current}`,
+      capturedAt,
+      width,
+      height,
+      policy: framePolicy.key || framePolicy.cadence || 'local_preview',
+      localPreviewDataUrl,
+      rawDataUrl,
+      dataUrl: rawDataUrl,
+      uploadStatus: compact ? 'local_only' : 'cloud_allowed_but_not_sent',
+      cameraActive: true,
+      debugOmniFrameAllowed: !compact,
+      sequence: frameSeqRef.current
+    };
     frameBufferRef.current = [frame, ...frameBufferRef.current].slice(0, 8);
     onFrame?.(frame);
-    setThumb(dataUrl);
+    setThumb(localPreviewDataUrl);
     setFrameCount((count) => count + 1);
     setLastFrameAt(capturedAt);
   }
 
   return (
-    <section className="camera-card">
+    <section className={`camera-card ${compact ? 'camera-card-compact' : ''}`}>
       <div className="camera-header">
         <div>
-          <p className="eyebrow">Visual Frame Buffer</p>
-          <h2>机器人摄像头关键帧策略，当前用浏览器摄像头模拟</h2>
+          <p className="eyebrow">{compact ? 'Pet Camera' : 'Visual Frame Buffer'}</p>
+          <h2>{compact ? 'pet-eye local preview control' : 'Debug camera keyframe capture'}</h2>
         </div>
         <span className={enabled ? 'tag camera-live' : 'tag'}>{enabled ? 'camera live' : 'camera off'}</span>
       </div>
@@ -120,32 +164,38 @@ export default function CameraPreview({ robot, framePolicy = DEFAULT_FRAME_POLIC
       <div className="camera-body">
         <div className="camera-video-wrap">
           <video ref={videoRef} className="camera-video" playsInline muted />
-          {!enabled && <div className="camera-placeholder">点击“开启摄像头预览”后，这里会显示机器人看到的画面。关键帧由 Runtime 的 FramePolicyEngine 决定，不先做情绪摘要。</div>}
+          {!enabled && (
+            <div className="camera-placeholder">
+              {compact
+                ? 'Open local preview to refresh the pet-eye window. Upload remains local_only by default.'
+                : 'Open camera preview to capture local keyframes. This does not infer emotion.'}
+            </div>
+          )}
         </div>
         <div className="frame-panel">
           <div className="frame-thumb">
-            {thumb ? <img src={thumb} alt="最近关键帧" /> : <span>暂无关键帧</span>}
+            {thumb ? <img src={thumb} alt="latest local preview frame" /> : <span>No keyframe</span>}
           </div>
-          <small>最近关键帧</small>
+          <small>latest keyframe</small>
           <strong>{lastFrameAt}</strong>
         </div>
       </div>
 
       <div className="camera-actions">
         {enabled ? (
-          <button onClick={stopCamera}>关闭摄像头</button>
+          <button type="button" onClick={stopCamera}>Close camera</button>
         ) : (
-          <button onClick={startCamera}>开启摄像头预览</button>
+          <button type="button" onClick={startCamera}>Open local preview</button>
         )}
-        <button onClick={captureFrame} disabled={!enabled}>手动抓取关键帧</button>
+        <button type="button" onClick={captureFrame} disabled={!enabled}>Capture keyframe</button>
       </div>
 
       <div className="camera-meta">
-        <div><small>关键帧策略</small><strong>{framePolicy.label}</strong></div>
-        <div><small>已缓存帧数</small><strong>{frameCount}</strong></div>
-        <div><small>最近帧缓存</small><strong>{frameBufferRef.current.length} / 8</strong></div>
-        <div><small>上传策略</small><strong>{framePolicy.upload}</strong></div>
-        <div><small>媒体帧协议</small><strong>omni.camera_frame.v1</strong></div>
+        <div><small>frame policy</small><strong>{framePolicy.label}</strong></div>
+        <div><small>buffered frames</small><strong>{frameCount}</strong></div>
+        <div><small>latest cache</small><strong>{frameBufferRef.current.length} / 8</strong></div>
+        <div><small>upload status</small><strong>local_only</strong></div>
+        <div><small>pet-eye schema</small><strong>cloudgenie.pet_eye_frame.v1</strong></div>
       </div>
       <p className="camera-policy-note">{framePolicy.rationale}</p>
       {error && <p className="camera-error">{error}</p>}

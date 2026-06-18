@@ -1,4 +1,16 @@
-# Realtime Omni Robot Demo v1.4.2
+# Realtime Omni Robot Demo v1.4.3
+
+## v1.4.3 Provider Gateway Execution Shell / Synthetic-only
+
+v1.4.3 是 Provider Gateway Execution Shell / Synthetic-only：它不是接入真实 provider，也不是实时通话执行层，而是把未来真实 provider 调用的唯一执行入口固定为 server-side gateway / Robot Gateway / Device Runtime。
+
+- 新增 `src/runtime/providerGatewayExecutionShell.js` 和 `src/runtime/providerGatewayExecutionPolicy.js`，用于生成安全锁定的 gateway execution shell metadata / decision。
+- 新增 `scripts/provider-gateway-execution-shell.mjs` 和 `npm run test:provider-gateway-execution-shell`；safe smoke suite 现在是 31 checks。
+- 默认仍然是 disabled / blocked / manual only / server-side only / synthetic-only / no-network。
+- 不打开真实 socket，不调用真实 BigModel / DashScope endpoint，不上传 audio，不上传 camera，不启动 billing，不做 `reply_text -> TTS`。
+- key 只能以 `keyPresent=true/false` 这种 boolean 形式出现；raw key、masked key、key prefix、key length、key hash 都不能输出。
+- `localdev_mock` fallback 继续保留。
+- 本项目不是普通聊天机器人，不是 TTS 播放器，也不允许退化成 ASR -> LLM -> TTS。语音方向仍然是实时 Omni 语音通话链路：Provider 输出 `omni.reply_audio_frame.v1`，由 Web Audio / Robot Speaker 流式播放；`reply_text` 只能作为字幕、日志、调试和 Visible Context，不能接 TTS。
 
 ## v1.4.2 Provider Secret Boundary Audit
 

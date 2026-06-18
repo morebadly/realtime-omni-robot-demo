@@ -4,7 +4,7 @@
 
 This project is a realtime Omni robot platform demo.
 
-Current version: v1.4.2.
+Current version: v1.4.3.
 
 Tech stack:
 - Vite
@@ -457,6 +457,16 @@ Runtime code and Web UI must not call `test:localdev-*` scripts. Those scripts m
 - The skeleton endpoint `/provider-proxy/providers/:providerId/real-handshake-preflight` is local Mock metadata only. It must not read real env keys or call real endpoints.
 - `omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` remains subtitle/log/debug only. ASR -> LLM -> TTS regression remains forbidden.
 - `localdev_mock` fallback remains required.
+
+## v1.4.3 Provider Gateway Execution Shell / Synthetic-only rule
+
+- v1.4.3 adds a Provider Gateway Execution Shell (`omni.provider_gateway_execution_shell.v1`) and policy decision layer for future server-side provider execution.
+- This is still not real provider integration, not a realtime user call, and not a real network handshake. Do not open real provider sockets, call real BigModel / DashScope endpoints, upload audio, upload camera, start billing, or route `reply_text` to TTS.
+- The shell is manual-only, server-side-only, synthetic-only, no-network by default, browser-forbidden, and fallback-locked to `localdev_mock`.
+- Candidate providers may produce gateway shell metadata only. They must not execute a real gateway call or widen capability flags.
+- `keyPresent` is the only allowed key-state output and must be boolean. Raw, masked, prefix, length, and hash forms of provider keys must never appear in descriptors, diagnostics, logs, Visible Context, Action Log, Runtime config, localStorage, sessionStorage, or browser runtime.
+- The v1.4.2 secret boundary audit remains part of the gateway shell boundary.
+- `omni.reply_audio_frame.v1` remains the realtime voice output path. `reply_text` is subtitles/logs/debug/Visible Context only. ASR -> LLM -> TTS fallback remains forbidden.
 
 ## v1.4.1 Manual Real Handshake Probe Stub rule
 

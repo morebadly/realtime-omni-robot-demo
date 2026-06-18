@@ -201,6 +201,6 @@ assert(!forbiddenWsImport.test(auditSources), 'secret audit code must not import
 const smokeSource = fs.readFileSync('scripts/run-smoke-suite.mjs', 'utf8');
 assert(smokeSource.includes("'test:provider-secret-boundary-audit'"), 'smoke suite must include provider secret boundary audit test');
 const checkCount = [...smokeSource.matchAll(/'test:[^']+'/g)].length;
-assert(checkCount === 30, `smoke suite must contain 30 checks (got ${checkCount})`);
+assert(checkCount === 31, `smoke suite must contain 31 checks (got ${checkCount})`);
 
-console.log('Provider secret boundary audit smoke passed: raw/masked/prefix/length/hash blocked, keyPresent boolean-only, forbidden sinks checked, 30-check suite, no real network, fallback=localdev_mock');
+console.log('Provider secret boundary audit smoke passed: raw/masked/prefix/length/hash blocked, keyPresent boolean-only, forbidden sinks checked, 31-check suite, no real network, fallback=localdev_mock');

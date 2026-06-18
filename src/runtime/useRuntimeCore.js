@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { createEventBus } from './eventBus';
 import { createLog, initialRobot, matchPlugin } from './mockRuntime';
-import { expressionToRobotState, inferExpressionFromEvent, getExpressionFromPlugin } from './expressionEngine';
+import { expressionToRobotState, inferExpressionFromEvent, getExpressionFromPlugin, petExpressionToRobotExpression } from './expressionEngine';
 import { executePluginActions } from './pluginEngine';
 import { getAdapterForMode, getNetworkLabel } from './modelAdapters';
 import { createPermissionMap, checkPermission, describePermissionStatus } from './permissionEngine';
@@ -47,6 +47,8 @@ import {
 } from './localDevPreflight';
 import { createRobotRegistryItem, findRobotSummary, readActiveRobotId, readRobotRegistry, removeRegistryItem, saveActiveRobotId, saveRobotRegistry, updateRegistryItem } from './robotRegistry';
 import { deleteRobotRuntimeConfig, readRobotRuntimeConfig, resetRobotAdapterProfiles, saveRobotAdapterProfiles, saveRobotPermissions, saveRobotPlugins } from './robotRuntimeConfig';
+import { createPetEyeFrame } from './petBehaviorProtocol';
+import { createInitialPetState, createPetActionFromState, reducePetState } from './petStateEngine';
 
 function createRobotFromRegistry(robotId, registry, adapterProfiles) {
   const summary = findRobotSummary(registry, robotId);
@@ -234,6 +236,17 @@ export function useRuntimeCore() {
     frameBufferSummary: []
   });
 
+  const initialPetState = useMemo(() => createInitialPetState(), []);
+  const [pet, setPet] = useState(initialPetState);
+  const [petAction, setPetAction] = useState(() => createPetActionFromState(initialPetState, { type: 'pet.timer.tick' }));
+  const [petActions, setPetActions] = useState([]);
+  const [petEyeFrame, setPetEyeFrame] = useState(() => createPetEyeFrame({
+    frameId: 'pet-eye-initial',
+    capturedAt: null,
+    policy: 'local_preview',
+    uploadStatus: 'local_only'
+  }));
+
   const connectionSnapshot = useMemo(() => buildConnectionSnapshot(robot.mode, networkQuality), [robot.mode, networkQuality]);
 
   const framePolicy = useMemo(() => getFramePolicy({
@@ -316,6 +329,61 @@ export function useRuntimeCore() {
     setRuntimeTrace((prev) => [createTrace(layer, event, detail), ...prev].slice(0, 32));
   }
 
+  const restReminder = useMemo(() => pet.restReminder || {
+    active: false,
+    reasonCode: null,
+    icon: 'none',
+    label: 'idle'
+  }, [pet.restReminder]);
+
+  function applyPetStateEvent(event, { emit = true, log = true } = {}) {
+    const petEvent = event || { type: 'pet.timer.tick' };
+    const emitted = emit ? bus.emit(petEvent) : petEvent;
+    const now = new Date();
+    let nextState;
+    let nextAction;
+    setPet((prev) => {
+      nextState = reducePetState(prev, emitted, now);
+      nextAction = createPetActionFromState(nextState, emitted, now);
+      return nextState;
+    });
+    if (!nextState || !nextAction) {
+      nextState = reducePetState(pet, emitted, now);
+      nextAction = createPetActionFromState(nextState, emitted, now);
+    }
+    setPetAction(nextAction);
+    setPetActions((prev) => [nextAction, ...prev].slice(0, 24));
+    setRobot((prev) => ({
+      ...prev,
+      expression: petExpressionToRobotExpression(nextAction.expression),
+      expressionSource: 'pet_state_engine',
+      state: nextAction.petState,
+      motion: { name: nextAction.motion },
+      cameraDemand: nextAction.reasonCode === 'camera_closed' ? 'local_only' : prev.cameraDemand
+    }));
+    syncActiveRobotSummary({
+      expression: nextAction.expression,
+      state: nextAction.petState,
+      lastSeen: '鍒氬垰'
+    });
+    if (log) {
+      pushTrace('PetStateEngine', emitted.type, `${nextAction.petState} / ${nextAction.expression} / speechForbidden=true`);
+    }
+    return { event: emitted, pet: nextState, action: nextAction };
+  }
+
+  function dispatchPetEvent(event) {
+    const result = applyPetStateEvent(event, { emit: true, log: true });
+    setRecentEvents((prev) => [result.event, ...prev].slice(0, 24));
+    return result;
+  }
+
+  function updatePetEyeFrame(frame) {
+    const nextFrame = createPetEyeFrame(frame);
+    setPetEyeFrame(nextFrame);
+    return nextFrame;
+  }
+
   function beginOmniSession(action, label) {
     if (omniBusyRef.current) {
       pushLog('warn', 'Omni 会话正忙', `${omniSessionStatus.label} 正在进行中，请等待当前回合结束后再发送新的输入。`);
@@ -394,6 +462,16 @@ export function useRuntimeCore() {
       lastFrameAt: '未采集',
       frameBufferSummary: []
     });
+    const nextPet = createInitialPetState();
+    setPet(nextPet);
+    setPetAction(createPetActionFromState(nextPet, { type: 'pet.timer.tick' }));
+    setPetActions([]);
+    setPetEyeFrame(createPetEyeFrame({
+      frameId: 'pet-eye-reset',
+      capturedAt: null,
+      policy: 'local_preview',
+      uploadStatus: 'local_only'
+    }));
     setRealtimeSession(createDefaultRealtimeSession());
     setRealtimeSessionState(transitionRealtimeSessionState(null, 'RESET'));
     setNetworkQuality('stable');
@@ -1181,6 +1259,16 @@ export function useRuntimeCore() {
   }
 
   async function handleCameraFrame(frameSeed) {
+    if (frameSeed?.schema === 'cloudgenie.pet_eye_frame.v1') {
+      updatePetEyeFrame(frameSeed);
+      if (frameSeed.cameraActive === false || frameSeed.uploadStatus === 'local_only_camera_closed') {
+        applyPetStateEvent({ type: 'pet.camera.closed', label: 'camera_closed' }, { emit: true, log: true });
+      } else if (frameSeed.cameraActive === true) {
+        applyPetStateEvent({ type: 'pet.camera.opened', label: 'camera_opened' }, { emit: true, log: true });
+      }
+      if (!frameSeed.debugOmniFrameAllowed) return;
+      if (!frameSeed.rawDataUrl) return;
+    }
     const frame = createCameraFrame({
       robot,
       frame: frameSeed,
@@ -1324,6 +1412,20 @@ export function useRuntimeCore() {
     const emitted = bus.emit(event);
     setRecentEvents((prev) => [emitted, ...prev].slice(0, 24));
     pushTrace('EventBus', emitted.type, emitted.label || emitted.intent || emitted.tagId || 'fact_event');
+    if (
+      emitted.type === 'touch.event' ||
+      emitted.type === 'nfc.detected' ||
+      emitted.type === 'pet.timer.tick' ||
+      emitted.type === 'pet.work_session.long' ||
+      emitted.type === 'pet.battery.low' ||
+      emitted.type === 'pet.camera.closed' ||
+      emitted.type === 'pet.camera.opened' ||
+      emitted.type === 'pet.user.returned' ||
+      emitted.type === 'network.offline' ||
+      emitted.type === 'network.online'
+    ) {
+      applyPetStateEvent(emitted, { emit: false, log: true });
+    }
 
     const eventPermission = getEventPermission(emitted);
     if (eventPermission) {
@@ -1416,6 +1518,13 @@ export function useRuntimeCore() {
     realtimeOutput,
     realtimeMux,
     sessionCorrelation,
+    pet,
+    petAction,
+    petActions,
+    petEyeFrame,
+    restReminder,
+    dispatchPetEvent,
+    updatePetEyeFrame,
     setCameraStatus,
     actions: {
       handleRobotSelect,
@@ -1446,6 +1555,8 @@ export function useRuntimeCore() {
       handlePluginDelete,
       handlePluginRun,
       handlePluginAdd,
+      dispatchPetEvent,
+      updatePetEyeFrame,
       handleEvent,
       handleProviderSocketSandboxRequest,
       handleProviderSocketSandboxSyntheticOpen,
