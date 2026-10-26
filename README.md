@@ -1,5 +1,13 @@
 # Realtime Omni Robot Demo v1.4.3
 
+## 香橙派与 ESP32 文件
+
+- [设备端文件与补齐状态](hardware/README.md)
+- [ESP32 当前固件与 Arduino 使用说明](hardware/esp32/README.md)：已导入用户确认正在使用的 `esp32_cerebellum原版`，保留全部 16 个源码文件及原有硬件配置。
+- [香橙派部署说明](hardware/orangepi/README.md)：已从设备取回 CyberPet_OS 的 24 个 Python 文件、脱敏配置示例、依赖与模型准备工具，另列出现有 Node Mock 网关的部署方法。
+
+本次是现有固件归档和部署资料补充，不会自动将 Web 控制台连接到 ESP32，也不代表硬件联调完成。
+
 ## v1.4.3 Provider Gateway Execution Shell / Synthetic-only
 
 v1.4.3 是 Provider Gateway Execution Shell / Synthetic-only：它不是接入真实 provider，也不是实时通话执行层，而是把未来真实 provider 调用的唯一执行入口固定为 server-side gateway / Robot Gateway / Device Runtime。

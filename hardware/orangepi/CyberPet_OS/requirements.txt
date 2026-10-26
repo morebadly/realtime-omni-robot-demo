@@ -1,0 +1,44 @@
+# ═══════════════════════════════════════════════════
+#  CyberPet OS - Python deps (Orange Pi 5 PRO)
+# ═══════════════════════════════════════════════════
+
+# -- Core --
+PyYAML>=6.0
+pyserial>=3.5
+
+# -- Vision (ONNX lightweight pipeline, NO tensorflow!) --
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+onnxruntime>=1.16.0             # ~30ms total inference on ARM
+
+# -- Audio --
+sounddevice>=0.4.6
+pvporcupine>=3.0.0
+openai-whisper>=20231117
+noisereduce>=3.0.0         # Spectral-subtraction noise suppression; run
+                           # in non-stationary mode over the finalized STT
+                           # buffer to remove fan / AC / hum before
+                           # sense-voice sees the audio. Pure numpy/scipy
+                           # so no ARM compilation issues on RK3588.
+
+# -- LLM --
+openai>=1.12.0
+httpx>=0.27.0
+
+# -- TTS --
+edge-tts>=6.1.9
+pygame>=2.5.0
+miniaudio>=1.59            # MP3 -> PCM decode for streaming playback.
+                           # Needed to avoid SDL_mixer double-play bug on
+                           # MiniMax SSE streams that carry multiple Xing
+                           # headers across chunk boundaries.
+
+# -- Eye display --
+# Rendering is offloaded to ESP32; no SPI / GPIO deps needed on the Orange Pi.
+Pillow>=10.2.0                 # kept for offline animation-frame tooling only
+
+# -- Long-term memory --
+chromadb>=0.4.22
+
+# -- OpenClaw gateway --
+aiohttp>=3.9.0

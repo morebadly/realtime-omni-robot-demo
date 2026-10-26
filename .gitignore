@@ -9,3 +9,18 @@ npm-debug.log*
 
 # Local install lockfile is generated per machine/registry in this demo package.
 package-lock.json
+
+# Local device configuration, state and generated files.
+hardware/orangepi/CyberPet_OS/config.yaml
+hardware/orangepi/CyberPet_OS/.env
+hardware/orangepi/CyberPet_OS/venv/
+hardware/orangepi/CyberPet_OS/.venv/
+hardware/orangepi/CyberPet_OS/venvsource/
+hardware/orangepi/CyberPet_OS/**/__pycache__/
+hardware/orangepi/CyberPet_OS/data/
+hardware/orangepi/CyberPet_OS/assets/faces_db/*
+!hardware/orangepi/CyberPet_OS/assets/faces_db/.gitkeep
+hardware/orangepi/CyberPet_OS/assets/wake_word/my_keywords.txt
+hardware/orangepi/CyberPet_OS/assets/**/*.onnx
+hardware/orangepi/CyberPet_OS/assets/**/*.pt
+hardware/orangepi/CyberPet_OS/assets/**/*.npy
