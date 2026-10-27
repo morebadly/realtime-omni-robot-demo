@@ -1,0 +1,3 @@
+# Keep the exported dependency list intact; include the active audio backend.
+-r requirements.txt
+sherpa-onnx

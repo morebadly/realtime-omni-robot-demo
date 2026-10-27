@@ -1,0 +1,2 @@
+# Preserve archived device-source bytes so provenance hashes survive checkout.
+hardware/** -text whitespace=cr-at-eol,-blank-at-eof

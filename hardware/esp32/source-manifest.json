@@ -1,0 +1,87 @@
+{
+  "source": "gyztbsd/机器人/esp32_cerebellum原版",
+  "source_selected_by_user": true,
+  "source_modified": false,
+  "files": [
+    {
+      "path": "hardware/esp32/esp32_cerebellum/comm_protocol.h",
+      "bytes": 6420,
+      "sha256": "c065e4c741e240c9c014450ae45de8b9ee7821c84ed85b5c40bca290a3337c3e"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/esp32_cerebellum.ino",
+      "bytes": 20559,
+      "sha256": "87eedf730ccbb4ec759705d6b447cb418b6f66fa8bfca6d712da17e0e9fd63b7"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/eye_display.cpp",
+      "bytes": 26107,
+      "sha256": "1f5425a3958a802c23541302431599a3b17386b3ce4850f81de6b28081072b3a"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/eye_display.h",
+      "bytes": 7696,
+      "sha256": "d09c290bd9167ad194540c40725114c847509df8a92fc003785401020a300268"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/motor_driver.cpp",
+      "bytes": 5350,
+      "sha256": "7952b8bdc8b5c178c79cdd2a253586ed2d334977655f710f67894ad7445875e7"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/motor_driver.h",
+      "bytes": 5617,
+      "sha256": "3882c3b3eea30089353fbd3eb8a40620e0994b76b54a92628216380180350b5c"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/selftest.cpp",
+      "bytes": 10070,
+      "sha256": "eee5b6c47bdb0be2c976ce3c8b8024698afb2290c028a1e30da38e14e0afeb0f"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/selftest.h",
+      "bytes": 1907,
+      "sha256": "0a0955effb7905d2e3df92ca172952bd282a6a5dd342d9c53edce464fb58a14f"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/sensor_linetrack.cpp",
+      "bytes": 1388,
+      "sha256": "d2ffdcc3e173226f1736a8c1bfaefe64f5dc2472a685f85e60a80cb3e65bed87"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/sensor_linetrack.h",
+      "bytes": 5570,
+      "sha256": "2423182e9d1da0d06013bd9313ece81dcc09706b710d33793d8e893ec581a8b0"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/sensor_touch.cpp",
+      "bytes": 877,
+      "sha256": "bcb7402c73cd4900438376cc506a83bbb4780df532f2ad7a3850d006e6549906"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/sensor_touch.h",
+      "bytes": 1927,
+      "sha256": "bda1ccc2192b6cf9bfa7d7bc4eacc1fd8cb7b7bbc833bd8727457a16de036fb3"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/sensor_ultrasonic.cpp",
+      "bytes": 825,
+      "sha256": "6552f7122a6d0860a8bdbaa0fc5d7ef198bbff078d58d6438515f59b98b686c4"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/sensor_ultrasonic.h",
+      "bytes": 696,
+      "sha256": "03ab016e90b67345d87f0009c0b573a4802cec58ca9bcc86f1dbf584fa31a942"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/servo_driver.cpp",
+      "bytes": 5583,
+      "sha256": "703728a76f2d05749faca7e3ebd5e013e4a79b280887b10e13d7ea570936993f"
+    },
+    {
+      "path": "hardware/esp32/esp32_cerebellum/servo_driver.h",
+      "bytes": 2224,
+      "sha256": "480642d491a576ef665470a76720e3280e8d6d4de6b154ca50998a83fdea27da"
+    }
+  ]
+}

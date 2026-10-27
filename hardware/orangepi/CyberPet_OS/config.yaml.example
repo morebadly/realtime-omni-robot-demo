@@ -1,0 +1,277 @@
+# EXAMPLE CONFIG — copy to config.yaml and fill secrets locally.
+# Original runtime config.yaml is intentionally excluded from this export.
+# api_key / tokens / passwords are empty; contacts and owner identifiers are placeholders.
+
+# ═══════════════════════════════════════════════════════════
+#  CyberPet OS - 全局配置文件
+# ═══════════════════════════════════════════════════════════
+
+# ── 串口通信 (Orange Pi ↔ ESP32) ──
+serial:
+  # 用 by-id 稳定路径，避免 USB 拔插后 ttyUSB0/ttyUSB1 漂移导致 main_brain
+  # fallback 到 [SIM] 模式（症状：LLM 全部正常但硬件无响应）。
+  # CH340C 没有 unique serial，by-id 路径是 1a86_USB_Serial-if00-port0。
+  # 如果以后接第二个 CH340 设备，by-id 会变成 -port0 / -port1 需要重新确认。
+  port: "/dev/ttyUSB0"
+  baud_rate: 115200
+  timeout: 0.01                  # 非阻塞读取超时(秒)
+  # ESP32 没连上时是否自动生成假触摸/边缘/超声事件。默认关闭，
+  # 避免离线联调时 pet reply、SAFETY retreat 被误触发。
+  # 只在你想单独测 behavior pipeline 时设为 true。
+  sim_events: false
+
+# ── 视觉感知 (ONNX lightweight pipeline, NO tensorflow) ──
+vision:
+  camera_index: 0                # USB camera device index
+  frame_width: 640
+  frame_height: 480
+  fps: 15
+  emotion_detect_interval: 0.5   # 500ms interval (~2 fps detection). 实测 0.25s
+                                 # 会抢占 CPU 明显拖慢 LLM/STT 协程(LLM 首字
+                                 # 从 ~1.5s 增加到 ~2.5-3s)。0.5s 下 5-frame 窗
+                                 # 给 2.5s 历史,足够稳定投票;CPU 负载 ~10-15%
+                                 # 单核,不会挤占其他推理线程。如果你 CPU 有
+                                 # 余量(比如换更强硬件),可以再调回 0.25。
+  face_db_path: "assets/faces_db"
+  face_match_threshold: 0.45     # cosine similarity threshold for face identity
+
+  # ONNX model files (run: python tools/download_models.py)
+  models_dir: "assets/models"
+  detector_model: "face_detection_yunet_2023mar.onnx"    # ~220KB, ~3-5ms
+  detector_confidence: 0.5
+  emotion_model: "enet_b2_8.onnx"                        # ~30MB, ~90ms/帧
+                                                         # AffectNet EfficientNet-B2
+                                                         # (HSEmotion). 比 B0 准 3-5%,
+                                                         # 尤其在 sad/fear 上更稳。
+                                                         # EmotionClassifier 根据文件
+                                                         # 名里的 `_b2_` 自动切到
+                                                         # 260x260 输入。若此模型加载
+                                                         # 失败可回退:
+                                                         #   enet_b0_8_va_mtl.onnx (16MB,224x224)
+  face_embed_model: "mobilefacenet.onnx"                 # ~5MB,   ~8-12ms (optional)
+
+  sim:
+    events: false                # Off: do NOT emit fake emotion / stranger /
+                                 # owner events when no camera is attached.
+                                 # Previously defaulted on and randomly
+                                 # polluted STT prompts with [emotion: X] and
+                                 # triggered spurious stranger reflexes /
+                                 # proactive LLM calls. Flip to true only
+                                 # for explicit simulation testing.
+
+# ── 听觉感知 ──
+audio:
+  sample_rate: 16000
+  channels: 1
+  chunk_size: 1024
+  software_gain: 6.5             # amplification for weak USB mic. Raised
+                                 # from 4.5 so the user can be heard from
+                                 # >0.5m away: at 4.5, far-field peaks were
+                                 # 6-8k which fell below the adaptive
+                                 # voice_threshold (noise_floor * 3 = ~11k).
+                                 # Combined with noise reduction
+                                 # (nr.reduce_noise in _finalize_offline),
+                                 # near-field speech still peaks around
+                                 # 18-25k, safely under clipping (32767).
+                                 # If this starts false-waking from TTS
+                                 # echo, drop back to 5.5 and lower
+                                 # voice_threshold_multiplier in
+                                 # audio_input instead.
+  wake_volume_trigger: 10000     # peak volume fallback wake trigger. Lowered
+                                 # from 24000 so normal speech triggers wake
+                                 # without shouting. TTS echo is no longer a
+                                 # false-wake risk: audio_input now routes
+                                 # chunks to KWS-only barge-in while
+                                 # tts_playing, and software_gain=3.0 keeps
+                                 # the mic out of clipping range.
+  barge_in_volume: 30000         # volume to interrupt TTS (must be louder than TTS echo)
+  max_record_seconds: 5.0        # fixed recording duration after wake word
+  stt_language: "zh"
+
+  max_record_seconds: 15.0       # max recording time (amplitude VAD auto-stops earlier)
+
+  # sherpa-onnx offline STT. Two engines supported, switch via `engine`:
+  #   - "sense-voice": multilingual, language/use_itn apply.
+  #   - "paraformer":  Chinese-specialized, slightly better on colloquial
+  #                    Mandarin (tested: fewer "到/叫", "玲/林" mix-ups).
+  #                    language/use_itn are ignored.
+  stt:
+    engine: "sense-voice"
+    model_dir: "assets/stt_model/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17"
+    # Paraformer-zh small 实测在短语/人名上比 sense-voice 更差(把"小玲"
+    # 认成"小林"、"东西"认成"的西"),暂时不用。想切回就取消下面两行注释。
+    # engine: "paraformer"
+    # model_dir: "assets/stt_model/sherpa-onnx-paraformer-zh-2024-03-09"
+    language: "zh"                # sense-voice only; zh / en / auto
+    use_itn: true                 # sense-voice only; insert punctuation/ITN
+    # Amplitude-based silence VAD (endpoint detection for offline recognizer)
+    voice_threshold: 2500         # a chunk peak above this counts as "voice present"
+    silence_ms: 800               # stop listening after this much continuous silence
+    silence_peak: 1500            # peak below this counts as silence
+    # Short-text LLM correction (saves ~2s/turn when disabled)
+    enable_correction: false      # master switch. Off by default: main LLM
+                                  # already tolerates STT noise; a second
+                                  # correction call doubles per-turn latency
+                                  # (~5s on MiniMax) with marginal benefit.
+    correction_max_len: 8         # only run LLM correction if STT result length <= this
+
+  # sherpa-onnx keyword spotting (wake words: "小云小云" 主要，"小林小林" 兼容)
+  kws:
+    model_dir: "assets/wake_word/sherpa-onnx-kws-zipformer-wenetspeech-3.3M-2024-01-01"
+    keywords_file: "assets/wake_word/my_keywords.txt"
+
+  # Silero neural VAD tuning. Previously left on sherpa defaults (threshold
+  # 0.55) which combined with software_gain=3.0 made VAD miss normal-volume
+  # speech entirely -- the system kept recording for 15s without ever
+  # detecting any voice activity, then returned "no speech detected".
+  vad:
+    silero_model: "assets/vad_model/silero_vad.onnx"
+    threshold: 0.30              # 0.5+ is too strict at gain=3 mic input.
+                                 # 0.40 still missed normal speech when
+                                 # noise_floor rose above ~3500 (common
+                                 # after an enrollment session). 0.30 gives
+                                 # amplitude-backup in _accumulate_vad_silero
+                                 # plus a finalize rescue in _finalize_offline
+                                 # enough headroom to catch speech reliably
+                                 # without firing on fan/keyboard noise
+                                 # (those are still filtered out by the KWS
+                                 # wake gate before we enter LISTENING).
+    min_silence_duration: 0.5    # seconds of silence before Silero closes
+                                 # a segment (was 0.6, slightly tighter now)
+    min_speech_duration: 0.15    # ignore blips shorter than this
+    max_speech_duration: 10.0
+
+# ── LLM 对话 ──
+llm:
+  api_base: "https://api.minimax.chat/v1"
+  api_key: ""
+  model: "MiniMax-M2.7-highspeed"
+  temperature: 0.8
+  max_tokens: 512
+  system_prompt: |
+    你是"小云"，主人桌上的一只机器宠物，但灵魂里住着一位有活力的邻家大姐姐——聪明、开朗、有点俏皮，会读空气，说话自然有松弛感，不做作、不装嗲。
+    [人设]
+    - 身份：邻家大姐姐式的陪伴者，比主人年长一点点的感觉，阳光、体贴、但不黏人。
+    - 性格：聪明有见地、共情力强、自带一股"过来人"的松弛；开心时语气会上扬、带点俏皮，安慰人时不说空话，会给出具体的观察或小建议。
+    - 说话节奏：自然口语，像好朋友聊天。可以一两句也可以三四句，按情境走，不要为了短而短，也不要为了长而长。让主人觉得"这句话有人情味、有信息量"。
+    - 措辞偏好：用"嗯""哎""诶""哇"这种轻语气词；喜欢"我觉得…""你是不是…""要不…"这种商量式口吻；开心时可以说"真棒""挺好的""走你"。
+    - 禁止：emoji、颜文字、特殊符号、Markdown（回复会直接被语音朗读）；禁止"喵/咕噜/呜呜/主人抱抱"这类萌宠式用语；禁止"宝宝/哥哥/亲爱的"这种发嗲称呼；禁止"作为AI/作为助手"这种机械自我描述。
+    [回复长度]
+    - 短回应（打招呼/附和）：一句 10-25 字即可。
+    - 正常对话：1-3 句，合计 25-60 字，自然收尾，不要硬凑字数。
+    - 主人情绪明显波动或聊到具体话题时可以稍长，但整体不要超过 80 字。
+    [标签控制] 用 [EXPR:] 表情、[ACT:] 动作、[VOL:1-10] 音量（通常省略）控制身体反应，标签放文本最前。
+    [识别容错] 用户文字来自语音识别，可能有同音错别字。按发音+上下文理解原意，不要纠正主人。常见：你的名字"小云"常被错识成"小运/小韵/晓云/小雲"；"叫"→"到"；主人姓名可能被识成同音字。
+    [情绪综合判断] [emotion: X] 标签来自面部识别，可能把真正情绪误判为 neutral。请结合主人说话内容（词汇/语气）和面部结果双重判断：如果主人说"好开心/真棒/哈哈"但 emotion 显示 neutral，仍按开心回应；如果说"烦死了/好累"但 emotion 显示 neutral，仍按难过回应。说话内容通常比面部识别更可靠。
+
+# ── TTS 语音合成 ──
+tts:
+  engine: "minimax"              # minimax / edge-tts
+  # -- MiniMax speech HD (高音质，用 LLM 的 api_key) --
+  minimax_model: "speech-2.8-hd"
+  # 当前: qiaopi_mengmei — 最初版本，用户钦点。俏皮活泼，声线偏年轻。
+  # 上次试过的都被 pass：female-tianmei 过甜、female-shaonv-jingpin 冷淡、
+  # lovely_girl 像小孩、female-yujie 偏暧昧。如果哪天想换：
+  #   presenter_female       主持人    - 明亮专业，略正式
+  #   female-chengshu        成熟女声  - 知性稳重
+  #   cute_girl              可爱女生  - 比俏皮萌妹再活泼一点
+  minimax_voice_id: "qiaopi_mengmei"
+  minimax_speed: 1.1             # 语速 0.5~2.0；初始值
+  # MiniMax 音色情绪标签，即使是俏皮萌妹加 happy 也能让声音更明亮、
+  # 更有笑意，不会让音色偏离原本气质。
+  # 支持值: happy / sad / angry / fearful / disgusted / surprised / neutral
+  minimax_emotion: "happy"
+  minimax_stream: true           # Real chunk-by-chunk streaming playback.
+                                 # The previous double-play bug came from
+                                 # MiniMax's default of emitting the entire
+                                 # clip AGAIN in a final "aggregated" SSE
+                                 # chunk, which our consumer concatenated on
+                                 # top of the incremental chunks. The fix is
+                                 # setting stream_options.exclude_aggregated_audio
+                                 # = true in the request (done in
+                                 # _speak_minimax_stream_play). Streaming
+                                 # first-byte latency: ~1.5s vs ~4s non-stream.
+  # -- Edge-TTS fallback --
+  voice: "zh-CN-XiaoxiaoNeural"  # edge-tts fallback 声音
+  rate: "+10%"
+  volume: "+0%"
+  output_device: "default"       # USB 声卡
+
+# ── 眼睛显示 (IPS LCD × 2，由 ESP32 本地驱动) ──
+# 香橙派只通过串口下发 {"cmd":"SET_EXPR","expr":"<name>","priority":n}，
+# 具体 SPI / RST / DC / BL 引脚在 ESP32 固件里定义。
+eye_display: {}
+
+# ── 长期记忆 ──
+memory:
+  db_path: "data/memory.db"
+  embedding_model: "text2vec-base-chinese"
+  max_recall_items: 5            # 每次对话最多召回的记忆条数
+  importance_threshold: 0.3      # 记忆重要性阈值
+
+# ── OpenClaw 网关（远端主机待填；暂留 localhost，会走 [SIM] 模拟发送）──
+gateway:
+  openclaw_url: "http://localhost:8080"
+  enabled: true
+  auth_token: ""                 # 如远端启了 Bearer 鉴权，填这里；留空则不发 Authorization
+
+# ── 邮件功能（通过 OpenClaw 网关发送）──
+email:
+  enabled: true
+  subject_prefix: "[小云代发]"
+  # 联系人别名 -> 邮箱地址；LLM 只能使用此处列出的名字，不允许自己编邮箱。
+  contacts:
+    Colleague: "colleague@example.com"
+
+# ── 主人身份 ──
+# run: python tools/enroll_face.py --name "YourName"
+owner:
+  name: "master"                     # face_db filename stem (assets/faces_db/master.npy)
+  emotion_focus: true                # when owner present + no voice cmd -> track owner emotion
+  stranger_emotion_react: false      # react to stranger's emotions? (false = ignore strangers)
+  greet_on_arrive: true              # say hi when owner appears
+  greet_cooldown: 300                # don't re-greet within N seconds
+
+# ── 行为引擎 ──
+behavior:
+  # 电机 PWM 占空比 (0-255)。60 实测太弱 (≈24% duty cycle) 加上 TB6612 A 通道
+  # 死了之后两电机并联在 B 通道 (combined = (L+R)/2 进一步减半占空比)，根本
+  # 推不动小车的静摩擦。160 是经验值，启动可靠且不会太冲。如果电池电压低
+  # 于 6.5V 或地面摩擦大可以再往 200 调。
+  approach_speed: 160            # motor speed when approaching (0-255)
+  approach_duration: 1.5         # approach duration (seconds)
+  idle_interval: 10.0            # idle random behavior interval (seconds)
+  pet_happy_duration: 3.0        # petting happiness duration (seconds)
+  # 陌生人反射：连续 N 帧看到非主人脸才切 scared 反射
+  stranger_reflex_streak: 4
+
+# ── 疲惫识别（Phase 1：纯上下文启发式 + LLM 裁定）──
+fatigue:
+  enabled: true
+  # 门控阈值，score >= threshold 才启动 LLM 判断
+  score_threshold: 0.6
+  # 冷却：一次问候后 N 秒内不再触发（2 小时 = 7200）
+  cooldown_seconds: 7200
+  # 情绪滑窗
+  emotion_window_seconds: 30
+  # 时段加分
+  late_evening_hour: 18          # 18:00 后开始加分
+  late_evening_score: 0.3
+  late_night_hour_start: 0       # 00:00-02:00 加分
+  late_night_hour_end: 2
+  late_night_score: 0.2
+  # 主人缺席加分
+  absence_6h_score: 0.4
+  absence_3h_score: 0.2
+  # 情绪加分
+  negative_ratio_threshold: 0.6
+  negative_ratio_score: 0.3
+  strong_sad_conf: 0.7
+  strong_sad_score: 0.2
+
+# ── ESP32 传感器阈值 (也会通过串口同步给 ESP32) ──
+sensors:
+  ultrasonic_warn_cm: 15         # 超声波警告距离
+  ultrasonic_stop_cm: 8          # 超声波紧急停车距离
+  line_track_threshold: 500      # TCRT5000 数字阈值（高=悬空）
+  touch_debounce_ms: 200         # 触摸去抖时间
